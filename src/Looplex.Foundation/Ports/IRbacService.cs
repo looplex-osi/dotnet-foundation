@@ -1,4 +1,6 @@
-﻿namespace Looplex.Foundation.Ports
+﻿using Looplex.Foundation.OAuth2;
+
+namespace Looplex.Foundation.Ports
 {
     /// <summary>
     /// Provides role-based access control (RBAC) functionality for authorization checks.
@@ -9,10 +11,9 @@
         /// Checks if the subject in a domain has permission to perform an action on
         /// a resource.
         /// </summary>
-        /// <param name="subject"></param>
-        /// <param name="domain"></param>
+        /// <param name="userContext"></param>
         /// <param name="resource"></param>
         /// <param name="action"></param>
-        void ThrowIfUnauthorized(string subject, string domain, string resource, string action);
+        void ThrowIfUnauthorized(IUserContext userContext, string resource, string action);
     }
 }

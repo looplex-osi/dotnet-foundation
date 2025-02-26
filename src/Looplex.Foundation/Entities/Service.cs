@@ -11,6 +11,11 @@ namespace Looplex.Foundation.Entities
         // ReSharper disable once PublicConstructorInAbstractClass
         public Service() { }
         #endregion
+
+        protected Service(IList<IPlugin> plugins)
+        {
+            Plugins = plugins;
+        }
         
         #region Micro-Kernel
         protected IList<IPlugin> Plugins { get; set; } = new List<IPlugin>();

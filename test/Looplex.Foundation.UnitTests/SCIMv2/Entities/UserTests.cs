@@ -11,7 +11,7 @@ public class UserTests
     public void User_MinimalPayload_ShouldDeserializeJson()
     {
         // Only userName is provided
-        string minimalJson = @"{
+        var minimalJson = @"{
               ""userName"": ""minimalUser""
             }";
 
@@ -27,7 +27,7 @@ public class UserTests
     public void User_MinimalPayload_ShouldDeserializeXml()
     {
         // Only userName is provided
-        string minimalXml = @"<?xml version=""1.0"" encoding=""utf-16""?>
+        var minimalXml = @"<?xml version=""1.0"" encoding=""utf-16""?>
 <User xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
   <UserName>minimalXmlUser</UserName>
 </User>";
@@ -44,7 +44,7 @@ public class UserTests
     public void User_MinimalPayload_ShouldDeserializeProtobuf()
     {
         // Only userName is provided
-        byte[] minimalProtobuf = new User() { UserName = "minimalUserProtobuf" }.ProtobufSerialize();
+        var minimalProtobuf = new User() { UserName = "minimalUserProtobuf" }.ProtobufSerialize();
 
         var user = minimalProtobuf.ProtobufDeserialize<User>();
 
@@ -57,7 +57,7 @@ public class UserTests
     [TestMethod]
     public void User_FullEnterprisePayload_ShouldDeserializeJsonRoundTrip()
     {
-        string enterpriseJson = @"{
+        var enterpriseJson = @"{
               ""id"": ""2819c223-7f76-453a-919d-413861904646"",
               ""userName"": ""bjensen@example.com"",
               ""name"": {

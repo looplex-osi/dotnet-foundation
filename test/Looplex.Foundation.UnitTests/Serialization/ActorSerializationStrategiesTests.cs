@@ -26,7 +26,7 @@ public class ActorSerializationStrategiesTests
     public void JsonSerialize_ShouldConvertActorToJsonString()
     {
         // Act
-        string json = _actor.JsonSerialize();
+        var json = _actor.JsonSerialize();
 
         // Assert
         Assert.IsNotNull(json);
@@ -37,10 +37,10 @@ public class ActorSerializationStrategiesTests
     public void JsonDeserialize_ShouldConvertJsonStringToActor()
     {
         // Arrange
-        string json = _actor.JsonSerialize();
+        var json = _actor.JsonSerialize();
 
         // Act
-        TestActor deserializedActor = json.JsonDeserialize<TestActor>();
+        var deserializedActor = json.JsonDeserialize<TestActor>();
 
         // Assert
         Assert.IsNotNull(deserializedActor);
@@ -69,7 +69,7 @@ public class ActorSerializationStrategiesTests
     public void XmlSerialize_ShouldConvertActorToXmlString()
     {
         // Act
-        string xml = _actor.XmlSerialize();
+        var xml = _actor.XmlSerialize();
 
         // Assert
         Assert.IsNotNull(xml);
@@ -80,10 +80,10 @@ public class ActorSerializationStrategiesTests
     public void XmlDeserialize_ShouldConvertXmlStringToActor()
     {
         // Arrange
-        string xml = _actor.XmlSerialize();
+        var xml = _actor.XmlSerialize();
 
         // Act
-        TestActor deserializedActor = xml.XmlDeserialize<TestActor>();
+        var deserializedActor = xml.XmlDeserialize<TestActor>();
 
         // Assert
         Assert.IsNotNull(deserializedActor);
@@ -112,7 +112,7 @@ public class ActorSerializationStrategiesTests
     public void ProtobufSerialize_ShouldConvertActorToBinary()
     {
         // Act
-        byte[] binaryData = _actor.ProtobufSerialize();
+        var binaryData = _actor.ProtobufSerialize();
 
         // Assert
         Assert.IsNotNull(binaryData);
@@ -123,10 +123,10 @@ public class ActorSerializationStrategiesTests
     public void ProtobufDeserialize_ShouldConvertBinaryToActor()
     {
         // Arrange
-        byte[] binaryData = _actor.ProtobufSerialize();
+        var binaryData = _actor.ProtobufSerialize();
 
         // Act
-        TestActor deserializedActor = binaryData.ProtobufDeserialize<TestActor>();
+        var deserializedActor = binaryData.ProtobufDeserialize<TestActor>();
 
         // Assert
         Assert.IsNotNull(deserializedActor);
