@@ -17,4 +17,10 @@
     </Description>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Looplex.OpenForExtension" Version="1.1.8" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="protobuf-net" Version="3.2.46" />
+  </ItemGroup>
+
 </Project>
