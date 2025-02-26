@@ -1,0 +1,10 @@
+# Define permissions for groups
+p, group1, looplex, resource, read
+p, group1, looplex, resource, write
+p, group1, looplex, resource, delete
+
+p, group2, looplex, resource, execute
+
+# Assign users to groups
+g, bob.rivest@email.com, group1, looplex
+g, alice.rivest@email.com, group2, looplex

@@ -18,7 +18,7 @@ namespace Looplex.Foundation.Serialization
                 ContractResolver = new CamelCasePropertyNamesContractResolver(),
                 Formatting = Formatting.Indented
             };
-            string json = JsonConvert.SerializeObject(actor, actor.GetType(), settings);
+            var json = JsonConvert.SerializeObject(actor, actor.GetType(), settings);
             return json;
         }
 

@@ -28,7 +28,7 @@ public class ActorTests
     public void AddEventListener_ShouldTriggerEvent()
     {
         // Arrange
-        string expectedEvent = "TestEvent";
+        var expectedEvent = "TestEvent";
         object expectedData = "EventData";
         _actor.AddEventListener(_mockHandler);
 
@@ -43,7 +43,7 @@ public class ActorTests
     public void RemoveEventListener_ShouldNotTriggerEvent()
     {
         // Arrange
-        string expectedEvent = "TestEvent";
+        var expectedEvent = "TestEvent";
         object expectedData = "EventData";
         _actor.AddEventListener(_mockHandler);
         _actor.RemoveEventListener(_mockHandler);
@@ -73,7 +73,7 @@ public class ActorTests
     public void FireEvent_ShouldNotThrow_WhenNoListeners()
     {
         // Arrange
-        string eventName = "NoListenerEvent";
+        var eventName = "NoListenerEvent";
 
         // Act & Assert
         _actor.TriggerEvent(eventName); // Should not throw

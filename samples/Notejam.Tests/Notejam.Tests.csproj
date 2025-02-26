@@ -7,11 +7,13 @@
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <RootNamespace>Looplex.Samples.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0"/>
-    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
+    <PackageReference Include="Looplex.OpenForExtension.Loader" Version="1.1.8" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0"/>
     <PackageReference Include="MSTest.TestAdapter" Version="3.1.1"/>
     <PackageReference Include="MSTest.TestFramework" Version="3.1.1"/>
@@ -23,14 +25,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Looplex.Foundation\Looplex.Foundation.csproj" />
+    <ProjectReference Include="..\Notejam\Notejam.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="model.conf">
+    <None Update="rbac\model.ini">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="policy.csv">
+    <None Update="rbac\policy.csv">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="plugins\EPTracker.Plugin.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
