@@ -1,2 +1,2 @@
 # dotnet-foundation
-Contains the Looplex.Foundation solution.
+Contains the Looplex.Foundation project.
