@@ -4,6 +4,11 @@ namespace Looplex.Foundation.Entities
 {
     public abstract class Actor
     {
+        #region Reflectivity
+        // ReSharper disable once PublicConstructorInAbstractClass
+        public Actor() { }
+        #endregion
+        
         #region Observability
 
         private event Action<string, object> ActorEvent;

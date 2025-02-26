@@ -20,6 +20,13 @@
   <ItemGroup>
     <PackageReference Include="Looplex.OpenForExtension" Version="1.1.8" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Fody" Version="6.9.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="PropertyChanged.Fody" Version="4.1.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="protobuf-net" Version="3.2.46" />
   </ItemGroup>
 
