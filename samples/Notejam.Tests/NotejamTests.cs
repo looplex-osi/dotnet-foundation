@@ -1,5 +1,4 @@
 using System.Data;
-using System.Dynamic;
 using System.Reflection;
 using Casbin;
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
@@ -9,7 +8,6 @@ using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 

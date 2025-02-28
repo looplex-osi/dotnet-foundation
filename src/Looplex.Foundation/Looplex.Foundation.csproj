@@ -15,6 +15,7 @@
     <Description>
       Looplex package that contains foundation/core code for projects with Hexagonal/Micro-Kernel architectures.
     </Description>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
