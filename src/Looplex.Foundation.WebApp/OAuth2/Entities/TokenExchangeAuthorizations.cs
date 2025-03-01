@@ -1,59 +1,77 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using Looplex.Foundation.Entities;
+using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
+using Looplex.Foundation.Serialization;
+using Looplex.Foundation.WebApp.OAuth2.Dtos;
 using Looplex.OpenForExtension.Abstractions.Commands;
-using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
-namespace Looplex.Foundation.WebApp.OAuth2;
+namespace Looplex.Foundation.WebApp.OAuth2.Entities;
 
-public class TokenExchangeAuthorizationService(
-    IConfiguration configuration,
-    IJwtService jwtService,
-    IHttpClientFactory httpClientFactory) : IAuthorizationService
+public class TokenExchangeAuthorizations : Service, IAuthorizations
 {
-    private readonly IConfiguration _configuration = configuration;
-    private readonly IJwtService _jwtService = jwtService;
-    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+    private readonly IConfiguration? _configuration;
+    private readonly IJwtService? _jwtService;
+    private readonly IHttpClientFactory? _httpClientFactory;
+    
+    #region Reflectivity
+    // ReSharper disable once PublicConstructorInAbstractClass
+    public TokenExchangeAuthorizations() : base() { }
+    #endregion
+    
+    public TokenExchangeAuthorizations(IList<IPlugin> plugins,
+        IConfiguration configuration,
+        IJwtService jwtService,
+        IHttpClientFactory httpClientFactory) : base(plugins)
+    {
+        _configuration = configuration;
+        _jwtService = jwtService;
+        _httpClientFactory = httpClientFactory;
+    }
 
-    public async Task CreateAccessToken(IContext context, CancellationToken cancellationToken)
+    public async Task<string> CreateAccessToken(string json, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var ctx = NewContext();
         
-        var json = context.GetRequiredValue<string>("Resource");
-        var clientCredentialsDto = JsonConvert.DeserializeObject<ClientCredentialsDto>(json)!;
-        await context.Plugins.ExecuteAsync<IHandleInput>(context, cancellationToken);
+        var clientCredentialsDto = json.JsonDeserialize<ClientCredentialsDto>();
+        await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
         
         ArgumentNullException.ThrowIfNull(clientCredentialsDto, "body");
         
         ValidateGrantType(clientCredentialsDto.GrantType);
         ValidateTokenType(clientCredentialsDto.SubjectTokenType);
         ValidateAccessToken(clientCredentialsDto.SubjectToken);
-        await context.Plugins.ExecuteAsync<IValidateInput>(context, cancellationToken);
+        await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-        context.Roles["ClientCredentials"] = clientCredentialsDto;
-        context.Roles["UserInfo"] = await GetUserInfoAsync(clientCredentialsDto.SubjectToken!);
-        await context.Plugins.ExecuteAsync<IDefineRoles>(context, cancellationToken);
+        ctx.Roles["ClientCredentials"] = clientCredentialsDto;
+        ctx.Roles["UserInfo"] = await GetUserInfoAsync(clientCredentialsDto.SubjectToken!);
+        await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
-        await context.Plugins.ExecuteAsync<IBind>(context, cancellationToken);
+        await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
 
-        await context.Plugins.ExecuteAsync<IBeforeAction>(context, cancellationToken);
+        await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
 
-        if (!context.SkipDefaultAction)
+        if (!ctx.SkipDefaultAction)
         {
-            var accessToken = CreateAccessToken((UserInfo)context.Roles["UserInfo"]);
-            context.Result = new AccessTokenDto
+            var accessToken = CreateAccessToken((UserInfo)ctx.Roles["UserInfo"]);
+            ctx.Result = new AccessTokenDto
             {
                 AccessToken = accessToken
-            };
+            }.JsonSerialize();
         }
 
-        await context.Plugins.ExecuteAsync<IAfterAction>(context, cancellationToken);
+        await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
 
-        await context.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(context, cancellationToken);
+        await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+        return (string)ctx.Result;
     }
 
     private static void ValidateGrantType(string grantType)
@@ -85,8 +103,8 @@ public class TokenExchangeAuthorizationService(
 
     private async Task<UserInfo> GetUserInfoAsync(string accessToken)
     {
-        using var client = _httpClientFactory.CreateClient();
-        var userInfoEndpoint = _configuration["OicdUserInfoEndpoint"];
+        using var client = _httpClientFactory!.CreateClient();
+        var userInfoEndpoint = _configuration!["OicdUserInfoEndpoint"];
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Constants.Bearer, accessToken);
         var response = await client.GetAsync(userInfoEndpoint);
         response.EnsureSuccessStatusCode();
@@ -103,13 +121,13 @@ public class TokenExchangeAuthorizationService(
             // TODO add preferredLanguage
         ]);
         
-        var audience = _configuration["Audience"]!;
+        var audience = _configuration!["Audience"]!;
         var issuer = _configuration["Issuer"]!;
         var tokenExpirationTimeInMinutes = _configuration.GetValue<int>("TokenExpirationTimeInMinutes");
 
         var privateKey = StringUtils.Base64Decode(_configuration["PrivateKey"]!);
         
-        var accessToken = _jwtService.GenerateToken(privateKey, issuer, audience, claims, TimeSpan.FromMinutes(tokenExpirationTimeInMinutes));
+        var accessToken = _jwtService!.GenerateToken(privateKey, issuer, audience, claims, TimeSpan.FromMinutes(tokenExpirationTimeInMinutes));
         return accessToken;
     }
 }

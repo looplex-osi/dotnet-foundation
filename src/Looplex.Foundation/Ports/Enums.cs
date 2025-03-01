@@ -1,11 +1,10 @@
-namespace Looplex.Foundation.Ports
+namespace Looplex.Foundation.Ports;
+
+/// <summary>
+///     A label indicating the type of resource, e.g., 'User' or 'Group'.
+/// </summary>
+public enum GrantType
 {
-    /// <summary>
-    ///     A label indicating the type of resource, e.g., 'User' or 'Group'.
-    /// </summary>
-    public enum GrantType
-    {
-        TokenExchange,
-        ClientCredentials
-    }
+    TokenExchange,
+    ClientCredentials
 }
