@@ -14,7 +14,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Looplex.Foundation.WebApp.OAuth2.Entities;
 
-public class ClientCredentialsAuthorizations : Service, IAuthorizations
+public class ClientCredentialsAuthentications : Service, IAuthentications
 {
     private readonly IConfiguration? _configuration;
     private readonly IClientCredentials? _clientCredentials;
@@ -23,10 +23,10 @@ public class ClientCredentialsAuthorizations : Service, IAuthorizations
 
     #region Reflectivity
     // ReSharper disable once PublicConstructorInAbstractClass
-    public ClientCredentialsAuthorizations() : base() { }
+    public ClientCredentialsAuthentications() : base() { }
     #endregion
     
-    public ClientCredentialsAuthorizations(IList<IPlugin> plugins,
+    public ClientCredentialsAuthentications(IList<IPlugin> plugins,
         IConfiguration configuration,
         IClientCredentials clientCredentials,
         IJwtService jwtService,
@@ -44,7 +44,7 @@ public class ClientCredentialsAuthorizations : Service, IAuthorizations
         var ctx = NewContext();
 
         var authorization = _httpContextAccessor?.HttpContext?.Request.Headers.Authorization;
-        var clientCredentialsDto = json.JsonDeserialize<ClientCredentialsDto>();
+        var clientCredentialsDto = json.JsonDeserialize<ClientCredentialsGrantDto>();
         await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
         ArgumentNullException.ThrowIfNull(clientCredentialsDto, "body");
@@ -53,7 +53,7 @@ public class ClientCredentialsAuthorizations : Service, IAuthorizations
         ValidateGrantType(clientCredentialsDto.GrantType);
         var (clientId, clientSecret) = TryGetClientCredentials(authorization);
         var clientCredential =
-            await GetClientCredentialByIdAndSecretOrDefaultAsync(clientId.ToString(), clientSecret, ctx, cancellationToken);
+            await GetClientCredentialByIdAndSecretOrDefaultAsync(clientId, clientSecret, ctx, cancellationToken);
         await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
         ctx.Roles["ClientCredential"] = clientCredential;
@@ -134,10 +134,15 @@ public class ClientCredentialsAuthorizations : Service, IAuthorizations
         }
     }
 
-    private async Task<ClientCredential> GetClientCredentialByIdAndSecretOrDefaultAsync(string clientId, string clientSecret,
+    private async Task<ClientCredential> GetClientCredentialByIdAndSecretOrDefaultAsync(Guid clientId, string clientSecret,
         IContext parentContext, CancellationToken cancellationToken)
     {
         var json = await _clientCredentials!.RetrieveAsync(clientId, clientSecret, cancellationToken);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new Exception("Invalid clientId or clientSecret.");
+        }
+        
         var clientCredential = json.JsonDeserialize<ClientCredential>();
 
         if (clientCredential == default)
@@ -161,7 +166,7 @@ public class ClientCredentialsAuthorizations : Service, IAuthorizations
     private string CreateAccessToken(ClientCredential clientCredential)
     {
         var claims = new ClaimsIdentity([
-            new Claim(Constants.ClientId, clientCredential.ClientId.ToString()!),
+            new Claim(Constants.ClientId, clientCredential.ClientId.ToString()),
         ]);
 
         var audience = _configuration!["Audience"]!;

@@ -5,28 +5,28 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Looplex.Foundation.WebApp.OAuth2.Adapters;
 
-public class AuthorizationsFactory : IAuthorizationsFactory
+public class AuthenticationsFactory : IAuthenticationsFactory
 {
     private readonly IServiceProvider? _serviceProvider;
 
     #region Reflectivity
     // ReSharper disable once PublicConstructorInAbstractClass
-    public AuthorizationsFactory() { }
+    public AuthenticationsFactory() { }
     #endregion
     
-    public AuthorizationsFactory(IServiceProvider serviceProvider)
+    public AuthenticationsFactory(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
     }
 
-    public IAuthorizations GetService(GrantType grantType)
+    public IAuthentications GetService(GrantType grantType)
     {
         switch (grantType)
         {
             case GrantType.TokenExchange:
-                return _serviceProvider!.GetRequiredService<TokenExchangeAuthorizations>();
+                return _serviceProvider!.GetRequiredService<TokenExchangeAuthentications>();
             case GrantType.ClientCredentials:
-                return _serviceProvider!.GetRequiredService<ClientCredentialsAuthorizations>();
+                return _serviceProvider!.GetRequiredService<ClientCredentialsAuthentications>();
             default:
                 throw new ArgumentOutOfRangeException(nameof(grantType), grantType, null);
         }

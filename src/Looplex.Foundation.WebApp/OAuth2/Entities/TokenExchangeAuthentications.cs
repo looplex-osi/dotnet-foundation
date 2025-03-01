@@ -14,7 +14,7 @@ using Newtonsoft.Json;
 
 namespace Looplex.Foundation.WebApp.OAuth2.Entities;
 
-public class TokenExchangeAuthorizations : Service, IAuthorizations
+public class TokenExchangeAuthentications : Service, IAuthentications
 {
     private readonly IConfiguration? _configuration;
     private readonly IJwtService? _jwtService;
@@ -22,10 +22,10 @@ public class TokenExchangeAuthorizations : Service, IAuthorizations
     
     #region Reflectivity
     // ReSharper disable once PublicConstructorInAbstractClass
-    public TokenExchangeAuthorizations() : base() { }
+    public TokenExchangeAuthentications() : base() { }
     #endregion
     
-    public TokenExchangeAuthorizations(IList<IPlugin> plugins,
+    public TokenExchangeAuthentications(IList<IPlugin> plugins,
         IConfiguration configuration,
         IJwtService jwtService,
         IHttpClientFactory httpClientFactory) : base(plugins)
@@ -40,7 +40,7 @@ public class TokenExchangeAuthorizations : Service, IAuthorizations
         cancellationToken.ThrowIfCancellationRequested();
         var ctx = NewContext();
         
-        var clientCredentialsDto = json.JsonDeserialize<ClientCredentialsDto>();
+        var clientCredentialsDto = json.JsonDeserialize<ClientCredentialsGrantDto>();
         await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
         
         ArgumentNullException.ThrowIfNull(clientCredentialsDto, "body");
