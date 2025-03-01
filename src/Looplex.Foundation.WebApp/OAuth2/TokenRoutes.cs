@@ -13,7 +13,7 @@ public static class TokenRoutes
 
     internal static readonly RequestDelegate TokenMiddleware = async (context) =>
     {
-        var factory = context.RequestServices.GetRequiredService<IAuthorizationsFactory>();
+        var factory = context.RequestServices.GetRequiredService<IAuthenticationsFactory>();
         var cancellationToken = context.RequestAborted;
             
         var authorization = context.Request.Headers.Authorization.ToString();

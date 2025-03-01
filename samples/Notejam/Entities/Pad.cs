@@ -1,7 +1,7 @@
 using Looplex.Foundation.Entities;
 using PropertyChanged;
 
-namespace Looplex.Notejam.Entities;
+namespace Looplex.Samples.Entities;
 
 [AddINotifyPropertyChangedInterface]
 public class Pad : Actor
