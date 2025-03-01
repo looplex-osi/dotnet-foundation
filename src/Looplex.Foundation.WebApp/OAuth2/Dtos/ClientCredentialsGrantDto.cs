@@ -3,11 +3,11 @@ using Newtonsoft.Json;
 
 namespace Looplex.Foundation.WebApp.OAuth2.Dtos;
 
-public class ClientCredentialsDto : Actor
+public class ClientCredentialsGrantDto : Actor
 {
     #region Reflectivity
     // ReSharper disable once PublicConstructorInAbstractClass
-    public ClientCredentialsDto() : base() { }
+    public ClientCredentialsGrantDto() : base() { }
     #endregion
     
     [JsonProperty("grant_type")]

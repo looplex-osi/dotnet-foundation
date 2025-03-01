@@ -3,10 +3,10 @@ using Looplex.Foundation;
 using Looplex.Foundation.Entities;
 using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.Ports;
-using Looplex.Notejam.Entities;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
 using Looplex.OpenForExtension.Abstractions.Plugins;
+using Looplex.Samples.Entities;
 
 namespace Looplex.Samples;
 

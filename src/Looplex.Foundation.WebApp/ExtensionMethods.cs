@@ -17,6 +17,6 @@ public static class ExtensionMethods
     {
         services.AddHttpContextAccessor();
         services.AddScoped<IJwtService, JwtService>(); 
-        services.AddScoped<IAuthorizationsFactory, AuthorizationsFactory>(); 
+        services.AddScoped<IAuthenticationsFactory, AuthenticationsFactory>(); 
     }
 }

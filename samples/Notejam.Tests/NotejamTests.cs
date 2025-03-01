@@ -132,7 +132,7 @@ public class NotejamTests
 			});
 
 		// Act
-		string result = await notejam.Echo("World", CancellationToken.None);
+		var result = await notejam.Echo("World", CancellationToken.None);
 
 		// Assert
 		Assert.AreEqual(result, @"Hello World");
