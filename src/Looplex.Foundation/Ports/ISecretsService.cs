@@ -1,9 +1,8 @@
 using System.Threading.Tasks;
 
-namespace Looplex.Foundation.Ports
+namespace Looplex.Foundation.Ports;
+
+public interface ISecretsService
 {
-    public interface ISecretsService
-    {
-        Task<string> GetSecretAsync(string secretName);
-    }
+    Task<string> GetSecretAsync(string secretName);
 }
