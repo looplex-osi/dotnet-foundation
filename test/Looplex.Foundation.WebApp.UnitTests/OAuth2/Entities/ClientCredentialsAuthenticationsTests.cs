@@ -42,7 +42,7 @@ public class ClientCredentialsAuthenticationsTests
             grant_type = Constants.ClientCredentialsGrantType
         });
 
-        var service = new ClientCredentialsAuthentications([], _mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
+        var service = new ClientCredentialsAuthentications(_mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
@@ -65,7 +65,7 @@ public class ClientCredentialsAuthenticationsTests
             grant_type = "invalid"
         });
 
-        var service = new ClientCredentialsAuthentications([], _mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
+        var service = new ClientCredentialsAuthentications(_mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
@@ -106,7 +106,7 @@ public class ClientCredentialsAuthenticationsTests
         _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
             .Returns(JsonConvert.SerializeObject(clientCredential));
 
-        var service = new ClientCredentialsAuthentications([], _mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
+        var service = new ClientCredentialsAuthentications(_mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
 
         // Act
         var result = await service.CreateAccessToken(clientCredentials, CancellationToken.None);
@@ -135,7 +135,7 @@ public class ClientCredentialsAuthenticationsTests
         _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<string?>(null));
 
-        var service = new ClientCredentialsAuthentications([], _mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
+        var service = new ClientCredentialsAuthentications(_mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<Exception>(
@@ -170,7 +170,7 @@ public class ClientCredentialsAuthenticationsTests
         _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
             .Returns(JsonConvert.SerializeObject(clientCredential));
 
-        var service = new ClientCredentialsAuthentications([], _mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
+        var service = new ClientCredentialsAuthentications(_mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<Exception>(
@@ -205,7 +205,7 @@ public class ClientCredentialsAuthenticationsTests
         _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
             .Returns(JsonConvert.SerializeObject(clientCredential));
 
-        var service = new ClientCredentialsAuthentications([], _mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
+        var service = new ClientCredentialsAuthentications(_mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<Exception>(

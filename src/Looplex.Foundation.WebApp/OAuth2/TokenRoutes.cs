@@ -31,7 +31,7 @@ public static class TokenRoutes
         await context.Response.WriteAsJsonAsync(result, cancellationToken);
     };
 
-    public static void UseTokenRoute(this IEndpointRouteBuilder app, string[] services)
+    public static void UseTokenRoute(this IEndpointRouteBuilder app)
     {
         app.MapPost(
             Resource,

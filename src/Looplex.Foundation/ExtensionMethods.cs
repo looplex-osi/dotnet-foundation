@@ -1,3 +1,4 @@
+using Looplex.Foundation.Middlewares;
 using Looplex.Foundation.OAuth2;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +9,7 @@ public static class ExtensionMethods
 {
     public static void UseLooplexFoundation(this IApplicationBuilder app)
     {
+        app.UseMiddleware<JsonResponseMiddleware>();
         app.UseMiddleware<AuthenticationMiddleware>();
     }
         
