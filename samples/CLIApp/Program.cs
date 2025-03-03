@@ -1,4 +1,4 @@
-﻿namespace CLIApp;
+﻿namespace Looplex.Samples.CliApp;
 
 class Program
 {

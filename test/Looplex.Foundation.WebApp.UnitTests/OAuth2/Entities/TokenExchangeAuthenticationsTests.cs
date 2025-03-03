@@ -14,14 +14,16 @@ public class TokenExchangeAuthenticationsTests
 {
     private IConfiguration _mockConfiguration = null!;
     private IJwtService _mockJwtService = null!;
-    private IHttpClientFactory _httpClientFactory = null!;
+    private HttpClient _httpClient = null!;
         
     [TestInitialize]
     public void Setup()
     {
         _mockConfiguration = Substitute.For<IConfiguration>();
         _mockJwtService = Substitute.For<IJwtService>();
-        _httpClientFactory = Substitute.For<IHttpClientFactory>();
+        
+        var handlerMock = new SuccessHttpMessageHandlerMock();
+        _httpClient = new HttpClient(handlerMock);
             
         var configurationSection = Substitute.For<IConfigurationSection>();
         configurationSection.Value.Returns("20");
@@ -39,7 +41,7 @@ public class TokenExchangeAuthenticationsTests
             subject_token_type = "invalid"
         });
 
-        var service = new TokenExchangeAuthentications([], _mockConfiguration, _mockJwtService, _httpClientFactory);
+        var service = new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
@@ -60,7 +62,7 @@ public class TokenExchangeAuthenticationsTests
             subject_token_type = "invalid"
         });
 
-        var service = new TokenExchangeAuthentications([], _mockConfiguration, _mockJwtService, _httpClientFactory);
+        var service = new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
@@ -87,11 +89,7 @@ public class TokenExchangeAuthenticationsTests
             subject_token_type = Constants.AccessTokenType
         });
 
-        var handlerMock = new SuccessHttpMessageHandlerMock();
-        var httpClient = new HttpClient(handlerMock);
-        _httpClientFactory.CreateClient().Returns(httpClient);
-
-        var service = new TokenExchangeAuthentications([], _mockConfiguration, _mockJwtService, _httpClientFactory);
+        var service = new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
 
         // Act
         var result = await service.CreateAccessToken(clientCredentials, CancellationToken.None);
@@ -112,7 +110,7 @@ public class TokenExchangeAuthenticationsTests
             subject_token_type = Constants.AccessTokenType
         });
 
-        var service = new TokenExchangeAuthentications([], _mockConfiguration, _mockJwtService, _httpClientFactory);
+        var service = new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
@@ -133,12 +131,11 @@ public class TokenExchangeAuthenticationsTests
             subject_token = "invalid",
             subject_token_type = Constants.AccessTokenType
         });
-
+        
         var handlerMock = new ErrorHttpMessageHandlerMock();
         var httpClient = new HttpClient(handlerMock);
-        _httpClientFactory.CreateClient().Returns(httpClient);
-
-        var service = new TokenExchangeAuthentications([], _mockConfiguration, _mockJwtService, _httpClientFactory);
+        
+        var service = new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, httpClient);
 
         // Act & Assert
         var exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(

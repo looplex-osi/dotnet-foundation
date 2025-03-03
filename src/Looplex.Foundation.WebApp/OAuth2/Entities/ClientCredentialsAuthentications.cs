@@ -8,9 +8,9 @@ using Looplex.Foundation.WebApp.OAuth2.Dtos;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
-using Looplex.OpenForExtension.Abstractions.Plugins;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Looplex.Foundation.WebApp.OAuth2.Entities;
 
@@ -26,11 +26,12 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     public ClientCredentialsAuthentications() : base() { }
     #endregion
     
-    public ClientCredentialsAuthentications(IList<IPlugin> plugins,
+    [ActivatorUtilitiesConstructor]
+    public ClientCredentialsAuthentications(
         IConfiguration configuration,
         IClientCredentials clientCredentials,
         IJwtService jwtService,
-        IHttpContextAccessor httpContextAccessor) : base(plugins)
+        IHttpContextAccessor httpContextAccessor) : base()
     {
         _configuration = configuration;
         _clientCredentials = clientCredentials;
