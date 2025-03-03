@@ -1,12 +1,9 @@
-using System.Dynamic;
-using System.Text;
 using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.Serialization;
-using Looplex.OpenForExtension.Abstractions.Contexts;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using NSubstitute;

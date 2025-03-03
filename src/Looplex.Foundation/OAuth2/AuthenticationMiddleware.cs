@@ -1,28 +1,39 @@
 using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Threading.Tasks;
 using Looplex.Foundation.Ports;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Looplex.Foundation.OAuth2;
 
 public class AuthenticationMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly IServiceProvider _serviceProvider;
-
-    public AuthenticationMiddleware(RequestDelegate next, IServiceProvider serviceProvider)
+    private readonly HashSet<string> _publicEndpoints = new()
+    {
+        "/token",
+        "/health"
+    };
+    
+    public AuthenticationMiddleware(RequestDelegate next)
     {
         _next = next ?? throw new ArgumentNullException(nameof(next));
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     }
 
-    public async Task Invoke(HttpContext context)
+    public async Task Invoke(HttpContext context, IConfiguration configuration, IJwtService jwtService)
     {
-        var configuration = _serviceProvider.GetRequiredService<IConfiguration>();
+        string requestPath = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+
+        // Skip authentication for public endpoints
+        if (_publicEndpoints.Contains(requestPath))
+        {
+            await _next(context);
+            return;
+        }
+        
         var audience = configuration["Audience"] ??
                        throw new InvalidOperationException("Audience configuration is missing");
         var issuer = configuration["Issuer"] ??
@@ -40,7 +51,6 @@ public class AuthenticationMiddleware
         var publicKey = StringUtils.Base64Decode(configuration["PublicKey"] ??
                                                  throw new InvalidOperationException(
                                                      "PublicKey configuration is missing"));
-        var jwtService = _serviceProvider.GetRequiredService<IJwtService>();
         var authenticated = jwtService.ValidateToken(publicKey, issuer, audience, accessToken);
 
         if (!authenticated)

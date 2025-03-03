@@ -34,11 +34,7 @@ public class AuthenticationMiddlewareTests
         _configuration["PublicKey"]
             .Returns(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("test-public-key")));
 
-        // Mock service provider
-        _serviceProvider.GetService(typeof(IConfiguration)).Returns(_configuration);
-        _serviceProvider.GetService(typeof(IJwtService)).Returns(_jwtService);
-
-        _middleware = new AuthenticationMiddleware(_next, _serviceProvider);
+        _middleware = new AuthenticationMiddleware(_next);
 
         // Create mock HTTP context
         _context = new DefaultHttpContext();
@@ -76,7 +72,7 @@ public class AuthenticationMiddlewareTests
         ).Returns(true); // Ensure the ValidateToken method is called with the correct values
         
         // Act
-        await _middleware.Invoke(_context);
+        await _middleware.Invoke(_context, _configuration, _jwtService);
 
         // Assert
         Assert.IsTrue(_context.Items.ContainsKey("UserContext"), "UserContext should be added to HttpContext.Items");
@@ -106,7 +102,7 @@ public class AuthenticationMiddlewareTests
             .Returns(false);
 
         // Act & Assert
-        await Assert.ThrowsExceptionAsync<Exception>(async () => await _middleware.Invoke(_context),
+        await Assert.ThrowsExceptionAsync<Exception>(async () => await _middleware.Invoke(_context, _configuration, _jwtService),
             "AccessToken is invalid.");
         await _next.DidNotReceive().Invoke(_context); // Ensure next middleware is NOT called
     }
@@ -118,7 +114,7 @@ public class AuthenticationMiddlewareTests
         _context.Request.Headers.Remove("Authorization");
 
         // Act & Assert
-        await Assert.ThrowsExceptionAsync<Exception>(async () => await _middleware.Invoke(_context),
+        await Assert.ThrowsExceptionAsync<Exception>(async () => await _middleware.Invoke(_context, _configuration, _jwtService),
             "AccessToken is invalid.");
         await _next.DidNotReceive().Invoke(_context); // Ensure next middleware is NOT called
     }

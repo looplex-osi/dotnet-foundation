@@ -8,8 +8,8 @@ using Looplex.Foundation.Serialization;
 using Looplex.Foundation.WebApp.OAuth2.Dtos;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
-using Looplex.OpenForExtension.Abstractions.Plugins;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 
 namespace Looplex.Foundation.WebApp.OAuth2.Entities;
@@ -18,21 +18,22 @@ public class TokenExchangeAuthentications : Service, IAuthentications
 {
     private readonly IConfiguration? _configuration;
     private readonly IJwtService? _jwtService;
-    private readonly IHttpClientFactory? _httpClientFactory;
+    private readonly HttpClient? _httpClient;
     
     #region Reflectivity
     // ReSharper disable once PublicConstructorInAbstractClass
     public TokenExchangeAuthentications() : base() { }
     #endregion
     
-    public TokenExchangeAuthentications(IList<IPlugin> plugins,
+    [ActivatorUtilitiesConstructor]
+    public TokenExchangeAuthentications(
         IConfiguration configuration,
         IJwtService jwtService,
-        IHttpClientFactory httpClientFactory) : base(plugins)
+        HttpClient httpClient)
     {
         _configuration = configuration;
         _jwtService = jwtService;
-        _httpClientFactory = httpClientFactory;
+        _httpClient = httpClient;
     }
 
     public async Task<string> CreateAccessToken(string json, CancellationToken cancellationToken)
@@ -103,10 +104,9 @@ public class TokenExchangeAuthentications : Service, IAuthentications
 
     private async Task<UserInfo> GetUserInfoAsync(string accessToken)
     {
-        using var client = _httpClientFactory!.CreateClient();
         var userInfoEndpoint = _configuration!["OicdUserInfoEndpoint"];
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Constants.Bearer, accessToken);
-        var response = await client.GetAsync(userInfoEndpoint);
+        _httpClient!.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Constants.Bearer, accessToken);
+        var response = await _httpClient.GetAsync(userInfoEndpoint);
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
         return JsonConvert.DeserializeObject<UserInfo>(content)!;
