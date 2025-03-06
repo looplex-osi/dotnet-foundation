@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 
 namespace Looplex.Foundation.WebApp.SCIMv2;
 
@@ -16,28 +17,42 @@ public static class Routes
   public static IEndpointRouteBuilder UseSCIMv2<T>(this IEndpointRouteBuilder app, string prefix)
     where T : Resource, new()
   {
-    var group = app.MapGroup(prefix);
+    RouteGroupBuilder group = app.MapGroup(prefix);
 
     #region Query
 
-    group.MapGet("/", async (context) =>
+    group.MapGet("/", async context =>
     {
-      var cancellationToken = context.RequestAborted;
-      var svc = context.RequestServices.GetRequiredService<SCIM>();
-      if (!context.Request.Query.TryGetValue(Constants.PageQueryKey, out var pageValue))
+      CancellationToken cancellationToken = context.RequestAborted;
+      SCIM svc = context.RequestServices.GetRequiredService<SCIM>();
+      if (!context.Request.Query.TryGetValue(Constants.PageQueryKey, out StringValues pageValue))
+      {
         throw new Exception("MISSING_PAGE");
-      if (!int.TryParse(pageValue, out var page))
-        throw new Exception("PAGE_INVALID");
-      if (!context.Request.Query.TryGetValue(Constants.PageSizeQueryKey, out var pageSizeValue))
-        throw new Exception("MISSING_PAGE_SIZE");
-      if (!int.TryParse(pageSizeValue, out var pageSize))
-        throw new Exception("PER_PAGE_INVALID");
-      string? filters = null;
-      if (context.Request.Query.TryGetValue("filters", out var filtersValue))
-        filters = filtersValue.ToString();
+      }
 
-      var result = await svc.QueryAsync<T>(page, pageSize, filters, cancellationToken);
-      var json = result.JsonSerialize();
+      if (!int.TryParse(pageValue, out int page))
+      {
+        throw new Exception("PAGE_INVALID");
+      }
+
+      if (!context.Request.Query.TryGetValue(Constants.PageSizeQueryKey, out StringValues pageSizeValue))
+      {
+        throw new Exception("MISSING_PAGE_SIZE");
+      }
+
+      if (!int.TryParse(pageSizeValue, out int pageSize))
+      {
+        throw new Exception("PER_PAGE_INVALID");
+      }
+
+      string? filters = null;
+      if (context.Request.Query.TryGetValue("filters", out StringValues filtersValue))
+      {
+        filters = filtersValue.ToString();
+      }
+
+      ListResponse<T> result = await svc.QueryAsync<T>(page, pageSize, filters, cancellationToken);
+      string json = result.JsonSerialize();
       await context.Response.WriteAsJsonAsync(json, cancellationToken);
     });
 
@@ -45,16 +60,16 @@ public static class Routes
 
     #region Create
 
-    group.MapPost("/", async (context) =>
+    group.MapPost("/", async context =>
     {
-      var cancellationToken = context.RequestAborted;
-      var svc = context.RequestServices.GetRequiredService<SCIM>();
+      CancellationToken cancellationToken = context.RequestAborted;
+      SCIM svc = context.RequestServices.GetRequiredService<SCIM>();
 
       using StreamReader reader = new(context.Request.Body);
-      var json = await reader.ReadToEndAsync(cancellationToken);
-      var resource = json.JsonDeserialize<T>();
+      string json = await reader.ReadToEndAsync(cancellationToken);
+      T resource = json.JsonDeserialize<T>();
 
-      var id = await svc.CreateAsync(resource, cancellationToken);
+      Guid id = await svc.CreateAsync(resource, cancellationToken);
       context.Response.StatusCode = (int)HttpStatusCode.Created;
       context.Response.Headers.Location = $"{context.Request.Path.Value}/{id}";
     });
@@ -65,10 +80,10 @@ public static class Routes
 
     group.MapGet("/{id}", async (HttpContext context, Guid id) =>
     {
-      var cancellationToken = context.RequestAborted;
-      var svc = context.RequestServices.GetRequiredService<SCIM>();
+      CancellationToken cancellationToken = context.RequestAborted;
+      SCIM svc = context.RequestServices.GetRequiredService<SCIM>();
 
-      var result = await svc.RetrieveAsync<T>(id, cancellationToken);
+      T? result = await svc.RetrieveAsync<T>(id, cancellationToken);
 
       if (result == null)
       {
@@ -76,7 +91,7 @@ public static class Routes
       }
       else
       {
-        var json = result.JsonSerialize();
+        string json = result.JsonSerialize();
         await context.Response.WriteAsJsonAsync(json, cancellationToken);
       }
     });
@@ -87,10 +102,10 @@ public static class Routes
 
     group.MapPatch("/{id}", async (HttpContext context, Guid id) =>
     {
-      var cancellationToken = context.RequestAborted;
-      var svc = context.RequestServices.GetRequiredService<SCIM>();
+      CancellationToken cancellationToken = context.RequestAborted;
+      SCIM svc = context.RequestServices.GetRequiredService<SCIM>();
 
-      var resource = await svc.RetrieveAsync<T>(id, cancellationToken);
+      T? resource = await svc.RetrieveAsync<T>(id, cancellationToken);
       if (resource == null)
       {
         context.Response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -99,12 +114,16 @@ public static class Routes
       {
         string? fields = null; // TODO
 
-        var updated = await svc.UpdateAsync(id, resource, fields, cancellationToken);
+        bool updated = await svc.UpdateAsync(id, resource, fields, cancellationToken);
 
         if (!updated)
+        {
           context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        }
         else
+        {
           context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+        }
       }
     });
 
@@ -114,15 +133,19 @@ public static class Routes
 
     group.MapDelete("/{id}", async (HttpContext context, Guid id) =>
     {
-      var cancellationToken = context.RequestAborted;
-      var svc = context.RequestServices.GetRequiredService<SCIM>();
+      CancellationToken cancellationToken = context.RequestAborted;
+      SCIM svc = context.RequestServices.GetRequiredService<SCIM>();
 
-      var deleted = await svc.DeleteAsync<T>(id, cancellationToken);
+      bool deleted = await svc.DeleteAsync<T>(id, cancellationToken);
 
       if (!deleted)
+      {
         context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+      }
       else
+      {
         context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+      }
     });
 
     #endregion

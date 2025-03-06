@@ -4,5 +4,5 @@ namespace Looplex.Foundation.Ports;
 
 public interface IAuthenticationsFactory
 {
-    IAuthentications GetService(GrantType grantType);
+  IAuthentications GetService(GrantType grantType);
 }

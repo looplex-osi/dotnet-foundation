@@ -1,7 +1,8 @@
-﻿using Looplex.OpenForExtension.Abstractions.Commands;
+﻿using System.Text.Json;
+
+using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Plugins;
-using System.Text.Json;
 
 namespace Looplex.Samples.EPTracker;
 
@@ -38,7 +39,7 @@ internal class AfterActionCommand : IAfterAction
   public Task ExecuteAsync(IContext context, CancellationToken cancellationToken)
   {
     context.State.ExtensionPointsTracker.Add("@afterAction");
-    var expandoo = context.State.ExtensionPointsTracker;
+    dynamic? expandoo = context.State.ExtensionPointsTracker;
     context.Result = JsonSerializer.Serialize(expandoo, expandoo.GetType());
     return Task.CompletedTask;
   }
@@ -57,18 +58,23 @@ public class Plugin : AbstractPlugin
 {
   public override string Name => "ExtensionPoints Tracker";
 
-  public override string Description => "Plugin básico para demonstrar chamadas em cada um dos extension points definidos pelo DefaultContext";
+  public override string Description =>
+    "Plugin básico para demonstrar chamadas em cada um dos extension points definidos pelo DefaultContext";
 
   public override IEnumerable<ICommand> Commands =>
   [
-      new DefineCommand(),
-      new BindCommand(),
-      new BeforeActionCommand(),
-      new AfterActionCommand(),
-      new ReleaseCommand()
+    new DefineCommand(),
+    new BindCommand(),
+    new BeforeActionCommand(),
+    new AfterActionCommand(),
+    new ReleaseCommand()
   ];
 
-  public override IEnumerable<string> GetSubscriptions() => [
-    "Notejam.Echo"
-  ];
+  public override IEnumerable<string> GetSubscriptions()
+  {
+    return
+    [
+      "Notejam.Echo"
+    ];
+  }
 }

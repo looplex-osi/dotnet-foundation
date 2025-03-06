@@ -1,10 +1,14 @@
 using System.Net;
 using System.Text;
+
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.WebApp.OAuth2.Entities;
+
 using Microsoft.Extensions.Configuration;
+
 using Newtonsoft.Json;
+
 using NSubstitute;
 
 namespace Looplex.Foundation.WebApp.UnitTests.OAuth2.Entities;
@@ -12,170 +16,173 @@ namespace Looplex.Foundation.WebApp.UnitTests.OAuth2.Entities;
 [TestClass]
 public class TokenExchangeAuthenticationsTests
 {
-    private IConfiguration _mockConfiguration = null!;
-    private IJwtService _mockJwtService = null!;
-    private HttpClient _httpClient = null!;
-        
-    [TestInitialize]
-    public void Setup()
+  private HttpClient _httpClient = null!;
+  private IConfiguration _mockConfiguration = null!;
+  private IJwtService _mockJwtService = null!;
+
+  [TestInitialize]
+  public void Setup()
+  {
+    _mockConfiguration = Substitute.For<IConfiguration>();
+    _mockJwtService = Substitute.For<IJwtService>();
+
+    SuccessHttpMessageHandlerMock handlerMock = new SuccessHttpMessageHandlerMock();
+    _httpClient = new HttpClient(handlerMock);
+
+    IConfigurationSection? configurationSection = Substitute.For<IConfigurationSection>();
+    configurationSection.Value.Returns("20");
+    _mockConfiguration.GetSection("TokenExpirationTimeInMinutes").Returns(configurationSection);
+  }
+
+  [TestMethod]
+  public async Task CreateAccessToken_InvalidGrantType_ThrowsUnauthorized()
+  {
+    // Arrange
+    string clientCredentials = JsonConvert.SerializeObject(new
     {
-        _mockConfiguration = Substitute.For<IConfiguration>();
-        _mockJwtService = Substitute.For<IJwtService>();
-        
-        var handlerMock = new SuccessHttpMessageHandlerMock();
-        _httpClient = new HttpClient(handlerMock);
-            
-        var configurationSection = Substitute.For<IConfigurationSection>();
-        configurationSection.Value.Returns("20");
-        _mockConfiguration.GetSection("TokenExpirationTimeInMinutes").Returns(configurationSection);
-    }
+      grant_type = "invalid", subject_token = "invalid", subject_token_type = "invalid"
+    });
 
-    [TestMethod]
-    public async Task CreateAccessToken_InvalidGrantType_ThrowsUnauthorized()
+    TokenExchangeAuthentications service =
+      new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
+
+    // Act & Assert
+    HttpRequestException exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
+      () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
+
+    Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
+    Assert.AreEqual("grant_type is invalid.", exception.Message);
+  }
+
+  [TestMethod]
+  public async Task CreateAccessToken_InvalidSubjectTokenType_ThrowsUnauthorized()
+  {
+    // Arrange
+    string clientCredentials = JsonConvert.SerializeObject(new
     {
-        // Arrange
-        var clientCredentials = JsonConvert.SerializeObject(new
-        {
-            grant_type = "invalid",
-            subject_token = "invalid",
-            subject_token_type = "invalid"
-        });
+      grant_type = Constants.TokenExchangeGrantType, subject_token = "invalid", subject_token_type = "invalid"
+    });
 
-        var service = new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
+    TokenExchangeAuthentications service =
+      new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
 
-        // Act & Assert
-        var exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
-            () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
+    // Act & Assert
+    HttpRequestException exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
+      () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
 
-        Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
-        Assert.AreEqual("grant_type is invalid.", exception.Message);
-    }
+    Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
+    Assert.AreEqual("subject_token_type is invalid.", exception.Message);
+  }
 
-    [TestMethod]
-    public async Task CreateAccessToken_InvalidSubjectTokenType_ThrowsUnauthorized()
+  [TestMethod]
+  public async Task CreateAccessToken_ValidToken_ReturnsAccessToken()
+  {
+    // Arrange
+    _mockConfiguration["Audience"].Returns("audience");
+    _mockConfiguration["Issuer"].Returns("issuer");
+    _mockConfiguration["PublicKey"].Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes(RsaKeys.PublicKey)));
+    _mockConfiguration["PrivateKey"].Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes(RsaKeys.PrivateKey)));
+    _mockConfiguration["OicdUserInfoEndpoint"].Returns("https://graph.microsoft.com/oidc/userinfo");
+
+    string clientCredentials = JsonConvert.SerializeObject(new
     {
-        // Arrange
-        var clientCredentials = JsonConvert.SerializeObject(new
-        {
-            grant_type = Constants.TokenExchangeGrantType,
-            subject_token = "invalid",
-            subject_token_type = "invalid"
-        });
+      grant_type = Constants.TokenExchangeGrantType,
+      subject_token = "validToken",
+      subject_token_type = Constants.AccessTokenType
+    });
 
-        var service = new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
+    TokenExchangeAuthentications service =
+      new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
 
-        // Act & Assert
-        var exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
-            () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
+    // Act
+    string result = await service.CreateAccessToken(clientCredentials, CancellationToken.None);
 
-        Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
-        Assert.AreEqual("subject_token_type is invalid.", exception.Message);
-    }
+    // Assert
+    Assert.IsNotNull(result);
+    Assert.IsInstanceOfType(result, typeof(string));
+  }
 
-    [TestMethod]
-    public async Task CreateAccessToken_ValidToken_ReturnsAccessToken()
+  [TestMethod]
+  public async Task CreateAccessToken_TokenIsEmpty_ThrowsUnauthorized()
+  {
+    // Arrange
+    string clientCredentials = JsonConvert.SerializeObject(new
     {
-        // Arrange
-        _mockConfiguration["Audience"].Returns("audience");
-        _mockConfiguration["Issuer"].Returns("issuer");
-        _mockConfiguration["PublicKey"].Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes(RsaKeys.PublicKey)));
-        _mockConfiguration["PrivateKey"].Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes(RsaKeys.PrivateKey)));
-        _mockConfiguration["OicdUserInfoEndpoint"].Returns("https://graph.microsoft.com/oidc/userinfo");
+      grant_type = Constants.TokenExchangeGrantType,
+      subject_token = "",
+      subject_token_type = Constants.AccessTokenType
+    });
 
-        var clientCredentials = JsonConvert.SerializeObject(new
-        {
-            grant_type = Constants.TokenExchangeGrantType,
-            subject_token = "validToken",
-            subject_token_type = Constants.AccessTokenType
-        });
+    TokenExchangeAuthentications service =
+      new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
 
-        var service = new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
+    // Act & Assert
+    HttpRequestException exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
+      () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
 
-        // Act
-        var result = await service.CreateAccessToken(clientCredentials, CancellationToken.None);
+    Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
+    Assert.AreEqual("Token is invalid.", exception.Message);
+  }
 
-        // Assert
-        Assert.IsNotNull(result);
-        Assert.IsInstanceOfType(result, typeof(string));
-    }
-
-    [TestMethod]
-    public async Task CreateAccessToken_TokenIsEmpty_ThrowsUnauthorized()
+  [TestMethod]
+  public async Task CreateAccessToken_InvalidToken_ThrowsUnauthorized()
+  {
+    // Arrange
+    _mockConfiguration["OicdUserInfoEndpoint"].Returns("https://graph.microsoft.com/oidc/userinfo");
+    string clientCredentials = JsonConvert.SerializeObject(new
     {
-        // Arrange
-        var clientCredentials = JsonConvert.SerializeObject(new
-        {
-            grant_type = Constants.TokenExchangeGrantType,
-            subject_token = "",
-            subject_token_type = Constants.AccessTokenType
-        });
+      grant_type = Constants.TokenExchangeGrantType,
+      subject_token = "invalid",
+      subject_token_type = Constants.AccessTokenType
+    });
 
-        var service = new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
+    ErrorHttpMessageHandlerMock handlerMock = new ErrorHttpMessageHandlerMock();
+    HttpClient httpClient = new HttpClient(handlerMock);
 
-        // Act & Assert
-        var exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
-            () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
+    TokenExchangeAuthentications service =
+      new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, httpClient);
 
-        Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
-        Assert.AreEqual("Token is invalid.", exception.Message);
-    }
+    // Act & Assert
+    HttpRequestException exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
+      () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
 
-    [TestMethod]
-    public async Task CreateAccessToken_InvalidToken_ThrowsUnauthorized()
+    Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
+  }
+
+  private class SuccessHttpMessageHandlerMock : HttpMessageHandler
+  {
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+      CancellationToken cancellationToken)
     {
-        // Arrange
-        _mockConfiguration["OicdUserInfoEndpoint"].Returns("https://graph.microsoft.com/oidc/userinfo");
-        var clientCredentials = JsonConvert.SerializeObject(new
-        {
-            grant_type = Constants.TokenExchangeGrantType,
-            subject_token = "invalid",
-            subject_token_type = Constants.AccessTokenType
-        });
-        
-        var handlerMock = new ErrorHttpMessageHandlerMock();
-        var httpClient = new HttpClient(handlerMock);
-        
-        var service = new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, httpClient);
+      // Ensure the Authorization header contains the Bearer token
+      Assert.AreEqual("validToken", request.Headers.Authorization!.Parameter);
 
-        // Act & Assert
-        var exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
-            () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
-
-        Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
+      UserInfo userInfo = new UserInfo
+      {
+        Sub = Guid.NewGuid().ToString(),
+        Email = "foo@bar",
+        FamilyName = "Bar",
+        GivenName = "Foo",
+        Name = "Bar",
+        Picture = "fb"
+      };
+      return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+      {
+        Content = new StringContent(JsonConvert.SerializeObject(userInfo), Encoding.UTF8, "application/json")
+      });
     }
+  }
 
-    private class SuccessHttpMessageHandlerMock : HttpMessageHandler
+  private class ErrorHttpMessageHandlerMock : HttpMessageHandler
+  {
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+      CancellationToken cancellationToken)
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            // Ensure the Authorization header contains the Bearer token
-            Assert.AreEqual("validToken", request.Headers.Authorization!.Parameter);
-
-            var userInfo = new UserInfo
-            {
-                Sub = Guid.NewGuid().ToString(),
-                Email = "foo@bar",
-                FamilyName = "Bar",
-                GivenName = "Foo",
-                Name = "Bar",
-                Picture = "fb"
-            };
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(JsonConvert.SerializeObject(userInfo), Encoding.UTF8, "application/json")
-            });
-        }
+      var userInfo = new { Error = "Invalid access token" };
+      return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+      {
+        Content = new StringContent(JsonConvert.SerializeObject(userInfo), Encoding.UTF8, "application/json")
+      });
     }
-
-    private class ErrorHttpMessageHandlerMock : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            var userInfo = new { Error = "Invalid access token" };
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
-            {
-                Content = new StringContent(JsonConvert.SerializeObject(userInfo), Encoding.UTF8, "application/json")
-            });
-        }
-    }
+  }
 }
