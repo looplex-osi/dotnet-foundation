@@ -24,5 +24,4 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Looplex.Foundation.WebApp\Looplex.Foundation.WebApp.csproj" />
   </ItemGroup>
-
 </Project>

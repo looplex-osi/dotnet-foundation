@@ -16,6 +16,7 @@
       Looplex package that contains foundation/core code for projects with Hexagonal/Micro-Kernel architectures.
     </Description>
     <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,5 +31,4 @@
     <PackageReference Include="protobuf-net" Version="3.2.46" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.6.0" />
   </ItemGroup>
-
 </Project>

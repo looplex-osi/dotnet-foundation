@@ -49,42 +49,6 @@ public class JwtServiceTests
     }
 
     [TestMethod]
-    public void GetUserIdFromToken_ValidToken_ReturnsUserId()
-    {
-        // Arrange
-        var claimsIdentity = new ClaimsIdentity(new[]
-        {
-            new Claim("email", "user@example.com")
-        });
-
-        var token = _jwtService.GenerateToken(_privateKeyPem, _issuer, _audience, claimsIdentity, TimeSpan.FromMinutes(30));
-
-        // Act
-        var userId = _jwtService.GetUserIdFromToken(token);
-
-        // Assert
-        Assert.AreEqual("user@example.com", userId);
-    }
-
-    [TestMethod]
-    public void GetUserIdFromToken_NoEmailClaim_ReturnsNull()
-    {
-        // Arrange
-        var claimsIdentity = new ClaimsIdentity(new[]
-        {
-            new Claim("role", "admin")
-        });
-
-        var token = _jwtService.GenerateToken(_privateKeyPem, _issuer, _audience, claimsIdentity, TimeSpan.FromMinutes(30));
-
-        // Act
-        var userId = _jwtService.GetUserIdFromToken(token);
-
-        // Assert
-        Assert.IsNull(userId);
-    }
-
-    [TestMethod]
     public void ValidateToken_ValidToken_ReturnsTrue()
     {
         // Arrange

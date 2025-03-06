@@ -1,4 +1,5 @@
-using System.Data;
+using System.Data.Common;
+
 using Looplex.Foundation;
 using Looplex.Foundation.Entities;
 using Looplex.Foundation.OAuth2;
@@ -14,7 +15,7 @@ public class Notejam : Service
 {
     private readonly IRbacService? _rbacService;
     private readonly IUserContext? _userContext;
-    private readonly IDbConnection? _db;
+    private readonly DbConnection? _db;
 
     #region Reflectivity
 
@@ -25,7 +26,7 @@ public class Notejam : Service
 
     #endregion
 
-    public Notejam(IList<IPlugin> plugins, IRbacService rbacService, IUserContext userContext, IDbConnection db) :
+    public Notejam(IList<IPlugin> plugins, IRbacService rbacService, IUserContext userContext, DbConnection db) :
         base(plugins)
     {
         _rbacService = rbacService;

@@ -17,4 +17,7 @@ public static class Constants
 
     public const string ClientId = "ClientId";
     public const string Photo = "Photo";
+
+    public const string PageQueryKey = "page";
+    public const string PageSizeQueryKey = "pageSize";
 }
