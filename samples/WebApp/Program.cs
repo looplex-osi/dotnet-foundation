@@ -1,5 +1,7 @@
 using Looplex.Foundation;
+using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.WebApp;
+using Looplex.Foundation.WebApp.Middlewares;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
@@ -71,11 +73,11 @@ public static class Program
         await context.Response.WriteAsync(result);
       }
     });
-
-    app.UseWebApp();
-
-    app.UseWebAppRoutes();
-
+    
+    app.UseTokenRoute();
+    app.UseSCIMv2<User>("/Users");
+    app.UseSCIMv2<Group>("/Groups");
+    
     app.Run();
   }
 

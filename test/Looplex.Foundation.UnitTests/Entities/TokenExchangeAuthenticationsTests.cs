@@ -55,7 +55,7 @@ public class TokenExchangeAuthenticationsTests
     // Arrange
     string clientCredentials = JsonConvert.SerializeObject(new
     {
-      grant_type = Constants.TokenExchangeGrantType, subject_token = "invalid", subject_token_type = "invalid"
+      grant_type = "urn:ietf:params:oauth:grant-type:token-exchange", subject_token = "invalid", subject_token_type = "invalid"
     });
 
     TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, _httpClient);
@@ -79,9 +79,9 @@ public class TokenExchangeAuthenticationsTests
 
     string clientCredentials = JsonConvert.SerializeObject(new
     {
-      grant_type = Constants.TokenExchangeGrantType,
+      grant_type = "urn:ietf:params:oauth:grant-type:token-exchange",
       subject_token = "validToken",
-      subject_token_type = Constants.AccessTokenType
+      subject_token_type = "urn:ietf:params:oauth:token-type:access_token"
     });
 
     TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, _httpClient);
@@ -100,9 +100,9 @@ public class TokenExchangeAuthenticationsTests
     // Arrange
     string clientCredentials = JsonConvert.SerializeObject(new
     {
-      grant_type = Constants.TokenExchangeGrantType,
+      grant_type = "urn:ietf:params:oauth:grant-type:token-exchange",
       subject_token = "",
-      subject_token_type = Constants.AccessTokenType
+      subject_token_type = "urn:ietf:params:oauth:token-type:access_token"
     });
 
     TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, _httpClient);
@@ -121,9 +121,9 @@ public class TokenExchangeAuthenticationsTests
     _mockConfiguration["OicdUserInfoEndpoint"].Returns("https://graph.microsoft.com/oidc/userinfo");
     string clientCredentials = JsonConvert.SerializeObject(new
     {
-      grant_type = Constants.TokenExchangeGrantType,
+      grant_type = "urn:ietf:params:oauth:grant-type:token-exchange",
       subject_token = "invalid",
-      subject_token_type = Constants.AccessTokenType
+      subject_token_type = "urn:ietf:params:oauth:token-type:access_token"
     });
 
     ErrorHttpMessageHandlerMock handlerMock = new();

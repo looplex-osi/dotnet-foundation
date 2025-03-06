@@ -105,9 +105,9 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     token = null;
     bool result = false;
 
-    if (value.StartsWith(Constants.Basic, StringComparison.OrdinalIgnoreCase))
+    if (value.StartsWith("Basic", StringComparison.OrdinalIgnoreCase))
     {
-      token = value[Constants.Basic.Length..];
+      token = value["Basic".Length..];
       result = true;
     }
 
@@ -129,9 +129,9 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
   private static void ValidateGrantType(string? grantType)
   {
     if (grantType != null && !grantType
-          .Equals(Constants.ClientCredentialsGrantType, StringComparison.InvariantCultureIgnoreCase))
+          .Equals("client_credentials", StringComparison.InvariantCultureIgnoreCase))
     {
-      throw new Exception($"{Constants.GrantType} is invalid.");
+      throw new Exception($"grant_type is invalid.");
     }
   }
 
@@ -168,7 +168,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
   private string CreateAccessToken(ClientCredential clientCredential)
   {
     ClaimsIdentity claims = new([
-      new Claim(Constants.ClientId, clientCredential.ClientId.ToString())
+      new Claim("ClientId", clientCredential.ClientId.ToString())
     ]);
 
     string audience = _configuration!["Audience"]!;

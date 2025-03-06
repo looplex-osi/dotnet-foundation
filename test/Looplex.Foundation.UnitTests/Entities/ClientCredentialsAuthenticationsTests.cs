@@ -32,7 +32,7 @@ public class ClientCredentialsAuthenticationsTests
   public async Task CreateAccessToken_InvalidAuthorization_ThrowsUnauthorized()
   {
     // Arrange
-    string clientCredentials = JsonConvert.SerializeObject(new { grant_type = Constants.ClientCredentialsGrantType });
+    string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
     ClientCredentialsAuthentications service = new(_mockConfiguration,
       _mockClientCredentials, _mockJwtService);
@@ -76,7 +76,7 @@ public class ClientCredentialsAuthenticationsTests
 
     string authorization = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:clientSecret"));
 
-    string clientCredentials = JsonConvert.SerializeObject(new { grant_type = Constants.ClientCredentialsGrantType });
+    string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
     ClientCredential clientCredential = new()
     {
@@ -108,7 +108,7 @@ public class ClientCredentialsAuthenticationsTests
 
     string authorization = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:clientSecret"));
 
-    string clientCredentials = JsonConvert.SerializeObject(new { grant_type = Constants.ClientCredentialsGrantType });
+    string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
     _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(string.Empty));
@@ -132,7 +132,7 @@ public class ClientCredentialsAuthenticationsTests
 
     string authorization = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:clientSecret"));
 
-    string clientCredentials = JsonConvert.SerializeObject(new { grant_type = Constants.ClientCredentialsGrantType });
+    string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
     ClientCredential clientCredential = new()
     {
@@ -163,7 +163,7 @@ public class ClientCredentialsAuthenticationsTests
 
     string authorization = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:clientSecret"));
 
-    string clientCredentials = JsonConvert.SerializeObject(new { grant_type = Constants.ClientCredentialsGrantType });
+    string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
     ClientCredential clientCredential = new()
     {

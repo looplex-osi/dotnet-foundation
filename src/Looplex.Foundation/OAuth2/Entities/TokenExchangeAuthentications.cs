@@ -86,9 +86,9 @@ public class TokenExchangeAuthentications : Service, IAuthentications
   private static void ValidateGrantType(string? grantType)
   {
     if (grantType == null || !grantType
-          .Equals(Constants.TokenExchangeGrantType, StringComparison.InvariantCultureIgnoreCase))
+          .Equals("urn:ietf:params:oauth:grant-type:token-exchange", StringComparison.InvariantCultureIgnoreCase))
     {
-      throw new Exception($"{Constants.GrantType} is invalid.");
+      throw new Exception($"grant_type is invalid.");
     }
   }
 
@@ -96,9 +96,9 @@ public class TokenExchangeAuthentications : Service, IAuthentications
   {
     if (subjectTokenType == null
         || !subjectTokenType
-          .Equals(Constants.AccessTokenType, StringComparison.InvariantCultureIgnoreCase))
+          .Equals("urn:ietf:params:oauth:token-type:access_token", StringComparison.InvariantCultureIgnoreCase))
     {
-      throw new Exception($"{Constants.SubjectTokenType} is invalid.");
+      throw new Exception("subject_token_type is invalid.");
     }
   }
 
@@ -113,7 +113,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
   private async Task<UserInfo> GetUserInfoAsync(string accessToken)
   {
     string? userInfoEndpoint = _configuration!["OicdUserInfoEndpoint"];
-    _httpClient!.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Constants.Bearer, accessToken);
+    _httpClient!.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
     HttpResponseMessage response = await _httpClient.GetAsync(userInfoEndpoint);
     response.EnsureSuccessStatusCode();
     string content = await response.Content.ReadAsStringAsync();

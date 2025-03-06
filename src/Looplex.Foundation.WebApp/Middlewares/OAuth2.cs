@@ -17,7 +17,6 @@ namespace Looplex.Foundation.WebApp.Middlewares;
 
 public static class OAuth2
 {
-  
   private const string Resource = "/token";
 
   internal static readonly RequestDelegate TokenMiddleware = async context =>
@@ -32,7 +31,7 @@ public static class OAuth2
 
     string credentials = JsonConvert.SerializeObject(formDict);
 
-    GrantType grantType = form[Constants.GrantType].ToString().ToGrantType();
+    GrantType grantType = form["grant_type"].ToString().ToGrantType();
     IAuthentications service = factory.GetService(grantType);
 
     string result = await service.CreateAccessToken(credentials, authorization, cancellationToken);
@@ -40,19 +39,20 @@ public static class OAuth2
     await context.Response.WriteAsJsonAsync(result, cancellationToken);
   };
 
-  public static void UseTokenRoute(this IEndpointRouteBuilder app)
+  public static IEndpointRouteBuilder UseTokenRoute(this IEndpointRouteBuilder app)
   {
     app.MapPost(
       Resource,
       TokenMiddleware);
+    return app;
   }
 
   private static GrantType ToGrantType(this string grantType)
   {
     return grantType switch
     {
-      Constants.TokenExchangeGrantType => GrantType.TokenExchange,
-      Constants.ClientCredentialsGrantType => GrantType.ClientCredentials,
+      "urn:ietf:params:oauth:grant-type:token-exchange" => GrantType.TokenExchange,
+      "client_credentials" => GrantType.ClientCredentials,
       _ => throw new ArgumentException("Invalid value", nameof(grantType))
     };
   }

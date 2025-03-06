@@ -13,7 +13,7 @@ namespace Looplex.Foundation.WebApp.Middlewares;
 
 public static class SCIMv2
 {
-  public static IEndpointRouteBuilder UseSCIMv2<T>(this IEndpointRouteBuilder app, string prefix)
+  public static IEndpointRouteBuilder UseSCIMv2<T>(this IEndpointRouteBuilder app, string prefix, bool authorize = true)
     where T : Resource, new()
   {
     RouteGroupBuilder group = app.MapGroup(prefix);
@@ -24,33 +24,30 @@ public static class SCIMv2
     {
       CancellationToken cancellationToken = context.RequestAborted;
       Foundation.SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<Foundation.SCIMv2.Entities.SCIMv2>();
-      if (!context.Request.Query.TryGetValue(Constants.PageQueryKey, out StringValues pageValue))
-      {
-        throw new Exception("MISSING_PAGE");
-      }
+      
+      // [SCIMv2 Filtering](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
+      string? filter = null;
+      if (context.Request.Query.TryGetValue("filter", out var filterStr))
+        filter = filterStr;
 
-      if (!int.TryParse(pageValue, out int page))
-      {
-        throw new Exception("PAGE_INVALID");
-      }
+      // [SCIMv2 Sorting](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.3)
+      string? sortBy = null;
+      string? sortOrder = null;
+      if (context.Request.Query.TryGetValue("sortBy", out var sortByStr))
+        sortBy = sortByStr;
+      if (context.Request.Query.TryGetValue("sortOrder", out var sortOrderStr))
+        sortOrder = sortOrderStr;
 
-      if (!context.Request.Query.TryGetValue(Constants.PageSizeQueryKey, out StringValues pageSizeValue))
-      {
-        throw new Exception("MISSING_PAGE_SIZE");
-      }
+      // [SCIMv2 Pagination](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.4)
+      int page = 1;
+      int pageSize = 12;
+      if (context.Request.Query.TryGetValue("count", out var countStr) &&
+          int.TryParse(countStr, out pageSize) &&
+          context.Request.Query.TryGetValue("startIndex", out var startIndexStr) &&
+          int.TryParse(startIndexStr, out var startIndex))
+        page = (int)Math.Ceiling((double)startIndex / pageSize);
 
-      if (!int.TryParse(pageSizeValue, out int pageSize))
-      {
-        throw new Exception("PER_PAGE_INVALID");
-      }
-
-      string? filters = null;
-      if (context.Request.Query.TryGetValue("filters", out StringValues filtersValue))
-      {
-        filters = filtersValue.ToString();
-      }
-
-      ListResponse<T> result = await svc.QueryAsync<T>(page, pageSize, filters, cancellationToken);
+      ListResponse<T> result = await svc.QueryAsync<T>(page, pageSize, filter, sortBy, sortOrder, cancellationToken);
       string json = result.JsonSerialize();
       await context.Response.WriteAsJsonAsync(json, cancellationToken);
     });
