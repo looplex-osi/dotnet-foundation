@@ -1,4 +1,3 @@
-using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.WebApp.Adapters;
 using Looplex.Foundation.WebApp.Middlewares;
@@ -19,9 +18,6 @@ public static class ExtensionMethods
   {
     services.AddHttpContextAccessor();
     services.AddSingleton<IJwtService, JwtService>();
-    services.AddSingleton<IAuthenticationsFactory, AuthenticationsFactory>();
-    services.AddSingleton<TokenExchangeAuthentications>();
-    services.AddSingleton<ClientCredentialsAuthentications>();
   }
 
   public static void UseWebAppRoutes(this IEndpointRouteBuilder app)

@@ -1,10 +1,8 @@
-using System.Net;
 using System.Text;
 
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 
 using Newtonsoft.Json;
