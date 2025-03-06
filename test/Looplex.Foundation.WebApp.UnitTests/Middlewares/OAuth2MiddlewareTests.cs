@@ -6,7 +6,6 @@ using System.Text;
 using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.Ports;
 
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;

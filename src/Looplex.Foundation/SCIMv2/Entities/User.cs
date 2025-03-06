@@ -11,7 +11,8 @@ namespace Looplex.Foundation.SCIMv2.Entities;
 public class User : Resource
 {
   #region Reflectivity
-
+  // ReSharper disable once EmptyConstructor
+  public User() : base() { }
   #endregion
 
   [ProtoMember(1)] public string UserName { get; set; }
