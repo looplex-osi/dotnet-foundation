@@ -72,7 +72,6 @@ public static class Program
       }
     });
 
-    app.UseLooplexFoundation();
     app.UseWebApp();
 
     app.UseWebAppRoutes();

@@ -6,21 +6,23 @@ using System.Text;
 using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.Ports;
 
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 using NSubstitute;
+using OAuth2Middleware = Looplex.Foundation.WebApp.Middlewares.OAuth2.Middleware;
 
-namespace Looplex.Foundation.UnitTests.OAuth2;
+namespace Looplex.Foundation.WebApp.UnitTests.Middlewares;
 
 [TestClass]
-public class AuthenticationMiddlewareTests
+public class OAuth2MiddlewareTests
 {
   private IConfiguration _configuration = null!;
   private HttpContext _context = null!;
   private IJwtService _jwtService = null!;
-  private AuthenticationMiddleware _middleware = null!;
+  private OAuth2Middleware _middleware = null!;
   private RequestDelegate _next = null!;
   private IServiceProvider _serviceProvider = null!;
 
@@ -38,7 +40,7 @@ public class AuthenticationMiddlewareTests
     _configuration["PublicKey"]
       .Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes("test-public-key")));
 
-    _middleware = new AuthenticationMiddleware(_next);
+    _middleware = new OAuth2Middleware(_next);
 
     // Create mock HTTP context
     _context = new DefaultHttpContext();

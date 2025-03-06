@@ -11,7 +11,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace Looplex.Foundation.WebApp.Middlewares;
 
-public static class Routes
+public static class SCIMv2
 {
   public static IEndpointRouteBuilder UseSCIMv2<T>(this IEndpointRouteBuilder app, string prefix)
     where T : Resource, new()
@@ -23,7 +23,7 @@ public static class Routes
     group.MapGet("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<SCIMv2.Entities.SCIMv2>();
+      Foundation.SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<Foundation.SCIMv2.Entities.SCIMv2>();
       if (!context.Request.Query.TryGetValue(Constants.PageQueryKey, out StringValues pageValue))
       {
         throw new Exception("MISSING_PAGE");
@@ -62,7 +62,7 @@ public static class Routes
     group.MapPost("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<SCIMv2.Entities.SCIMv2>();
+      Foundation.SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<Foundation.SCIMv2.Entities.SCIMv2>();
 
       using StreamReader reader = new(context.Request.Body);
       string json = await reader.ReadToEndAsync(cancellationToken);
@@ -80,7 +80,7 @@ public static class Routes
     group.MapGet("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<SCIMv2.Entities.SCIMv2>();
+      Foundation.SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<Foundation.SCIMv2.Entities.SCIMv2>();
 
       T? result = await svc.RetrieveAsync<T>(id, cancellationToken);
 
@@ -102,7 +102,7 @@ public static class Routes
     group.MapPatch("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<SCIMv2.Entities.SCIMv2>();
+      Foundation.SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<Foundation.SCIMv2.Entities.SCIMv2>();
 
       T? resource = await svc.RetrieveAsync<T>(id, cancellationToken);
       if (resource == null)
@@ -133,7 +133,7 @@ public static class Routes
     group.MapDelete("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<SCIMv2.Entities.SCIMv2>();
+      Foundation.SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<Foundation.SCIMv2.Entities.SCIMv2>();
 
       bool deleted = await svc.DeleteAsync<T>(id, cancellationToken);
 

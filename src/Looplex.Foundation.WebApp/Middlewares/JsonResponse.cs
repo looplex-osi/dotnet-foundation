@@ -1,26 +1,17 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Text;
-using System.Threading.Tasks;
 
 using Looplex.Foundation.Ports;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 
-namespace Looplex.Foundation.Middlewares;
+namespace Looplex.Foundation.WebApp.Middlewares;
 
-public class JsonResponseMiddleware
+public class JsonResponse(RequestDelegate next)
 {
-  private readonly RequestDelegate _next;
+  private readonly RequestDelegate _next = next ?? throw new ArgumentNullException(nameof(next));
 
   private readonly HashSet<string> _publicEndpoints = new() { "/token", "/health" };
-
-  public JsonResponseMiddleware(RequestDelegate next)
-  {
-    _next = next ?? throw new ArgumentNullException(nameof(next));
-  }
 
   public async Task Invoke(HttpContext context, IConfiguration configuration, IJwtService jwtService)
   {
