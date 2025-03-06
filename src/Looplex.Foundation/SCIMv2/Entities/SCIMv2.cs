@@ -40,7 +40,7 @@ public class SCIMv2 : Service
 
   #region Query
 
-  public async Task<ListResponse<T>> QueryAsync<T>(int page, int pageSize, string? filter,
+  public virtual async Task<ListResponse<T>> QueryAsync<T>(int page, int pageSize, string? filter,
     CancellationToken cancellationToken)
     where T : Resource, new()
   {
@@ -116,7 +116,7 @@ public class SCIMv2 : Service
 
   #region Create
 
-  public async Task<Guid> CreateAsync<T>(T resource,
+  public virtual async Task<Guid> CreateAsync<T>(T resource,
     CancellationToken cancellationToken) where T : Resource
   {
     cancellationToken.ThrowIfCancellationRequested();
@@ -170,7 +170,7 @@ public class SCIMv2 : Service
 
   #region Retrieve
 
-  public async Task<T?> RetrieveAsync<T>(Guid id, CancellationToken cancellationToken)
+  public virtual async Task<T?> RetrieveAsync<T>(Guid id, CancellationToken cancellationToken)
     where T : Resource, new()
   {
     cancellationToken.ThrowIfCancellationRequested();
@@ -217,7 +217,7 @@ public class SCIMv2 : Service
 
   #region Update
 
-  public async Task<bool> UpdateAsync<T>(Guid id, T resource, string? fields, CancellationToken cancellationToken)
+  public virtual async Task<bool> UpdateAsync<T>(Guid id, T resource, string? fields, CancellationToken cancellationToken)
     where T : Resource
   {
     cancellationToken.ThrowIfCancellationRequested();
@@ -273,7 +273,7 @@ public class SCIMv2 : Service
 
   #region Delete
 
-  public async Task<bool> DeleteAsync<T>(Guid id, CancellationToken cancellationToken)
+  public virtual async Task<bool> DeleteAsync<T>(Guid id, CancellationToken cancellationToken)
     where T : Resource
   {
     cancellationToken.ThrowIfCancellationRequested();
