@@ -38,17 +38,6 @@ public sealed class JwtService : IJwtService
         return tokenHandler.WriteToken(token);
     }
 
-    public string? GetUserIdFromToken(string accessToken)
-    {
-        var tokenHandler = new JwtSecurityTokenHandler();
-
-        var decodedToken = tokenHandler.ReadJwtToken(accessToken);
-
-        var claim = decodedToken.Claims.FirstOrDefault(x => x.Type == "email");
-
-        return claim?.Value;
-    }
-
     public bool ValidateToken(
         string publicKey,
         string issuer,
