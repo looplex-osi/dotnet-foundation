@@ -21,7 +21,7 @@ public static class OAuth2
 
   internal static readonly RequestDelegate TokenMiddleware = async context =>
   {
-    IAuthenticationsFactory factory = context.RequestServices.GetRequiredService<IAuthenticationsFactory>();
+    var factory = context.RequestServices.GetRequiredService<AuthenticationsFactory>();
     CancellationToken cancellationToken = context.RequestAborted;
 
     string authorization = context.Request.Headers.Authorization.ToString();
