@@ -13,5 +13,5 @@
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
   </ItemGroup>
-  
+
 </Project>

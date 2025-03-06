@@ -20,15 +20,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="BouncyCastle.NetCore" Version="2.2.1" />
-    <PackageReference Include="Casbin.NET" Version="2.12.0" />
-    <PackageReference Include="Looplex.OpenForExtension" Version="1.1.8" />
-    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.3.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="BouncyCastle.NetCore" Version="2.2.1"/>
+    <PackageReference Include="Casbin.NET" Version="2.12.0"/>
+    <PackageReference Include="Looplex.OpenForExtension" Version="1.1.8"/>
+    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.3.0"/>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
     <PackageReference Include="PropertyChanged.Fody" Version="4.1.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="protobuf-net" Version="3.2.46" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.6.0" />
+    <PackageReference Include="protobuf-net" Version="3.2.46"/>
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.6.0"/>
   </ItemGroup>
 </Project>

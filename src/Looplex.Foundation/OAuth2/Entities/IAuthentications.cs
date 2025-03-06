@@ -5,5 +5,5 @@ namespace Looplex.Foundation.OAuth2.Entities;
 
 public interface IAuthentications
 {
-    Task<string> CreateAccessToken(string json, CancellationToken cancellationToken);
+  Task<string> CreateAccessToken(string json, CancellationToken cancellationToken);
 }
