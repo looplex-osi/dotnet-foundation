@@ -1,5 +1,6 @@
 using System.Net;
 
+using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.Serialization;
 
@@ -7,7 +8,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Primitives;
 
 namespace Looplex.Foundation.WebApp.Middlewares;
 
@@ -23,7 +23,8 @@ public static class SCIMv2
     group.MapGet("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      Foundation.SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<Foundation.SCIMv2.Entities.SCIMv2>();
+      var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
+      var svc = factory.GetService<T>();
       
       // [SCIMv2 Filtering](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
       string? filter = null;
@@ -47,7 +48,7 @@ public static class SCIMv2
           int.TryParse(startIndexStr, out var startIndex))
         page = (int)Math.Ceiling((double)startIndex / pageSize);
 
-      ListResponse<T> result = await svc.QueryAsync<T>(page, pageSize, filter, sortBy, sortOrder, cancellationToken);
+      ListResponse<T> result = await svc.QueryAsync(page, pageSize, filter, sortBy, sortOrder, cancellationToken);
       string json = result.JsonSerialize();
       await context.Response.WriteAsJsonAsync(json, cancellationToken);
     });
@@ -59,8 +60,9 @@ public static class SCIMv2
     group.MapPost("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      Foundation.SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<Foundation.SCIMv2.Entities.SCIMv2>();
-
+      var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
+      var svc = factory.GetService<T>();
+      
       using StreamReader reader = new(context.Request.Body);
       string json = await reader.ReadToEndAsync(cancellationToken);
       T resource = json.JsonDeserialize<T>();
@@ -77,9 +79,10 @@ public static class SCIMv2
     group.MapGet("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      Foundation.SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<Foundation.SCIMv2.Entities.SCIMv2>();
-
-      T? result = await svc.RetrieveAsync<T>(id, cancellationToken);
+      var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
+      var svc = factory.GetService<T>();
+      
+      T? result = await svc.RetrieveAsync(id, cancellationToken);
 
       if (result == null)
       {
@@ -99,9 +102,10 @@ public static class SCIMv2
     group.MapPatch("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      Foundation.SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<Foundation.SCIMv2.Entities.SCIMv2>();
-
-      T? resource = await svc.RetrieveAsync<T>(id, cancellationToken);
+      var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
+      var svc = factory.GetService<T>();
+      
+      T? resource = await svc.RetrieveAsync(id, cancellationToken);
       if (resource == null)
       {
         context.Response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -130,9 +134,10 @@ public static class SCIMv2
     group.MapDelete("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      Foundation.SCIMv2.Entities.SCIMv2 svc = context.RequestServices.GetRequiredService<Foundation.SCIMv2.Entities.SCIMv2>();
-
-      bool deleted = await svc.DeleteAsync<T>(id, cancellationToken);
+      var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
+      var svc = factory.GetService<T>();
+      
+      bool deleted = await svc.DeleteAsync(id, cancellationToken);
 
       if (!deleted)
       {

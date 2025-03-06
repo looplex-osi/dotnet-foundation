@@ -1,4 +1,5 @@
 using Looplex.Foundation.Ports;
+using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.WebApp.Adapters;
 using Looplex.Foundation.WebApp.Middlewares;
 
@@ -13,7 +14,7 @@ public static class ExtensionMethods
   {
     services.AddHttpContextAccessor();
     services.AddSingleton<IJwtService, JwtService>();
-    services.AddSingleton<SCIMv2.Entities.SCIMv2>();
+    services.AddSingleton<Users>();
     return services;
   }
 

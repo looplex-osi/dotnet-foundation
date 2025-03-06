@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Looplex.Foundation.OAuth2.Entities;
 
-public class AuthenticationsFactory : IAuthenticationsFactory
+public class AuthenticationsFactory
 {
   private readonly IServiceProvider? _serviceProvider;
 
