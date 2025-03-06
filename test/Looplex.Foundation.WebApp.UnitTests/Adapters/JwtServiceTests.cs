@@ -33,7 +33,7 @@ public class JwtServiceTests
   public void GenerateToken_ValidInputs_ReturnsJwtString()
   {
     // Arrange
-    ClaimsIdentity claimsIdentity = new ClaimsIdentity(new[]
+    ClaimsIdentity claimsIdentity = new(new[]
     {
       new Claim("email", "user@example.com"), new Claim("role", "admin")
     });
@@ -52,7 +52,7 @@ public class JwtServiceTests
   public void ValidateToken_ValidToken_ReturnsTrue()
   {
     // Arrange
-    ClaimsIdentity claimsIdentity = new ClaimsIdentity(new[] { new Claim("email", "user@example.com") });
+    ClaimsIdentity claimsIdentity = new(new[] { new Claim("email", "user@example.com") });
 
     string token =
       _jwtService.GenerateToken(_privateKeyPem, _issuer, _audience, claimsIdentity, TimeSpan.FromMinutes(30));
@@ -81,7 +81,7 @@ public class JwtServiceTests
   public void ValidateToken_TamperedToken_ReturnsFalse()
   {
     // Arrange
-    ClaimsIdentity claimsIdentity = new ClaimsIdentity(new[] { new Claim("email", "user@example.com") });
+    ClaimsIdentity claimsIdentity = new(new[] { new Claim("email", "user@example.com") });
 
     string token =
       _jwtService.GenerateToken(_privateKeyPem, _issuer, _audience, claimsIdentity, TimeSpan.FromMinutes(30));
@@ -98,7 +98,7 @@ public class JwtServiceTests
   public void ValidateToken_ExpiredToken_ReturnsFalse()
   {
     // Arrange
-    ClaimsIdentity claimsIdentity = new ClaimsIdentity(new[] { new Claim("email", "user@example.com") });
+    ClaimsIdentity claimsIdentity = new(new[] { new Claim("email", "user@example.com") });
 
     string expiredToken =
       _jwtService.GenerateToken(_privateKeyPem, _issuer, _audience, claimsIdentity, TimeSpan.FromMilliseconds(1));
@@ -115,7 +115,7 @@ public class JwtServiceTests
   public void ValidateToken_InvalidPublicKey_ReturnsFalse()
   {
     // Arrange
-    ClaimsIdentity claimsIdentity = new ClaimsIdentity(new[] { new Claim("email", "user@example.com") });
+    ClaimsIdentity claimsIdentity = new(new[] { new Claim("email", "user@example.com") });
 
     string token =
       _jwtService.GenerateToken(_privateKeyPem, _issuer, _audience, claimsIdentity, TimeSpan.FromMinutes(30));
@@ -133,7 +133,7 @@ public class JwtServiceTests
 
   private static string ConvertToPem(byte[] keyData, string label)
   {
-    StringBuilder builder = new StringBuilder();
+    StringBuilder builder = new();
     builder.AppendLine($"-----BEGIN {label}-----");
     builder.AppendLine(Convert.ToBase64String(keyData, Base64FormattingOptions.InsertLineBreaks));
     builder.AppendLine($"-----END {label}-----");

@@ -123,7 +123,7 @@ public class UserTests
   [TestMethod]
   public void User_PropertyChanged_ShouldRaiseEvent()
   {
-    User user = new User();
+    User user = new();
     Assert.IsTrue(user is INotifyPropertyChanged, "Fody should weave INotifyPropertyChanged into User.");
 
     string? changedPropertyName = null;
@@ -138,7 +138,7 @@ public class UserTests
   [TestMethod]
   public void User_CollectionProperties_ShouldRaiseEventOnReplaceCollection()
   {
-    User user = new User();
+    User user = new();
     string? changedPropertyName = null;
     ((INotifyPropertyChanged)user).PropertyChanged += (sender, e) => { changedPropertyName = e.PropertyName; };
 
@@ -151,7 +151,7 @@ public class UserTests
   [TestMethod]
   public void User_NullStrings_ShouldSerializeCleanly()
   {
-    User user = new User { Id = null, UserName = null, Active = false };
+    User user = new() { Id = null, UserName = null, Active = false };
 
     string json = user.JsonSerialize();
     Assert.IsNotNull(json, "Serialization should produce a valid JSON string even if some fields are null.");

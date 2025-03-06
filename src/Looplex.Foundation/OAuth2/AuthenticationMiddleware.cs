@@ -41,9 +41,9 @@ public class AuthenticationMiddleware
 
     string accessToken = string.Empty;
 
-    string authorization = context.Request.Headers["Authorization"];
+    string? authorization = context.Request.Headers["Authorization"];
 
-    if (!string.IsNullOrEmpty(authorization) && authorization.StartsWith("Bearer ", StringComparison.Ordinal))
+    if (authorization != null && authorization.StartsWith("Bearer ", StringComparison.Ordinal))
     {
       accessToken = authorization.Substring("Bearer ".Length).Trim();
     }
@@ -58,10 +58,10 @@ public class AuthenticationMiddleware
       throw new Exception("AccessToken is invalid.");
     }
 
-    JwtSecurityTokenHandler handler = new JwtSecurityTokenHandler();
+    JwtSecurityTokenHandler handler = new();
     JwtSecurityToken? token = handler.ReadJwtToken(accessToken);
 
-    string tenant = context.Request.Headers["X-looplex-tenant"];
+    string? tenant = context.Request.Headers["X-looplex-tenant"];
     if (string.IsNullOrWhiteSpace(tenant))
     {
       throw new InvalidOperationException(
@@ -75,7 +75,13 @@ public class AuthenticationMiddleware
       string? name = claims.FirstOrDefault(c => c.Type == "name")?.Value;
       string? email = claims.FirstOrDefault(c => c.Type == "email")?.Value;
 
-      context.Items["UserContext"] = new UserContext { Name = name, Email = email, Tenant = tenant };
+      if (string.IsNullOrWhiteSpace(name) ||
+          string.IsNullOrWhiteSpace(email) ||
+          string.IsNullOrWhiteSpace(tenant))
+        throw new InvalidOperationException(
+          "User claims are missing");
+      
+      context.Items["UserContext"] = new UserContext { Name = name!, Email = email!, Tenant = tenant! };
     }
 
     await _next(context);

@@ -1,27 +1,25 @@
-﻿using System.Net;
+﻿using System;
 using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
-using Looplex.Foundation.OAuth2.Entities;
+using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.Serialization;
-using Looplex.Foundation.WebApp.OAuth2.Dtos;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
 
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Primitives;
 
-namespace Looplex.Foundation.WebApp.OAuth2.Entities;
+namespace Looplex.Foundation.OAuth2.Entities;
 
 public class ClientCredentialsAuthentications : Service, IAuthentications
 {
   private readonly IClientCredentials? _clientCredentials;
   private readonly IConfiguration? _configuration;
-  private readonly IHttpContextAccessor? _httpContextAccessor;
   private readonly IJwtService? _jwtService;
 
   #region Reflectivity
@@ -37,25 +35,23 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
   public ClientCredentialsAuthentications(
     IConfiguration configuration,
     IClientCredentials clientCredentials,
-    IJwtService jwtService,
-    IHttpContextAccessor httpContextAccessor)
+    IJwtService jwtService)
   {
     _configuration = configuration;
     _clientCredentials = clientCredentials;
     _jwtService = jwtService;
-    _httpContextAccessor = httpContextAccessor;
   }
 
-  public async Task<string> CreateAccessToken(string json, CancellationToken cancellationToken)
+  public async Task<string> CreateAccessToken(string json, string authorization, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
 
-    StringValues? authorization = _httpContextAccessor?.HttpContext?.Request.Headers.Authorization;
     ClientCredentialsGrantDto clientCredentialsDto = json.JsonDeserialize<ClientCredentialsGrantDto>();
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
-    ArgumentNullException.ThrowIfNull(clientCredentialsDto, "body");
+    if (clientCredentialsDto == null)
+      throw new ArgumentNullException(nameof(json));
 
     ValidateAuthorizationHeader(authorization);
     ValidateGrantType(clientCredentialsDto.GrantType);
@@ -86,9 +82,9 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
 
   private static void ValidateAuthorizationHeader(string? authorization)
   {
-    if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Basic "))
+    if (authorization == null || !authorization.StartsWith("Basic "))
     {
-      throw new HttpRequestException("Invalid authorization.", null, HttpStatusCode.Unauthorized);
+      throw new Exception("Invalid authorization.");
     }
   }
 
@@ -101,7 +97,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
       return DecodeCredentials(base64Credentials);
     }
 
-    throw new HttpRequestException("Invalid authorization.", null, HttpStatusCode.Unauthorized);
+    throw new Exception("Invalid authorization.");
   }
 
   private static bool IsBasicAuthentication(string value, out string? token)
@@ -124,18 +120,18 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
 
     if (parts.Length != 2)
     {
-      throw new HttpRequestException("Invalid credentials format.", null, HttpStatusCode.Unauthorized);
+      throw new Exception("Invalid credentials format.");
     }
 
     return (Guid.Parse(parts[0]), parts[1]);
   }
 
-  private static void ValidateGrantType(string grantType)
+  private static void ValidateGrantType(string? grantType)
   {
-    if (!grantType
+    if (grantType != null && !grantType
           .Equals(Constants.ClientCredentialsGrantType, StringComparison.InvariantCultureIgnoreCase))
     {
-      throw new HttpRequestException($"{Constants.GrantType} is invalid.", null, HttpStatusCode.Unauthorized);
+      throw new Exception($"{Constants.GrantType} is invalid.");
     }
   }
 
@@ -171,13 +167,13 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
 
   private string CreateAccessToken(ClientCredential clientCredential)
   {
-    ClaimsIdentity claims = new ClaimsIdentity([
+    ClaimsIdentity claims = new([
       new Claim(Constants.ClientId, clientCredential.ClientId.ToString())
     ]);
 
     string audience = _configuration!["Audience"]!;
     string issuer = _configuration["Issuer"]!;
-    int tokenExpirationTimeInMinutes = _configuration.GetValue<int>("TokenExpirationTimeInMinutes");
+    var tokenExpirationTimeInMinutes = int.Parse(_configuration["TokenExpirationTimeInMinutes"]!);
 
     string privateKey = StringUtils.Base64Decode(_configuration["PrivateKey"]!);
 

@@ -75,7 +75,7 @@ public class ClientCredentials : Service, IClientCredentials
         .Take(pageSize)
         .ToList();
 
-      ListResponse<ClientCredential> result = new ListResponse<ClientCredential>
+      ListResponse<ClientCredential> result = new()
       {
         Resources = records.Select(r => r).ToList(), Page = page, PageSize = pageSize, TotalResults = Data.Count
       };

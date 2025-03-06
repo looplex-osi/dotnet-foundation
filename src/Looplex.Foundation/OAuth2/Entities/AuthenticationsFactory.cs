@@ -1,10 +1,10 @@
-using Looplex.Foundation.OAuth2.Entities;
+using System;
+
 using Looplex.Foundation.Ports;
-using Looplex.Foundation.WebApp.OAuth2.Entities;
 
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Looplex.Foundation.WebApp.OAuth2.Adapters;
+namespace Looplex.Foundation.OAuth2.Entities;
 
 public class AuthenticationsFactory : IAuthenticationsFactory
 {

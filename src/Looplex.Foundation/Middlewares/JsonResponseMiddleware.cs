@@ -25,7 +25,7 @@ public class JsonResponseMiddleware
   public async Task Invoke(HttpContext context, IConfiguration configuration, IJwtService jwtService)
   {
     Stream? originalBodyStream = context.Response.Body;
-    using MemoryStream memoryStream = new MemoryStream();
+    using MemoryStream memoryStream = new();
     context.Response.Body = memoryStream;
 
     await _next(context);
@@ -33,7 +33,7 @@ public class JsonResponseMiddleware
     context.Response.ContentType = "application/json";
 
     memoryStream.Seek(0, SeekOrigin.Begin);
-    using StreamReader reader = new StreamReader(memoryStream);
+    using StreamReader reader = new(memoryStream);
     string? responseBody = await reader.ReadToEndAsync();
 
     if (responseBody.StartsWith("\"") && responseBody.EndsWith("\""))

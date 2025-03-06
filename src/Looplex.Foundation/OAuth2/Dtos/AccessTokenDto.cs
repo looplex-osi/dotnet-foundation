@@ -2,7 +2,7 @@
 
 using Newtonsoft.Json;
 
-namespace Looplex.Foundation.WebApp.OAuth2.Dtos;
+namespace Looplex.Foundation.OAuth2.Dtos;
 
 public class AccessTokenDto : Actor
 {
@@ -12,5 +12,5 @@ public class AccessTokenDto : Actor
 
   #endregion
 
-  [JsonProperty("access_token")] public required string AccessToken { get; set; }
+  [JsonProperty("access_token")] public string? AccessToken { get; set; }
 }

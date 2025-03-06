@@ -20,14 +20,14 @@ public sealed class JwtService : IJwtService
     using RSA privateKeyRsa = RSA.Create();
     privateKeyRsa.ImportFromPem(privateKey);
 
-    JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
+    JwtSecurityTokenHandler tokenHandler = new();
 
-    SigningCredentials creds = new SigningCredentials(new RsaSecurityKey(privateKeyRsa), SecurityAlgorithms.RsaSha256)
+    SigningCredentials creds = new(new RsaSecurityKey(privateKeyRsa), SecurityAlgorithms.RsaSha256)
     {
       CryptoProviderFactory = new CryptoProviderFactory { CacheSignatureProviders = false }
     };
 
-    SecurityTokenDescriptor tokenDescriptor = new SecurityTokenDescriptor
+    SecurityTokenDescriptor tokenDescriptor = new()
     {
       Issuer = issuer,
       Audience = audience,
@@ -61,8 +61,8 @@ public sealed class JwtService : IJwtService
       return false;
     }
 
-    JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
-    TokenValidationParameters validationParameters = new TokenValidationParameters
+    JwtSecurityTokenHandler tokenHandler = new();
+    TokenValidationParameters validationParameters = new()
     {
       ValidateIssuerSigningKey = true,
       IssuerSigningKey =

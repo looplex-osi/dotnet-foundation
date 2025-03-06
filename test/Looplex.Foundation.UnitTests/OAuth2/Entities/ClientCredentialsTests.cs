@@ -39,7 +39,7 @@ public class ClientCredentialsTests
   public async Task QueryAsync_ShouldReturnPaginatedResults()
   {
     // Arrange
-    ClientCredentials service = new ClientCredentials([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
+    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
       _mockUserContext);
     ClientCredentials.Data.Add(new ClientCredential { Id = "1" });
 
@@ -56,9 +56,9 @@ public class ClientCredentialsTests
   public async Task RetrieveAsync_ValidId_ShouldReturnClientCredential()
   {
     // Arrange
-    ClientCredentials service = new ClientCredentials([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
+    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
       _mockUserContext);
-    ClientCredential clientCredential = new ClientCredential { Id = "123" };
+    ClientCredential clientCredential = new() { Id = "123" };
     ClientCredentials.Data.Add(clientCredential);
 
     // Act
@@ -74,7 +74,7 @@ public class ClientCredentialsTests
   public async Task CreateAsync_ShouldGenerateClientIdAndDigest()
   {
     // Arrange
-    ClientCredentials service = new ClientCredentials([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
+    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
       _mockUserContext);
     string inputJson = JsonConvert.SerializeObject(new ClientCredential { ClientName = "client-1" });
 
@@ -96,9 +96,9 @@ public class ClientCredentialsTests
   public async Task DeleteAsync_ValidId_ShouldRemoveCredential()
   {
     // Arrange
-    ClientCredentials service = new ClientCredentials([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
+    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
       _mockUserContext);
-    ClientCredential clientCredential = new ClientCredential { Id = "789" };
+    ClientCredential clientCredential = new() { Id = "789" };
     ClientCredentials.Data.Add(clientCredential);
 
     // Act
@@ -113,7 +113,7 @@ public class ClientCredentialsTests
   public async Task RetrieveAsync_InvalidId_ShouldThrowException()
   {
     // Arrange
-    ClientCredentials service = new ClientCredentials([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
+    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
       _mockUserContext);
 
     // Act & Assert
@@ -126,9 +126,9 @@ public class ClientCredentialsTests
   public async Task RetrieveAsync_ValidClientIdAndSecret_ShouldReturnCredential()
   {
     // Arrange
-    ClientCredentials service = new ClientCredentials([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
+    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
       _mockUserContext);
-    ClientCredential clientCredential = new ClientCredential { ClientName = "client-1" };
+    ClientCredential clientCredential = new() { ClientName = "client-1" };
     string json = await service.CreateAsync(clientCredential.JsonSerialize(), CancellationToken.None);
     ClientCredentialDto clientCredentialDto = json.JsonDeserialize<ClientCredentialDto>();
 

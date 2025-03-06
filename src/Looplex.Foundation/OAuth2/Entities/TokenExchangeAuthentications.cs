@@ -1,12 +1,14 @@
-﻿using System.Net;
+﻿using System;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
-using Looplex.Foundation.OAuth2.Entities;
+using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.Serialization;
-using Looplex.Foundation.WebApp.OAuth2.Dtos;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
@@ -16,7 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Newtonsoft.Json;
 
-namespace Looplex.Foundation.WebApp.OAuth2.Entities;
+namespace Looplex.Foundation.OAuth2.Entities;
 
 public class TokenExchangeAuthentications : Service, IAuthentications
 {
@@ -44,7 +46,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     _httpClient = httpClient;
   }
 
-  public async Task<string> CreateAccessToken(string json, CancellationToken cancellationToken)
+  public async Task<string> CreateAccessToken(string json, string authentication, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -52,7 +54,8 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     ClientCredentialsGrantDto clientCredentialsDto = json.JsonDeserialize<ClientCredentialsGrantDto>();
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
-    ArgumentNullException.ThrowIfNull(clientCredentialsDto, "body");
+    if (clientCredentialsDto == null)
+      throw new ArgumentNullException(nameof(json));
 
     ValidateGrantType(clientCredentialsDto.GrantType);
     ValidateTokenType(clientCredentialsDto.SubjectTokenType);
@@ -80,22 +83,22 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     return (string)ctx.Result;
   }
 
-  private static void ValidateGrantType(string grantType)
+  private static void ValidateGrantType(string? grantType)
   {
-    if (!grantType
+    if (grantType == null || !grantType
           .Equals(Constants.TokenExchangeGrantType, StringComparison.InvariantCultureIgnoreCase))
     {
-      throw new HttpRequestException($"{Constants.GrantType} is invalid.", null, HttpStatusCode.Unauthorized);
+      throw new Exception($"{Constants.GrantType} is invalid.");
     }
   }
 
   private void ValidateTokenType(string? subjectTokenType)
   {
-    if (string.IsNullOrWhiteSpace(subjectTokenType)
+    if (subjectTokenType == null
         || !subjectTokenType
           .Equals(Constants.AccessTokenType, StringComparison.InvariantCultureIgnoreCase))
     {
-      throw new HttpRequestException($"{Constants.SubjectTokenType} is invalid.", null, HttpStatusCode.Unauthorized);
+      throw new Exception($"{Constants.SubjectTokenType} is invalid.");
     }
   }
 
@@ -103,7 +106,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
   {
     if (string.IsNullOrWhiteSpace(accessToken))
     {
-      throw new HttpRequestException("Token is invalid.", null, HttpStatusCode.Unauthorized);
+      throw new Exception("Token is invalid.");
     }
   }
 
@@ -119,7 +122,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
 
   private string CreateAccessToken(UserInfo userInfo)
   {
-    ClaimsIdentity claims = new ClaimsIdentity([
+    ClaimsIdentity claims = new([
       new Claim("name", $"{userInfo.GivenName} {userInfo.FamilyName}"),
       new Claim("email", userInfo.Email),
       new Claim("photo", userInfo.Picture)
@@ -128,7 +131,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
 
     string audience = _configuration!["Audience"]!;
     string issuer = _configuration["Issuer"]!;
-    int tokenExpirationTimeInMinutes = _configuration.GetValue<int>("TokenExpirationTimeInMinutes");
+    var tokenExpirationTimeInMinutes = int.Parse(_configuration["TokenExpirationTimeInMinutes"]!);
 
     string privateKey = StringUtils.Base64Decode(_configuration["PrivateKey"]!);
 

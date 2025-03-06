@@ -50,7 +50,7 @@ public class AuthenticationMiddlewareTests
   public async Task Invoke_ValidToken_ShouldAuthenticateUser()
   {
     // Arrange
-    List<Claim> claims = new List<Claim> { new("name", "John Doe"), new("email", "john.doe@example.com") };
+    List<Claim> claims = new() { new("name", "John Doe"), new("email", "john.doe@example.com") };
     string expectedIssuer = "test-issuer";
     string expectedAudience = "test-audience";
     string expectedPublicKey = "test-public-key"; // Ensure this matches your actual test value

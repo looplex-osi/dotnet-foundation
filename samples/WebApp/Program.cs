@@ -24,7 +24,7 @@ public static class Program
     builder.Services.AddHealthChecks()
       .AddCheck<HealthCheck>("Default");
 
-    Dictionary<string, string?> inMemorySettings = new Dictionary<string, string?>
+    Dictionary<string, string?> inMemorySettings = new()
     {
       { "Audience", "saas.looplex.com.br" },
       { "Issuer", "dotnet.looplex.com.br" },
