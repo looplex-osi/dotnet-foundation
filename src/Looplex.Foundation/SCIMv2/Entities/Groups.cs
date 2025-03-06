@@ -1,0 +1,300 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
+using System.Threading;
+using System.Threading.Tasks;
+
+using Looplex.Foundation.OAuth2;
+using Looplex.Foundation.Ports;
+using Looplex.OpenForExtension.Abstractions.Commands;
+using Looplex.OpenForExtension.Abstractions.Contexts;
+using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
+
+namespace Looplex.Foundation.SCIMv2.Entities;
+
+public class Groups : SCIMv2<Group>
+{
+  private readonly DbConnection? _db;
+  private readonly IRbacService? _rbacService;
+  private readonly IUserContext? _userContext;
+
+  #region Reflectivity
+
+  // ReSharper disable once PublicConstructorInAbstractClass
+  public Groups() : base()
+  {
+  }
+
+  #endregion
+
+  public Groups(IRbacService rbacService, IUserContext userContext, DbConnection db)
+  {
+    _db = db;
+    _rbacService = rbacService;
+    _userContext = userContext;
+  }
+
+  #region Query
+
+  public override async Task<ListResponse<Group>> QueryAsync(int page, int pageSize,
+    string? filter, string? sortBy, string? sortOrder,
+    CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+
+    if (filter == null)
+    {
+      throw new ArgumentNullException(nameof(filter));
+    }
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    // Determine stored proc name.
+    // For queries, the convention is USP_{resourceCollection}_pquery.
+    // Example: for T == Group, resource name is "group", and collection is "groups".
+    string resourceName = nameof(Group).ToLower();
+    if (!resourceName.EndsWith("s"))
+    {
+      resourceName += "s";
+    }
+
+    ctx.Roles["ProcName"] = $"USP_{resourceName}_pquery";
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
+    {
+      List<Group> list = new();
+
+      string procName = ctx.Roles["ProcName"];
+
+      await _db!.OpenAsync(cancellationToken);
+      using DbCommand command = _db.CreateCommand();
+      command.CommandType = CommandType.StoredProcedure;
+      command.CommandText = procName;
+
+      // Add expected parameters.
+      command.Parameters.Add(CreateParameter(command, "@do_count", 0, DbType.Boolean));
+      command.Parameters.Add(CreateParameter(command, "@page", page, DbType.Int32));
+      command.Parameters.Add(CreateParameter(command, "@page_size", pageSize, DbType.Int32));
+      command.Parameters.Add(CreateParameter(command, "@filter_active", 1, DbType.Boolean));
+      command.Parameters.Add(CreateParameter(command, "@filter_name", filter ?? (object)DBNull.Value, DbType.String));
+      command.Parameters.Add(CreateParameter(command, "@filter_email", DBNull.Value, DbType.String));
+      command.Parameters.Add(CreateParameter(command, "@order_by", DBNull.Value, DbType.String));
+
+      using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
+      while (await reader.ReadAsync(cancellationToken))
+      {
+        Group obj = new();
+        MapDataRecordToResource(reader, obj);
+        list.Add(obj);
+      }
+
+      ctx.Result = new ListResponse<Group>
+      {
+        Page = page, PageSize = pageSize, Resources = list, TotalResults = 0 // TODO
+      };
+    }
+
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+    return (ListResponse<Group>)ctx.Result;
+  }
+
+  #endregion
+
+  #region Create
+
+  public override async Task<Guid> CreateAsync(Group resource,
+    CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    // Determine stored proc name.
+    // For creation, convention is USP_{resource}_create.
+    string resourceName = nameof(Group).ToLower();
+    ctx.Roles["ProcName"] = $"USP_{resourceName}_create";
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
+    {
+      await _db!.OpenAsync(cancellationToken);
+      using DbCommand command = _db.CreateCommand();
+      command.CommandType = CommandType.StoredProcedure;
+      command.CommandText = ctx.Roles["ProcName"];
+
+      // For example, for a Group resource we assume:
+      // - Property "GroupName" maps to @name.
+      // You can customize this mapping as needed.
+      string nameValue = GetPropertyValue<string>(resource, "GroupName")
+                         ?? throw new Exception("GroupName is required.");
+
+      command.Parameters.Add(CreateParameter(command, "@name", nameValue, DbType.String));
+      // Rely on defaults for @active, @status, and @custom_fields.
+
+      // Execute and return the new resource's GUID.
+      object result = await command.ExecuteScalarAsync(cancellationToken);
+      ctx.Result = (Guid)result;
+    }
+
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+    return (Guid)ctx.Result;
+  }
+
+  #endregion
+
+  #region Retrieve
+
+  public override async Task<Group?> RetrieveAsync(Guid id, CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    string resourceName = nameof(Group).ToLower();
+    ctx.Roles["ProcName"] = $"USP_{resourceName}_retrieve";
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
+    {
+      await _db!.OpenAsync(cancellationToken);
+      using DbCommand command = _db.CreateCommand();
+      command.CommandType = CommandType.StoredProcedure;
+      command.CommandText = ctx.Roles["ProcName"];
+
+      command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
+
+      Group? obj = null;
+      using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
+      if (await reader.ReadAsync(cancellationToken))
+      {
+        obj = new Group();
+        MapDataRecordToResource(reader, obj);
+      }
+
+      ctx.Result = obj;
+    }
+
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+    return (Group?)ctx.Result;
+  }
+
+  #endregion
+
+  #region Update
+
+  public override async Task<bool> UpdateAsync(Guid id, Group resource, string? fields, CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    string resourceName = nameof(Group).ToLower();
+    ctx.Roles["ProcName"] = $"USP_{resourceName}_update";
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
+    {
+      await _db!.OpenAsync(cancellationToken);
+      using DbCommand command = _db.CreateCommand();
+      command.CommandType = CommandType.StoredProcedure;
+      command.CommandText = ctx.Roles["ProcName"];
+
+      command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
+
+      // Update mapping: if the resource contains a non-null GroupName, update @name.
+      string? nameValue = GetPropertyValue<string>(resource, "GroupName");
+      if (!string.IsNullOrWhiteSpace(nameValue))
+      {
+        command.Parameters.Add(CreateParameter(command, "@name", nameValue!, DbType.String));
+      }
+
+      // Additional parameters (active, status, custom_fields) can be mapped as needed.
+
+      int rows = await command.ExecuteNonQueryAsync(cancellationToken);
+
+      ctx.Result = rows > 0;
+    }
+
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+    return (bool)ctx.Result;
+  }
+
+  #endregion
+
+  #region Delete
+
+  public override async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    string resourceName = nameof(Group).ToLower();
+    ctx.Roles["ProcName"] = $"USP_{resourceName}_delete";
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
+    {
+      await _db!.OpenAsync(cancellationToken);
+      using DbCommand command = _db.CreateCommand();
+      command.CommandType = CommandType.StoredProcedure;
+      command.CommandText = ctx.Roles["ProcName"];
+
+      command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
+
+      // If your stored procedure supported a parameter for hard deletion,
+      // you could add it here. For now, we assume the same proc handles deletion.
+      int rows = await command.ExecuteNonQueryAsync(cancellationToken);
+
+      ctx.Result = rows > 0;
+    }
+    
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    
+    return (bool)ctx.Result;
+  }
+
+  #endregion
+}
