@@ -1,4 +1,4 @@
-using System.Data;
+using System.Data.Common;
 using System.Reflection;
 using Casbin;
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
@@ -38,11 +38,11 @@ public class NotejamTests
 	{
 		// Arrange (setup)
 		var rbacSvc = Substitute.For<IRbacService>();
-		var userCtx = new UserContext()
-		{
+		var userCtx = new UserContext
+    {
 			Tenant = "looplex.com.br"
 		};
-		var db = Substitute.For<IDbConnection>();
+		var db = Substitute.For<DbConnection>();
 
 		IList<IPlugin> plugins = [];
 		var notejam = new Notejam(plugins, rbacSvc, userCtx, db);
@@ -60,7 +60,7 @@ public class NotejamTests
 		// Arrange (setup)
 		var rbacSvc = Substitute.For<IRbacService>();
 		var userCtx = Substitute.For<IUserContext>();
-		var db = Substitute.For<IDbConnection>();
+		var db = Substitute.For<DbConnection>();
 		var plugin = Substitute.For<IPlugin>();
 
 		IList<IPlugin> plugins = [plugin];
@@ -91,7 +91,7 @@ public class NotejamTests
 		// Arrange (setup)
 		var rbacSvc = Substitute.For<IRbacService>();
 		var userCtx = Substitute.For<IUserContext>();
-		var db = Substitute.For<IDbConnection>();
+		var db = Substitute.For<DbConnection>();
 
 		var loader = new PluginLoader();
 
@@ -112,12 +112,12 @@ public class NotejamTests
 	{
 		// Arrange (setup)
 		var plugin = Substitute.For<IPlugin>();
-		var userCtx = new UserContext()
-		{
+		var userCtx = new UserContext
+    {
 			Email = "fabio.nagao@looplex.com.br",
 			Tenant = "looplex.com.br"
 		};
-		var db = Substitute.For<IDbConnection>();
+		var db = Substitute.For<DbConnection>();
 		var logger = Substitute.For<ILogger<RbacService>>();
 		var rbacSvc = new RbacService(InitRbacEnforcer(), logger);
 
@@ -142,12 +142,12 @@ public class NotejamTests
 	public async Task service_should_receive_rbac_as_a_dependency_and_unauthorize()
 	{
 		var plugin = Substitute.For<IPlugin>();
-		var userCtx = new UserContext()
-		{
+		var userCtx = new UserContext
+    {
 			Email = "john.doe@looplex.com.br",
 			Tenant = "looplex.com.br"
 		};
-		var db = Substitute.For<IDbConnection>();
+		var db = Substitute.For<DbConnection>();
 		var logger = Substitute.For<ILogger<RbacService>>();
 		var rbacSvc = new RbacService(InitRbacEnforcer(), logger);
 

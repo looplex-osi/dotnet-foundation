@@ -49,7 +49,7 @@ public class ClientCredentials : Service, IClientCredentials
 
     internal static readonly IList<ClientCredential> Data = [];
 
-    public async Task<string> QueryAsync(int startIndex, int itemsPerPage, CancellationToken cancellationToken)
+    public async Task<string> QueryAsync(int page, int pageSize, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var ctx = NewContext();
@@ -68,15 +68,15 @@ public class ClientCredentials : Service, IClientCredentials
         if (!ctx.SkipDefaultAction)
         {
             var records = Data
-                .Skip(Math.Min(0, startIndex - 1))
-                .Take(itemsPerPage)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToList();
 
             var result = new ListResponse<ClientCredential>
             {
                 Resources = records.Select(r => r).ToList(),
-                StartIndex = startIndex,
-                ItemsPerPage = itemsPerPage,
+                Page = page,
+                PageSize = pageSize,
                 TotalResults = Data.Count
             };
 

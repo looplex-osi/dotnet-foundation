@@ -44,7 +44,7 @@ public class UserTests
     public void User_MinimalPayload_ShouldDeserializeProtobuf()
     {
         // Only userName is provided
-        var minimalProtobuf = new User() { UserName = "minimalUserProtobuf" }.ProtobufSerialize();
+        var minimalProtobuf = new User { UserName = "minimalUserProtobuf" }.ProtobufSerialize();
 
         var user = minimalProtobuf.ProtobufDeserialize<User>();
 

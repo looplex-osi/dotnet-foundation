@@ -133,7 +133,7 @@ public class ClientCredentialsAuthenticationsTests
         });
 
         _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<string?>(null));
+            .Returns(Task.FromResult(string.Empty));
 
         var service = new ClientCredentialsAuthentications(_mockConfiguration, _mockClientCredentials, _mockJwtService, _mockHttpContextAccessor);
 
