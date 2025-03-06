@@ -10,35 +10,32 @@ using System.Threading.Tasks;
 using Looplex.Foundation.Entities;
 using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.Ports;
-using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
 
-namespace Looplex.Foundation.SCIMv2;
+namespace Looplex.Foundation.SCIMv2.Entities;
 
-public class SCIM : Service
+public class SCIMv2 : Service
 {
   private readonly DbConnection? _db;
   private readonly IRbacService? _rbacService;
-  private readonly string? _tenant;
   private readonly IUserContext? _userContext;
 
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-  public SCIM()
+  public SCIMv2()
   {
   }
 
   #endregion
 
-  public SCIM(IRbacService rbacService, IUserContext userContext, DbConnection db)
+  public SCIMv2(IRbacService rbacService, IUserContext userContext, DbConnection db)
   {
     _db = db;
     _rbacService = rbacService;
     _userContext = userContext;
-    _tenant = _userContext.Tenant;
   }
 
   #region Query
@@ -51,24 +48,13 @@ public class SCIM : Service
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
 
-    #region HandleInput
-
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-
-    #endregion
-
-    #region ValidateInput
 
     if (filter == null)
     {
       throw new ArgumentNullException(nameof(filter));
     }
-
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    #endregion
-
-    #region DefineRoles
 
     // Determine stored proc name.
     // For queries, the convention is USP_{resourceCollection}_pquery.
@@ -82,25 +68,12 @@ public class SCIM : Service
     ctx.Roles["ProcName"] = $"USP_{resourceName}_pquery";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
-    #endregion
-
-    #region Bind
-
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
-    #endregion
-
-    #region BeforeAction
-
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    #endregion
-
-    #region DefaultAction
 
     if (!ctx.SkipDefaultAction)
     {
-      List<T> list = new List<T>();
+      List<T> list = new();
 
       string procName = ctx.Roles["ProcName"];
 
@@ -132,19 +105,9 @@ public class SCIM : Service
       };
     }
 
-    #endregion
-
-    #region AfterAction
-
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
 
-    #endregion
-
-    #region Dispose
-
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-
-    #endregion
 
     return (ListResponse<T>)ctx.Result;
   }
@@ -160,19 +123,8 @@ public class SCIM : Service
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
 
-    #region HandleInput
-
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-
-    #endregion
-
-    #region ValidateInput
-
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    #endregion
-
-    #region DefineRoles
 
     // Determine stored proc name.
     // For creation, convention is USP_{resource}_create.
@@ -180,21 +132,8 @@ public class SCIM : Service
     ctx.Roles["ProcName"] = $"USP_{resourceName}_create";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
-    #endregion
-
-    #region Bind
-
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
-    #endregion
-
-    #region BeforeAction
-
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    #endregion
-
-    #region DefaultAction
 
     if (!ctx.SkipDefaultAction)
     {
@@ -221,19 +160,8 @@ public class SCIM : Service
       ctx.Result = (Guid)result;
     }
 
-    #endregion
-
-    #region AfterAction
-
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-
-    #endregion
-
-    #region Dispose
-
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-
-    #endregion
 
     return (Guid)ctx.Result;
   }
@@ -249,39 +177,15 @@ public class SCIM : Service
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
 
-    #region HandleInput
-
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-
-    #endregion
-
-    #region ValidateInput
-
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    #endregion
-
-    #region DefineRoles
 
     string resourceName = typeof(T).Name.ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_retrieve";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
-    #endregion
-
-    #region Bind
-
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
-    #endregion
-
-    #region BeforeAction
-
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    #endregion
-
-    #region DefaultAction
 
     if (!ctx.SkipDefaultAction)
     {
@@ -303,19 +207,8 @@ public class SCIM : Service
       ctx.Result = obj;
     }
 
-    #endregion
-
-    #region AfterAction
-
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-
-    #endregion
-
-    #region Dispose
-
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-
-    #endregion
 
     return (T?)ctx.Result;
   }
@@ -330,40 +223,16 @@ public class SCIM : Service
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
-
-    #region HandleInput
-
+    
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-
-    #endregion
-
-    #region ValidateInput
-
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    #endregion
-
-    #region DefineRoles
 
     string resourceName = typeof(T).Name.ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_update";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
-    #endregion
-
-    #region Bind
-
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
-    #endregion
-
-    #region BeforeAction
-
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    #endregion
-
-    #region DefaultAction
 
     if (!ctx.SkipDefaultAction)
     {
@@ -394,19 +263,8 @@ public class SCIM : Service
       ctx.Result = rows > 0;
     }
 
-    #endregion
-
-    #region AfterAction
-
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-
-    #endregion
-
-    #region Dispose
-
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-
-    #endregion
 
     return (bool)ctx.Result;
   }
@@ -422,39 +280,15 @@ public class SCIM : Service
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
 
-    #region HandleInput
-
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-
-    #endregion
-
-    #region ValidateInput
-
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    #endregion
-
-    #region DefineRoles
 
     string resourceName = typeof(T).Name.ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_delete";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
-    #endregion
-
-    #region Bind
-
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
-    #endregion
-
-    #region BeforeAction
-
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    #endregion
-
-    #region DefaultAction
 
     if (!ctx.SkipDefaultAction)
     {
@@ -471,21 +305,10 @@ public class SCIM : Service
 
       ctx.Result = rows > 0;
     }
-
-    #endregion
-
-    #region AfterAction
-
+    
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-
-    #endregion
-
-    #region Dispose
-
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-
-    #endregion
-
+    
     return (bool)ctx.Result;
   }
 

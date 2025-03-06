@@ -2,9 +2,8 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
-using Looplex.Foundation.SCIMv2;
 using Looplex.Foundation.SCIMv2.Entities;
-using Looplex.Foundation.WebApp.SCIMv2;
+using Looplex.Foundation.WebApp.Middlewares;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -14,19 +13,19 @@ using Microsoft.Extensions.Hosting;
 
 using NSubstitute;
 
-namespace Looplex.Foundation.WebApp.UnitTests.SCIMv2;
+namespace Looplex.Foundation.WebApp.UnitTests.Middlewares;
 
 [TestClass]
-public class RoutesTests
+public class SCIMv2Tests
 {
   private HttpClient _client = null!;
   private IHost _host = null!;
-  private SCIM _mockSCIM = null!;
+  private SCIMv2.Entities.SCIMv2 _mockSciMv2 = null!;
 
   [TestInitialize]
   public Task Setup()
   {
-    _mockSCIM = Substitute.For<SCIM>();
+    _mockSciMv2 = Substitute.For<SCIMv2.Entities.SCIMv2>();
 
     _host = Host.CreateDefaultBuilder()
       .ConfigureWebHostDefaults(webBuilder =>
@@ -35,7 +34,7 @@ public class RoutesTests
         webBuilder.ConfigureServices(services =>
         {
           services.AddRouting();
-          services.AddSingleton(_mockSCIM);
+          services.AddSingleton(_mockSciMv2);
         });
         webBuilder.Configure(app =>
         {
@@ -66,10 +65,10 @@ public class RoutesTests
   public async Task CreateUser_ValidRequest_ReturnsCreated()
   {
     // Arrange
-    User user = new User { UserName = "TestUser" };
-    _mockSCIM.CreateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(Guid.NewGuid()));
+    User user = new() { UserName = "TestUser" };
+    _mockSciMv2.CreateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(Guid.NewGuid()));
 
-    StringContent content = new StringContent(JsonSerializer.Serialize(user), Encoding.UTF8, "application/json");
+    StringContent content = new(JsonSerializer.Serialize(user), Encoding.UTF8, "application/json");
 
     // Act
     HttpResponseMessage response = await _client.PostAsync("/users", content);
@@ -97,7 +96,7 @@ public class RoutesTests
   public async Task QueryUsers_ValidRequest_ReturnsOk()
   {
     // Arrange
-    _mockSCIM.QueryAsync<User>(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    _mockSciMv2.QueryAsync<User>(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(new ListResponse<User>()));
 
     // Act
@@ -115,7 +114,7 @@ public class RoutesTests
   public async Task RetrieveUser_NotFound_ReturnsNotFound()
   {
     // Arrange
-    _mockSCIM.RetrieveAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    _mockSciMv2.RetrieveAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult<User?>(null));
 
     // Act
@@ -129,8 +128,8 @@ public class RoutesTests
   public async Task RetrieveUser_Found_ReturnsOk()
   {
     // Arrange
-    User user = new User { UserName = "ExistingUser" };
-    _mockSCIM.RetrieveAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+    User user = new() { UserName = "ExistingUser" };
+    _mockSciMv2.RetrieveAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
       .Returns(Task.FromResult(user));
 
     // Act
@@ -148,7 +147,7 @@ public class RoutesTests
   public async Task UpdateUser_NotFound_ReturnsNotFound()
   {
     // Arrange
-    _mockSCIM.RetrieveAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    _mockSciMv2.RetrieveAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult<User?>(null));
 
     // Act
@@ -162,10 +161,10 @@ public class RoutesTests
   public async Task UpdateUser_Found_ReturnsNoContent()
   {
     // Arrange
-    User user = new User { UserName = "ExistingUser" };
-    _mockSCIM.RetrieveAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    User user = new() { UserName = "ExistingUser" };
+    _mockSciMv2.RetrieveAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
       .Returns(Task.FromResult(user));
-    _mockSCIM.UpdateAsync(Arg.Any<Guid>(), Arg.Any<User>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    _mockSciMv2.UpdateAsync(Arg.Any<Guid>(), Arg.Any<User>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(true));
 
     // Act
@@ -179,10 +178,10 @@ public class RoutesTests
   public async Task UpdateUser_Found_Fails_ReturnsInternalServerError()
   {
     // Arrange
-    User user = new User { UserName = "ExistingUser" };
-    _mockSCIM.RetrieveAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    User user = new() { UserName = "ExistingUser" };
+    _mockSciMv2.RetrieveAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
       .Returns(Task.FromResult(user));
-    _mockSCIM.UpdateAsync(Arg.Any<Guid>(), Arg.Any<User>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    _mockSciMv2.UpdateAsync(Arg.Any<Guid>(), Arg.Any<User>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(false));
 
     // Act
@@ -200,7 +199,7 @@ public class RoutesTests
   public async Task DeleteUser_NotFound_ReturnsNotFound()
   {
     // Arrange
-    _mockSCIM.DeleteAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    _mockSciMv2.DeleteAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(false));
 
     // Act
@@ -214,7 +213,7 @@ public class RoutesTests
   public async Task DeleteUser_Found_ReturnsNoContent()
   {
     // Arrange
-    _mockSCIM.DeleteAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    _mockSciMv2.DeleteAsync<User>(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(true));
 
     // Act

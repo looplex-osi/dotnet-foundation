@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Newtonsoft.Json;
 
-namespace Looplex.Foundation.WebApp.OAuth2;
+namespace Looplex.Foundation.WebApp.Middlewares;
 
 public static class TokenRoutes
 {
@@ -29,7 +29,7 @@ public static class TokenRoutes
     GrantType grantType = form[Constants.GrantType].ToString().ToGrantType();
     IAuthentications service = factory.GetService(grantType);
 
-    string result = await service.CreateAccessToken(credentials, cancellationToken);
+    string result = await service.CreateAccessToken(credentials, authorization, cancellationToken);
 
     await context.Response.WriteAsJsonAsync(result, cancellationToken);
   };

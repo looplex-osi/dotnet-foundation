@@ -3,7 +3,6 @@ using System.Text;
 
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
-using Looplex.Foundation.WebApp.OAuth2.Entities;
 
 using Microsoft.Extensions.Configuration;
 
@@ -11,7 +10,7 @@ using Newtonsoft.Json;
 
 using NSubstitute;
 
-namespace Looplex.Foundation.WebApp.UnitTests.OAuth2.Entities;
+namespace Looplex.Foundation.UnitTests.Entities;
 
 [TestClass]
 public class TokenExchangeAuthenticationsTests
@@ -26,12 +25,10 @@ public class TokenExchangeAuthenticationsTests
     _mockConfiguration = Substitute.For<IConfiguration>();
     _mockJwtService = Substitute.For<IJwtService>();
 
-    SuccessHttpMessageHandlerMock handlerMock = new SuccessHttpMessageHandlerMock();
+    SuccessHttpMessageHandlerMock handlerMock = new();
     _httpClient = new HttpClient(handlerMock);
 
-    IConfigurationSection? configurationSection = Substitute.For<IConfigurationSection>();
-    configurationSection.Value.Returns("20");
-    _mockConfiguration.GetSection("TokenExpirationTimeInMinutes").Returns(configurationSection);
+    _mockConfiguration["TokenExpirationTimeInMinutes"] = "20";
   }
 
   [TestMethod]
@@ -43,14 +40,12 @@ public class TokenExchangeAuthenticationsTests
       grant_type = "invalid", subject_token = "invalid", subject_token_type = "invalid"
     });
 
-    TokenExchangeAuthentications service =
-      new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
+    TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, _httpClient);
 
     // Act & Assert
-    HttpRequestException exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
-      () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
+    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
+      () => service.CreateAccessToken(clientCredentials, "", CancellationToken.None));
 
-    Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
     Assert.AreEqual("grant_type is invalid.", exception.Message);
   }
 
@@ -63,14 +58,12 @@ public class TokenExchangeAuthenticationsTests
       grant_type = Constants.TokenExchangeGrantType, subject_token = "invalid", subject_token_type = "invalid"
     });
 
-    TokenExchangeAuthentications service =
-      new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
+    TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, _httpClient);
 
     // Act & Assert
-    HttpRequestException exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
-      () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
+    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
+      () => service.CreateAccessToken(clientCredentials, "", CancellationToken.None));
 
-    Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
     Assert.AreEqual("subject_token_type is invalid.", exception.Message);
   }
 
@@ -91,11 +84,10 @@ public class TokenExchangeAuthenticationsTests
       subject_token_type = Constants.AccessTokenType
     });
 
-    TokenExchangeAuthentications service =
-      new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
+    TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, _httpClient);
 
     // Act
-    string result = await service.CreateAccessToken(clientCredentials, CancellationToken.None);
+    string result = await service.CreateAccessToken(clientCredentials, "", CancellationToken.None);
 
     // Assert
     Assert.IsNotNull(result);
@@ -113,14 +105,12 @@ public class TokenExchangeAuthenticationsTests
       subject_token_type = Constants.AccessTokenType
     });
 
-    TokenExchangeAuthentications service =
-      new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, _httpClient);
+    TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, _httpClient);
 
     // Act & Assert
-    HttpRequestException exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
-      () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
+    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
+      () => service.CreateAccessToken(clientCredentials, "", CancellationToken.None));
 
-    Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
     Assert.AreEqual("Token is invalid.", exception.Message);
   }
 
@@ -136,15 +126,14 @@ public class TokenExchangeAuthenticationsTests
       subject_token_type = Constants.AccessTokenType
     });
 
-    ErrorHttpMessageHandlerMock handlerMock = new ErrorHttpMessageHandlerMock();
-    HttpClient httpClient = new HttpClient(handlerMock);
+    ErrorHttpMessageHandlerMock handlerMock = new();
+    HttpClient httpClient = new(handlerMock);
 
-    TokenExchangeAuthentications service =
-      new TokenExchangeAuthentications(_mockConfiguration, _mockJwtService, httpClient);
+    TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, httpClient);
 
     // Act & Assert
     HttpRequestException exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
-      () => service.CreateAccessToken(clientCredentials, CancellationToken.None));
+      () => service.CreateAccessToken(clientCredentials, "", CancellationToken.None));
 
     Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
   }
@@ -157,7 +146,7 @@ public class TokenExchangeAuthenticationsTests
       // Ensure the Authorization header contains the Bearer token
       Assert.AreEqual("validToken", request.Headers.Authorization!.Parameter);
 
-      UserInfo userInfo = new UserInfo
+      UserInfo userInfo = new()
       {
         Sub = Guid.NewGuid().ToString(),
         Email = "foo@bar",

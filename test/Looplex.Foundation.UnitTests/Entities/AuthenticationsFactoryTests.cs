@@ -1,11 +1,9 @@
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
-using Looplex.Foundation.WebApp.OAuth2.Adapters;
-using Looplex.Foundation.WebApp.OAuth2.Entities;
 
 using NSubstitute;
 
-namespace Looplex.Foundation.WebApp.UnitTests.OAuth2.Adapters;
+namespace Looplex.Foundation.UnitTests.Entities;
 
 [TestClass]
 public class AuthenticationsFactoryTests

@@ -20,7 +20,7 @@ public static class ActorSerializationStrategies
       throw new ArgumentNullException(nameof(actor));
     }
 
-    JsonSerializerSettings settings = new JsonSerializerSettings
+    JsonSerializerSettings settings = new()
     {
       ContractResolver = new CamelCasePropertyNamesContractResolver(), Formatting = Formatting.Indented
     };
@@ -35,7 +35,7 @@ public static class ActorSerializationStrategies
       throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
     }
 
-    JsonSerializerSettings settings = new JsonSerializerSettings
+    JsonSerializerSettings settings = new()
     {
       ContractResolver = new CamelCasePropertyNamesContractResolver()
     };
@@ -49,8 +49,8 @@ public static class ActorSerializationStrategies
       throw new ArgumentNullException(nameof(actor));
     }
 
-    XmlSerializer serializer = new XmlSerializer(actor.GetType());
-    using (StringWriter writer = new StringWriter())
+    XmlSerializer serializer = new(actor.GetType());
+    using (StringWriter writer = new())
     {
       serializer.Serialize(writer, actor);
       return writer.ToString();
@@ -64,8 +64,8 @@ public static class ActorSerializationStrategies
       throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
     }
 
-    XmlSerializer serializer = new XmlSerializer(typeof(T));
-    using (StringReader reader = new StringReader(xml))
+    XmlSerializer serializer = new(typeof(T));
+    using (StringReader reader = new(xml))
     {
       return (T)serializer.Deserialize(reader);
     }
@@ -78,7 +78,7 @@ public static class ActorSerializationStrategies
       throw new ArgumentNullException(nameof(actor));
     }
 
-    using (MemoryStream memoryStream = new MemoryStream())
+    using (MemoryStream memoryStream = new())
     {
       Serializer.Serialize(memoryStream, actor);
       return memoryStream.ToArray();
@@ -92,7 +92,7 @@ public static class ActorSerializationStrategies
       throw new ArgumentException("Bite array cannot be null or empty.", nameof(binary));
     }
 
-    using (MemoryStream memoryStream = new MemoryStream(binary))
+    using (MemoryStream memoryStream = new(binary))
     {
       return Serializer.Deserialize<T>(memoryStream);
     }

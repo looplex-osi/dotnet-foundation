@@ -1,4 +1,4 @@
-namespace Looplex.Foundation.WebApp.UnitTests;
+namespace Looplex.Foundation.UnitTests.Entities;
 
 internal static class RsaKeys
 {
