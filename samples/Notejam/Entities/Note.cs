@@ -1,4 +1,5 @@
 ﻿using Looplex.Foundation.Entities;
+
 using PropertyChanged;
 
 namespace Looplex.Samples.Entities;
@@ -6,10 +7,10 @@ namespace Looplex.Samples.Entities;
 [AddINotifyPropertyChangedInterface]
 public class Note : Actor
 {
-	#region Reflectivity
-	public Note() : base() { }
-	#endregion
-	
-	public string? Name { get; set; }
-	public string? Text { get; set; }
+  #region Reflectivity
+
+  #endregion
+
+  public string? Name { get; set; }
+  public string? Text { get; set; }
 }

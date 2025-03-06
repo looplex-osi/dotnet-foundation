@@ -11,6 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Looplex.Foundation\Looplex.Foundation.csproj" />
+    <ProjectReference Include="..\Looplex.Foundation\Looplex.Foundation.csproj"/>
   </ItemGroup>
 </Project>

@@ -12,24 +12,28 @@ using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.OpenForExtension.Abstractions.Commands;
+using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
 
 namespace Looplex.Foundation.SCIMv2;
 
 public class SCIM : Service
 {
-  private readonly IRbacService? _rbacService;
-  private readonly IUserContext? _userContext;
   private readonly DbConnection? _db;
+  private readonly IRbacService? _rbacService;
   private readonly string? _tenant;
+  private readonly IUserContext? _userContext;
 
   #region Reflectivity
+
   // ReSharper disable once PublicConstructorInAbstractClass
-  public SCIM() : base() { }
+  public SCIM()
+  {
+  }
+
   #endregion
-  
+
   public SCIM(IRbacService rbacService, IUserContext userContext, DbConnection db)
-    : base()
   {
     _db = db;
     _rbacService = rbacService;
@@ -44,60 +48,64 @@ public class SCIM : Service
     where T : Resource, new()
   {
     cancellationToken.ThrowIfCancellationRequested();
-    var ctx = NewContext();
+    IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
-    
+
     #region HandleInput
-    
+
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region ValidateInput
-    
+
     if (filter == null)
     {
       throw new ArgumentNullException(nameof(filter));
     }
+
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region DefineRoles
-    
+
     // Determine stored proc name.
     // For queries, the convention is USP_{resourceCollection}_pquery.
     // Example: for T == User, resource name is "user", and collection is "users".
     string resourceName = typeof(T).Name.ToLower();
     if (!resourceName.EndsWith("s"))
+    {
       resourceName += "s";
+    }
+
     ctx.Roles["ProcName"] = $"USP_{resourceName}_pquery";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region Bind
-    
+
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region BeforeAction
-    
+
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region DefaultAction
-    
+
     if (!ctx.SkipDefaultAction)
     {
-      var list = new List<T>();
+      List<T> list = new List<T>();
 
       string procName = ctx.Roles["ProcName"];
-        
+
       await _db!.OpenAsync(cancellationToken);
-      using var command = _db.CreateCommand();
+      using DbCommand command = _db.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = procName;
 
@@ -110,7 +118,7 @@ public class SCIM : Service
       command.Parameters.Add(CreateParameter(command, "@filter_email", DBNull.Value, DbType.String));
       command.Parameters.Add(CreateParameter(command, "@order_by", DBNull.Value, DbType.String));
 
-      using var reader = await command.ExecuteReaderAsync(cancellationToken);
+      using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
       while (await reader.ReadAsync(cancellationToken))
       {
         T obj = new();
@@ -120,27 +128,24 @@ public class SCIM : Service
 
       ctx.Result = new ListResponse<T>
       {
-        Page = page,
-        PageSize = pageSize,
-        Resources = list,
-        TotalResults = 0 // TODO
+        Page = page, PageSize = pageSize, Resources = list, TotalResults = 0 // TODO
       };
     }
-    
+
     #endregion
-    
+
     #region AfterAction
-    
+
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region Dispose
-    
+
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     return (ListResponse<T>)ctx.Result;
   }
 
@@ -152,49 +157,49 @@ public class SCIM : Service
     CancellationToken cancellationToken) where T : Resource
   {
     cancellationToken.ThrowIfCancellationRequested();
-    var ctx = NewContext();
+    IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
-    
+
     #region HandleInput
-    
+
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region ValidateInput
-    
+
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region DefineRoles
-    
+
     // Determine stored proc name.
     // For creation, convention is USP_{resource}_create.
     string resourceName = typeof(T).Name.ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_create";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region Bind
-    
+
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region BeforeAction
-    
+
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region DefaultAction
-    
+
     if (!ctx.SkipDefaultAction)
     {
       await _db!.OpenAsync(cancellationToken);
-      using var command = _db.CreateCommand();
+      using DbCommand command = _db.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
@@ -215,21 +220,21 @@ public class SCIM : Service
       object result = await command.ExecuteScalarAsync(cancellationToken);
       ctx.Result = (Guid)result;
     }
-    
+
     #endregion
-    
+
     #region AfterAction
-    
+
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region Dispose
-    
+
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     return (Guid)ctx.Result;
   }
 
@@ -241,77 +246,77 @@ public class SCIM : Service
     where T : Resource, new()
   {
     cancellationToken.ThrowIfCancellationRequested();
-    var ctx = NewContext();
+    IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
-    
+
     #region HandleInput
-    
+
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region ValidateInput
-    
+
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region DefineRoles
-    
+
     string resourceName = typeof(T).Name.ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_retrieve";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region Bind
-    
+
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region BeforeAction
-    
+
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region DefaultAction
-    
+
     if (!ctx.SkipDefaultAction)
     {
       await _db!.OpenAsync(cancellationToken);
-      using var command = _db.CreateCommand();
+      using DbCommand command = _db.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
       command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
 
       T? obj = null;
-      using var reader = await command.ExecuteReaderAsync(cancellationToken);
+      using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
       if (await reader.ReadAsync(cancellationToken))
       {
-        obj = new();
+        obj = new T();
         MapDataRecordToResource(reader, obj);
       }
 
       ctx.Result = obj;
     }
-    
+
     #endregion
-    
+
     #region AfterAction
-    
+
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region Dispose
-    
+
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     return (T?)ctx.Result;
   }
 
@@ -323,47 +328,47 @@ public class SCIM : Service
     where T : Resource
   {
     cancellationToken.ThrowIfCancellationRequested();
-    var ctx = NewContext();
+    IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
-    
+
     #region HandleInput
-    
+
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region ValidateInput
-    
+
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region DefineRoles
-    
-    string resourceName = typeof(T).Name.ToLower(); 
+
+    string resourceName = typeof(T).Name.ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_update";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region Bind
-    
+
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region BeforeAction
-    
+
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region DefaultAction
-    
+
     if (!ctx.SkipDefaultAction)
     {
       await _db!.OpenAsync(cancellationToken);
-      using var command = _db.CreateCommand();
+      using DbCommand command = _db.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
@@ -388,21 +393,21 @@ public class SCIM : Service
 
       ctx.Result = rows > 0;
     }
-    
+
     #endregion
-    
+
     #region AfterAction
-    
+
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region Dispose
-    
+
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     return (bool)ctx.Result;
   }
 
@@ -414,47 +419,47 @@ public class SCIM : Service
     where T : Resource
   {
     cancellationToken.ThrowIfCancellationRequested();
-    var ctx = NewContext();
+    IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
-    
+
     #region HandleInput
-    
+
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region ValidateInput
-    
+
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region DefineRoles
-    
+
     string resourceName = typeof(T).Name.ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_delete";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region Bind
-    
+
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region BeforeAction
-    
+
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region DefaultAction
-    
+
     if (!ctx.SkipDefaultAction)
     {
       await _db!.OpenAsync(cancellationToken);
-      using var command = _db.CreateCommand();
+      using DbCommand command = _db.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
@@ -463,24 +468,24 @@ public class SCIM : Service
       // If your stored procedure supported a parameter for hard deletion,
       // you could add it here. For now, we assume the same proc handles deletion.
       int rows = await command.ExecuteNonQueryAsync(cancellationToken);
-      
+
       ctx.Result = rows > 0;
     }
-    
+
     #endregion
-    
+
     #region AfterAction
-    
+
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     #region Dispose
-    
+
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-    
+
     #endregion
-    
+
     return (bool)ctx.Result;
   }
 
@@ -490,7 +495,7 @@ public class SCIM : Service
 
   private static IDbDataParameter CreateParameter(IDbCommand command, string name, object value, DbType dbType)
   {
-    var param = command.CreateParameter();
+    IDbDataParameter param = command.CreateParameter();
     param.ParameterName = name;
     param.Value = value;
     param.DbType = dbType;
@@ -541,10 +546,14 @@ public class SCIM : Service
   {
     // Assume resource has a property named "Emails" that is an IEnumerable.
     PropertyInfo? emailsProp = resource.GetType().GetProperty("Emails", BindingFlags.Public | BindingFlags.Instance);
-    if (emailsProp == null) return null;
+    if (emailsProp == null)
+    {
+      return null;
+    }
+
     if (emailsProp.GetValue(resource) is IEnumerable emails)
     {
-      foreach (var item in emails)
+      foreach (object? item in emails)
       {
         // Assume each email item has a property "Value".
         PropertyInfo? valueProp = item.GetType().GetProperty("Value", BindingFlags.Public | BindingFlags.Instance);
@@ -552,7 +561,9 @@ public class SCIM : Service
         {
           object? val = valueProp.GetValue(item);
           if (val != null)
+          {
             return val.ToString();
+          }
         }
       }
     }

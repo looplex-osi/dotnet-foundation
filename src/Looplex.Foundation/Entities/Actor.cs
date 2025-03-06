@@ -4,30 +4,31 @@ namespace Looplex.Foundation.Entities;
 
 public abstract class Actor
 {
-    #region Reflectivity
-    // ReSharper disable once PublicConstructorInAbstractClass
-    public Actor() { }
-    #endregion
-        
-    #region Observability
+  #region Reflectivity
 
-    private event Action<string, object> ActorEvent;
+  // ReSharper disable once PublicConstructorInAbstractClass
 
-    protected void FireEvent(string eventName, object data = null)
-    {
-        var handler = ActorEvent; // Prevent potential race conditions on MTA environments
-        ActorEvent?.Invoke(eventName, data); // Notify subscribers
-    }
+  #endregion
 
-    public void AddEventListener(Action<string, object> handler)
-    {
-        ActorEvent += handler ?? throw new ArgumentNullException(nameof(handler));
-    }
+  #region Observability
 
-    public void RemoveEventListener(Action<string, object> handler)
-    {
-        ActorEvent -= handler ?? throw new ArgumentNullException(nameof(handler));
-    }
+  private event Action<string, object> ActorEvent;
 
-    #endregion
+  protected void FireEvent(string eventName, object data = null)
+  {
+    Action<string, object> handler = ActorEvent; // Prevent potential race conditions on MTA environments
+    ActorEvent?.Invoke(eventName, data); // Notify subscribers
+  }
+
+  public void AddEventListener(Action<string, object> handler)
+  {
+    ActorEvent += handler ?? throw new ArgumentNullException(nameof(handler));
+  }
+
+  public void RemoveEventListener(Action<string, object> handler)
+  {
+    ActorEvent -= handler ?? throw new ArgumentNullException(nameof(handler));
+  }
+
+  #endregion
 }

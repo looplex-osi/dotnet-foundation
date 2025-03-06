@@ -4,8 +4,8 @@ namespace Looplex.Foundation;
 
 public static class ObjectUtils
 {
-    public static string GetCallerName(this object input, [CallerMemberName] string memberName = "")
-    {
-        return memberName;
-    }
+  public static string GetCallerName(this object input, [CallerMemberName] string memberName = "")
+  {
+    return memberName;
+  }
 }
