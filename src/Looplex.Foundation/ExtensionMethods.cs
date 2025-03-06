@@ -16,6 +16,7 @@ public static class ExtensionMethods
     services.AddSingleton<ClientCredentialsAuthentications>();
     services.AddSingleton<SCIMv2Factory>();
     services.AddSingleton<Users>();
+    services.AddSingleton<Groups>();
     return services;
   }
 }
