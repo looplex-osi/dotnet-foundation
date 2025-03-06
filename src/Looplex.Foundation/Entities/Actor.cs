@@ -7,7 +7,8 @@ public abstract class Actor
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-
+  public Actor() { }
+  
   #endregion
 
   #region Observability

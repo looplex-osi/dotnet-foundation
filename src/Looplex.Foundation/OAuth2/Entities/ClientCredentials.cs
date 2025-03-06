@@ -25,16 +25,16 @@ public class ClientCredentials : Service, IClientCredentials
 {
   private const string JsonSchemaIdForClientCredentialKey = "JsonSchemaIdForClientCredential";
 
-  internal static readonly IList<ClientCredential> Data = [];
-  private readonly IConfiguration _configuration;
-  private readonly IJsonSchemaProvider _jsonSchemaProvider;
-  private readonly IRbacService _rbacService;
-  private readonly IUserContext _userContext;
+  internal static readonly IList<ClientCredential>? Data = [];
+  private readonly IConfiguration? _configuration;
+  private readonly IJsonSchemaProvider? _jsonSchemaProvider;
+  private readonly IRbacService? _rbacService;
+  private readonly IUserContext? _userContext;
 
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-  public ClientCredentials()
+  public ClientCredentials() : base()
   {
   }
 

@@ -15,7 +15,8 @@ public abstract class Resource : Actor
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-
+  public Resource() : base() { }
+  
   #endregion
 
   [ProtoMember(1)] public string Id { get; set; }

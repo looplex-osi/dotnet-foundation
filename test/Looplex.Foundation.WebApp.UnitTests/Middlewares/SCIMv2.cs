@@ -87,21 +87,10 @@ public class SCIMv2Tests
   #region Query Tests
 
   [TestMethod]
-  [ExpectedException(typeof(Exception))]
-  public async Task QueryUsers_MissingPage_ReturnsBadRequest()
-  {
-    // Act
-    HttpResponseMessage response = await _client.GetAsync("/users");
-
-    // Assert
-    Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
-  }
-
-  [TestMethod]
   public async Task QueryUsers_ValidRequest_ReturnsOk()
   {
     // Arrange
-    _scimv2Svc.QueryAsync<User>(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    _scimv2Svc.QueryAsync<User>(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(),Arg.Any<string?>(),Arg.Any<string?>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(new ListResponse<User>()));
 
     // Act

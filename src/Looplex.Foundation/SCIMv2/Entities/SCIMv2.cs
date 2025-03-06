@@ -25,7 +25,7 @@ public class SCIMv2 : Service
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-  public SCIMv2()
+  public SCIMv2() : base()
   {
   }
 
@@ -40,7 +40,8 @@ public class SCIMv2 : Service
 
   #region Query
 
-  public virtual async Task<ListResponse<T>> QueryAsync<T>(int page, int pageSize, string? filter,
+  public virtual async Task<ListResponse<T>> QueryAsync<T>(int page, int pageSize,
+    string? filter, string? sortBy, string? sortOrder,
     CancellationToken cancellationToken)
     where T : Resource, new()
   {

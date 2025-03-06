@@ -11,7 +11,7 @@ namespace Looplex.Foundation.SCIMv2.Entities;
 public class Group : Resource
 {
   #region Reflectivity
-
+  public Group() : base() { }
   #endregion
 
   [ProtoMember(1)] public string DisplayName { get; set; }
