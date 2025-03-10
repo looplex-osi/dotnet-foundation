@@ -53,8 +53,6 @@ public static class Program
     
     WebApplication app = builder.Build();
 
-    app.UseAuthentication();
-
     app.MapHealthChecks("/health", new HealthCheckOptions
     {
       ResponseWriter = async (context, report) =>
@@ -75,7 +73,7 @@ public static class Program
         await context.Response.WriteAsync(result);
       }
     })
-      .AllowAnonymous();;
+      .AllowAnonymous();
 
     app.UseOAuth2();
     app.UseSCIMv2<User>("/Users");

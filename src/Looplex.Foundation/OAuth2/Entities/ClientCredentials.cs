@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +30,7 @@ public class ClientCredentials : Service, IClientCredentials
   private readonly IConfiguration? _configuration;
   private readonly IJsonSchemaProvider? _jsonSchemaProvider;
   private readonly IRbacService? _rbacService;
-  private readonly IUserContext? _userContext;
+  private readonly ClaimsPrincipal? _user;
 
   #region Reflectivity
 
@@ -44,19 +45,19 @@ public class ClientCredentials : Service, IClientCredentials
     IRbacService rbacService,
     IConfiguration configuration,
     IJsonSchemaProvider jsonSchemaProvider,
-    IUserContext userContext) : base(plugins)
+    ClaimsPrincipal user) : base(plugins)
   {
     _rbacService = rbacService;
     _configuration = configuration;
     _jsonSchemaProvider = jsonSchemaProvider;
-    _userContext = userContext;
+    _user = user;
   }
 
   public async Task<string> QueryAsync(int page, int pageSize, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
@@ -94,7 +95,7 @@ public class ClientCredentials : Service, IClientCredentials
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
@@ -134,7 +135,7 @@ public class ClientCredentials : Service, IClientCredentials
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     ClientCredential? clientCredential = json.Deserialize<ClientCredential>();
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
@@ -195,7 +196,7 @@ public class ClientCredentials : Service, IClientCredentials
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
@@ -235,7 +236,7 @@ public class ClientCredentials : Service, IClientCredentials
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     string? digest = DigestCredentials(clientId, Convert.FromBase64String(clientSecret));
     ClientCredential? clientCredential = Data.FirstOrDefault(c => c.Digest == digest);

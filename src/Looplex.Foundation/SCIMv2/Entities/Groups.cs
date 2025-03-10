@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
@@ -17,7 +17,7 @@ public class Groups : SCIMv2<Group>
 {
   private readonly DbConnection? _db;
   private readonly IRbacService? _rbacService;
-  private readonly IUserContext? _userContext;
+  private readonly ClaimsPrincipal? _user;
 
   #region Reflectivity
 
@@ -28,11 +28,11 @@ public class Groups : SCIMv2<Group>
 
   #endregion
 
-  public Groups(IRbacService rbacService, IUserContext userContext, DbConnection db)
+  public Groups(IRbacService rbacService, ClaimsPrincipal user, DbConnection db)
   {
     _db = db;
     _rbacService = rbacService;
-    _userContext = userContext;
+    _user = user;
   }
 
   #region Query
@@ -43,7 +43,7 @@ public class Groups : SCIMv2<Group>
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
@@ -118,7 +118,7 @@ public class Groups : SCIMv2<Group>
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
@@ -167,7 +167,7 @@ public class Groups : SCIMv2<Group>
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
@@ -213,7 +213,7 @@ public class Groups : SCIMv2<Group>
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
     
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
@@ -262,7 +262,7 @@ public class Groups : SCIMv2<Group>
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);

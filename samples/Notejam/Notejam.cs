@@ -1,8 +1,8 @@
 using System.Data.Common;
+using System.Security.Claims;
 
 using Looplex.Foundation;
 using Looplex.Foundation.Entities;
-using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
@@ -16,7 +16,7 @@ public class Notejam : Service
 {
   private readonly DbConnection? _db;
   private readonly IRbacService? _rbacService;
-  private readonly IUserContext? _userContext;
+  private readonly ClaimsPrincipal? _user;
 
   #region Reflectivity
 
@@ -27,11 +27,11 @@ public class Notejam : Service
 
   #endregion
 
-  public Notejam(IList<IPlugin> plugins, IRbacService rbacService, IUserContext userContext, DbConnection db) :
+  public Notejam(IList<IPlugin> plugins, IRbacService rbacService, ClaimsPrincipal user, DbConnection db) :
     base(plugins)
   {
     _rbacService = rbacService;
-    _userContext = userContext;
+    _user = user;
     _db = db;
   }
 
@@ -40,7 +40,7 @@ public class Notejam : Service
   public async Task CreateNote(CancellationToken cancellationToken)
   {
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
@@ -66,7 +66,7 @@ public class Notejam : Service
   public async Task<string> Echo(string name, CancellationToken cancellationToken)
   {
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     ctx.State.Name = name;
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);

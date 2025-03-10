@@ -13,6 +13,14 @@ namespace Looplex.Foundation.WebApp.Middlewares;
 
 public static class SCIMv2
 {
+  public static IServiceCollection AddSCIMv2(this IServiceCollection services)
+  {
+    services.AddHttpContextAccessor();
+    services.AddSingleton<Users>();
+    services.AddSingleton<Groups>();
+    return services;
+  }
+  
   public static IEndpointRouteBuilder UseSCIMv2<T>(this IEndpointRouteBuilder app, string prefix, bool authorize = true)
     where T : Resource, new()
   {
@@ -50,7 +58,8 @@ public static class SCIMv2
 
       ListResponse<T> result = await svc.QueryAsync(page, pageSize, filter, sortBy, sortOrder, cancellationToken);
       string json = result.Serialize();
-      await context.Response.WriteAsJsonAsync(json, cancellationToken);
+      context.Response.ContentType = "application/json";
+      await context.Response.WriteAsync(json, cancellationToken);
     })
       .RequireAuthorization();
 
@@ -74,8 +83,7 @@ public static class SCIMv2
       Guid id = await svc.CreateAsync(resource, cancellationToken);
       context.Response.StatusCode = (int)HttpStatusCode.Created;
       context.Response.Headers.Location = $"{context.Request.Path.Value}/{id}";
-    })
-      .RequireAuthorization();
+    });
 
     #endregion
 
@@ -96,10 +104,10 @@ public static class SCIMv2
       else
       {
         string json = result.Serialize();
-        await context.Response.WriteAsJsonAsync(json, cancellationToken);
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync(json, cancellationToken);
       }
-    })
-      .RequireAuthorization();
+    });
 
     #endregion
 
@@ -131,8 +139,7 @@ public static class SCIMv2
           context.Response.StatusCode = (int)HttpStatusCode.NoContent;
         }
       }
-    })
-      .RequireAuthorization();
+    });
 
     #endregion
 
@@ -154,19 +161,10 @@ public static class SCIMv2
       {
         context.Response.StatusCode = (int)HttpStatusCode.NoContent;
       }
-    })
-      .RequireAuthorization();
+    });
 
     #endregion
 
     return app;
-  }
-  
-  public static IServiceCollection AddSCIMv2(this IServiceCollection services)
-  {
-    services.AddHttpContextAccessor();
-    services.AddSingleton<Users>();
-    services.AddSingleton<Groups>();
-    return services;
   }
 }

@@ -1,4 +1,4 @@
-﻿using Looplex.Foundation.OAuth2;
+﻿using System.Security.Claims;
 
 namespace Looplex.Foundation.Ports;
 
@@ -14,5 +14,5 @@ public interface IRbacService
   /// <param name="userContext"></param>
   /// <param name="resource"></param>
   /// <param name="action"></param>
-  void ThrowIfUnauthorized(IUserContext userContext, string resource, string action);
+  void ThrowIfUnauthorized(ClaimsPrincipal userContext, string resource, string action);
 }
