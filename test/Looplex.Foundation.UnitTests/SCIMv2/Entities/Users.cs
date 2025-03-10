@@ -1,6 +1,5 @@
 using System.Data.Common;
 
-using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.OpenForExtension.Abstractions.Contexts;

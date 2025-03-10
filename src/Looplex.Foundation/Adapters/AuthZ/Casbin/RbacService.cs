@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
 
 using Casbin;
 
-using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.Ports;
 
 using Microsoft.Extensions.Logging;
@@ -21,11 +22,10 @@ public class RbacService : IRbacService
     _logger = logger;
   }
 
-  public virtual void ThrowIfUnauthorized(IUserContext userContext, string resource, string action)
+  public virtual void ThrowIfUnauthorized(ClaimsPrincipal user, string resource, string action)
   {
-    string email = userContext.Email;
-
-    string tenant = userContext.Tenant;
+    string? email = user.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+    string? tenant = user.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
 
     if (string.IsNullOrEmpty(tenant))
     {
@@ -37,7 +37,7 @@ public class RbacService : IRbacService
       throw new ArgumentNullException(nameof(email), "USER_EMAIL_REQUIRED_FOR_AUTHORIZATION");
     }
 
-    bool authorized = CheckPermissionAsync(email, tenant, resource, action);
+    bool authorized = CheckPermissionAsync(email!, tenant!, resource, action);
 
     if (!authorized)
     {

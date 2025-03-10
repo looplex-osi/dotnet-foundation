@@ -3,7 +3,6 @@ using System.Reflection;
 using Casbin;
 
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
-using Looplex.Foundation.OAuth2;
 
 using Microsoft.Extensions.Logging;
 

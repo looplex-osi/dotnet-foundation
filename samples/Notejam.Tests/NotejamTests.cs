@@ -4,7 +4,6 @@ using System.Reflection;
 using Casbin;
 
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
-using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;

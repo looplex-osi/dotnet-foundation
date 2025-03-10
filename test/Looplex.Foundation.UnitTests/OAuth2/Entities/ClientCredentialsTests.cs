@@ -1,4 +1,3 @@
-using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
