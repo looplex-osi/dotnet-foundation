@@ -3,7 +3,7 @@ using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
-using Looplex.Foundation.Serialization;
+using Looplex.Foundation.Serialization.Json;
 
 using Microsoft.Extensions.Configuration;
 
@@ -25,7 +25,7 @@ public class ClientCredentialsTests
   [TestInitialize]
   public void SetUp()
   {
-    ClientCredentials.Data.Clear();
+    ClientCredentials.Data!.Clear();
     _mockRbacService = Substitute.For<IRbacService>();
     _mockConfiguration = Substitute.For<IConfiguration>();
     _mockConfiguration["ClientSecretByteLength"].Returns("72");
@@ -41,7 +41,7 @@ public class ClientCredentialsTests
     // Arrange
     ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
       _mockUserContext);
-    ClientCredentials.Data.Add(new ClientCredential { Id = "1" });
+    ClientCredentials.Data!.Add(new ClientCredential { Id = "1" });
 
     // Act
     string resultJson = await service.QueryAsync(1, 10, _cancellationToken);
@@ -59,7 +59,7 @@ public class ClientCredentialsTests
     ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
       _mockUserContext);
     ClientCredential clientCredential = new() { Id = "123" };
-    ClientCredentials.Data.Add(clientCredential);
+    ClientCredentials.Data!.Add(clientCredential);
 
     // Act
     string resultJson = await service.RetrieveAsync("123", _cancellationToken);
@@ -80,13 +80,13 @@ public class ClientCredentialsTests
 
     // Act
     string result = await service.CreateAsync(inputJson, _cancellationToken);
-    ClientCredentialDto clientCredentialDto = result.JsonDeserialize<ClientCredentialDto>();
+    ClientCredentialDto? clientCredentialDto = result.Deserialize<ClientCredentialDto>();
     ClientCredential? createdCredential =
-      ClientCredentials.Data.FirstOrDefault(c => c.ClientId == clientCredentialDto.ClientId);
+      ClientCredentials.Data!.FirstOrDefault(c => c.ClientId == clientCredentialDto!.ClientId);
 
     // Assert
     Assert.IsNotNull(createdCredential);
-    Assert.IsFalse(clientCredentialDto.ClientId == Guid.Empty);
+    Assert.IsFalse(clientCredentialDto!.ClientId == Guid.Empty);
     Assert.IsFalse(string.IsNullOrEmpty(clientCredentialDto.ClientSecret));
     Assert.IsFalse(createdCredential.ClientId == Guid.Empty);
     Assert.IsFalse(string.IsNullOrEmpty(createdCredential.Digest));
@@ -99,7 +99,7 @@ public class ClientCredentialsTests
     ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
       _mockUserContext);
     ClientCredential clientCredential = new() { Id = "789" };
-    ClientCredentials.Data.Add(clientCredential);
+    ClientCredentials.Data!.Add(clientCredential);
 
     // Act
     bool result = await service.DeleteAsync("789", _cancellationToken);
@@ -129,11 +129,11 @@ public class ClientCredentialsTests
     ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
       _mockUserContext);
     ClientCredential clientCredential = new() { ClientName = "client-1" };
-    string json = await service.CreateAsync(clientCredential.JsonSerialize(), CancellationToken.None);
-    ClientCredentialDto clientCredentialDto = json.JsonDeserialize<ClientCredentialDto>();
+    string json = await service.CreateAsync(clientCredential.Serialize(), CancellationToken.None);
+    ClientCredentialDto? clientCredentialDto = json.Deserialize<ClientCredentialDto>();
 
     // Act
-    string resultJson = await service.RetrieveAsync(clientCredentialDto.ClientId, clientCredentialDto.ClientSecret,
+    string resultJson = await service.RetrieveAsync(clientCredentialDto!.ClientId, clientCredentialDto.ClientSecret,
       _cancellationToken);
     ClientCredential? result = JsonConvert.DeserializeObject<ClientCredential>(resultJson);
 

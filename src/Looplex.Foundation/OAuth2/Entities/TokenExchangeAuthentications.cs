@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Claims;
@@ -8,10 +9,11 @@ using System.Threading.Tasks;
 using Looplex.Foundation.Entities;
 using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.Ports;
-using Looplex.Foundation.Serialization;
+using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +31,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-  public TokenExchangeAuthentications()
+  public TokenExchangeAuthentications() : base(new List<IPlugin>())
   {
   }
 
@@ -37,9 +39,10 @@ public class TokenExchangeAuthentications : Service, IAuthentications
 
   [ActivatorUtilitiesConstructor]
   public TokenExchangeAuthentications(
+    IList<IPlugin> plugins,
     IConfiguration configuration,
     IJwtService jwtService,
-    HttpClient httpClient)
+    HttpClient httpClient) : base(plugins)
   {
     _configuration = configuration;
     _jwtService = jwtService;
@@ -51,7 +54,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
 
-    ClientCredentialsGrantDto clientCredentialsDto = json.JsonDeserialize<ClientCredentialsGrantDto>();
+    ClientCredentialsGrantDto? clientCredentialsDto = json.Deserialize<ClientCredentialsGrantDto>();
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
     if (clientCredentialsDto == null)
@@ -73,7 +76,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     if (!ctx.SkipDefaultAction)
     {
       string accessToken = CreateAccessToken((UserInfo)ctx.Roles["UserInfo"]);
-      ctx.Result = new AccessTokenDto { AccessToken = accessToken }.JsonSerialize();
+      ctx.Result = new AccessTokenDto { AccessToken = accessToken }.Serialize();
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);

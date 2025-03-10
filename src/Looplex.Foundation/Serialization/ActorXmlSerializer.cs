@@ -1,28 +1,36 @@
-using System.ComponentModel;
+using System;
+using System.IO;
 using System.Xml.Serialization;
 
 using Looplex.Foundation.Entities;
 
-namespace Looplex.Foundation.Serialization
+// ReSharper disable once CheckNamespace
+namespace Looplex.Foundation.Serialization.Xml;
+
+public static class ActorXmlSerializer
 {
-  public static class ActorXmlSerializer
+  public static string Serialize<T>(this T actor) where T : Actor?
   {
-    public static string Serialize(Actor actor)
+    if (actor == null)
     {
-      ArgumentNullException.ThrowIfNull(actor);
-      var serializer = new XmlSerializer(actor.GetType());
-      using var writer = new StringWriter();
-      serializer.Serialize(writer, actor);
-      return writer.ToString();
+      throw new ArgumentNullException(nameof(actor));
     }
 
-    public static T Deserialize<T>(string xml) where T : Actor
+    XmlSerializer serializer = new(actor.GetType());
+    using StringWriter writer = new();
+    serializer.Serialize(writer, actor);
+    return writer.ToString();
+  }
+
+  public static T Deserialize<T>(this string xml) where T : Actor
+  {
+    if (string.IsNullOrWhiteSpace(xml))
     {
-      if (string.IsNullOrWhiteSpace(xml))
-        throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
-      var serializer = new XmlSerializer(typeof(T));
-      using var reader = new StringReader(xml);
-      return (T)serializer.Deserialize(reader);
+      throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
     }
+
+    XmlSerializer serializer = new(typeof(T));
+    using StringReader reader = new(xml);
+    return (T)serializer.Deserialize(reader);
   }
 }

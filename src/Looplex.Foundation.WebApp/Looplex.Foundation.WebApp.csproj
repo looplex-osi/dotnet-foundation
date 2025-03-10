@@ -13,4 +13,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Looplex.Foundation\Looplex.Foundation.csproj"/>
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.13" />
+  </ItemGroup>
 </Project>

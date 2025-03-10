@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,10 +7,11 @@ using System.Threading.Tasks;
 using Looplex.Foundation.Entities;
 using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.Ports;
-using Looplex.Foundation.Serialization;
+using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,7 +27,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-  public ClientCredentialsAuthentications()
+  public ClientCredentialsAuthentications() : base(new List<IPlugin>())
   {
   }
 
@@ -33,9 +35,10 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
 
   [ActivatorUtilitiesConstructor]
   public ClientCredentialsAuthentications(
+    IList<IPlugin> plugins,
     IConfiguration configuration,
     IClientCredentials clientCredentials,
-    IJwtService jwtService)
+    IJwtService jwtService) : base(plugins)
   {
     _configuration = configuration;
     _clientCredentials = clientCredentials;
@@ -47,7 +50,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
 
-    ClientCredentialsGrantDto clientCredentialsDto = json.JsonDeserialize<ClientCredentialsGrantDto>();
+    ClientCredentialsGrantDto? clientCredentialsDto = json.Deserialize<ClientCredentialsGrantDto>();
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
     if (clientCredentialsDto == null)
@@ -70,7 +73,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     if (!ctx.SkipDefaultAction)
     {
       string accessToken = CreateAccessToken((ClientCredential)ctx.Roles["ClientCredential"]);
-      ctx.Result = new AccessTokenDto { AccessToken = accessToken }.JsonSerialize();
+      ctx.Result = new AccessTokenDto { AccessToken = accessToken }.Serialize();
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
@@ -145,7 +148,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
       throw new Exception("Invalid clientId or clientSecret.");
     }
 
-    ClientCredential? clientCredential = json.JsonDeserialize<ClientCredential>();
+    ClientCredential? clientCredential = json.Deserialize<ClientCredential>();
 
     if (clientCredential == default)
     {

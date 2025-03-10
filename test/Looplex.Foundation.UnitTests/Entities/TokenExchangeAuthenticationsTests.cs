@@ -3,6 +3,7 @@ using System.Text;
 
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
 
@@ -40,7 +41,7 @@ public class TokenExchangeAuthenticationsTests
       grant_type = "invalid", subject_token = "invalid", subject_token_type = "invalid"
     });
 
-    TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, _httpClient);
+    TokenExchangeAuthentications service = new(new List<IPlugin>(), _mockConfiguration, _mockJwtService, _httpClient);
 
     // Act & Assert
     Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
@@ -58,7 +59,7 @@ public class TokenExchangeAuthenticationsTests
       grant_type = "urn:ietf:params:oauth:grant-type:token-exchange", subject_token = "invalid", subject_token_type = "invalid"
     });
 
-    TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, _httpClient);
+    TokenExchangeAuthentications service = new(new List<IPlugin>(), _mockConfiguration, _mockJwtService, _httpClient);
 
     // Act & Assert
     Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
@@ -84,7 +85,7 @@ public class TokenExchangeAuthenticationsTests
       subject_token_type = "urn:ietf:params:oauth:token-type:access_token"
     });
 
-    TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, _httpClient);
+    TokenExchangeAuthentications service = new(new List<IPlugin>(), _mockConfiguration, _mockJwtService, _httpClient);
 
     // Act
     string result = await service.CreateAccessToken(clientCredentials, "", CancellationToken.None);
@@ -105,7 +106,7 @@ public class TokenExchangeAuthenticationsTests
       subject_token_type = "urn:ietf:params:oauth:token-type:access_token"
     });
 
-    TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, _httpClient);
+    TokenExchangeAuthentications service = new(new List<IPlugin>(), _mockConfiguration, _mockJwtService, _httpClient);
 
     // Act & Assert
     Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
@@ -129,7 +130,7 @@ public class TokenExchangeAuthenticationsTests
     ErrorHttpMessageHandlerMock handlerMock = new();
     HttpClient httpClient = new(handlerMock);
 
-    TokenExchangeAuthentications service = new(_mockConfiguration, _mockJwtService, httpClient);
+    TokenExchangeAuthentications service = new(new List<IPlugin>(), _mockConfiguration, _mockJwtService, httpClient);
 
     // Act & Assert
     HttpRequestException exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(

@@ -2,7 +2,7 @@ using System.Net;
 
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.SCIMv2.Entities;
-using Looplex.Foundation.Serialization;
+using Looplex.Foundation.Serialization.Json;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -49,9 +49,10 @@ public static class SCIMv2
         page = (int)Math.Ceiling((double)startIndex / pageSize);
 
       ListResponse<T> result = await svc.QueryAsync(page, pageSize, filter, sortBy, sortOrder, cancellationToken);
-      string json = result.JsonSerialize();
+      string json = result.Serialize();
       await context.Response.WriteAsJsonAsync(json, cancellationToken);
-    });
+    })
+      .RequireAuthorization();
 
     #endregion
 
@@ -65,12 +66,16 @@ public static class SCIMv2
       
       using StreamReader reader = new(context.Request.Body);
       string json = await reader.ReadToEndAsync(cancellationToken);
-      T resource = json.JsonDeserialize<T>();
+      T? resource = json.Deserialize<T>();
 
+      if (resource == null)
+        throw new Exception($"Could not deserialize {typeof(T).Name}");
+      
       Guid id = await svc.CreateAsync(resource, cancellationToken);
       context.Response.StatusCode = (int)HttpStatusCode.Created;
       context.Response.Headers.Location = $"{context.Request.Path.Value}/{id}";
-    });
+    })
+      .RequireAuthorization();
 
     #endregion
 
@@ -90,10 +95,11 @@ public static class SCIMv2
       }
       else
       {
-        string json = result.JsonSerialize();
+        string json = result.Serialize();
         await context.Response.WriteAsJsonAsync(json, cancellationToken);
       }
-    });
+    })
+      .RequireAuthorization();
 
     #endregion
 
@@ -125,7 +131,8 @@ public static class SCIMv2
           context.Response.StatusCode = (int)HttpStatusCode.NoContent;
         }
       }
-    });
+    })
+      .RequireAuthorization();
 
     #endregion
 
@@ -147,10 +154,19 @@ public static class SCIMv2
       {
         context.Response.StatusCode = (int)HttpStatusCode.NoContent;
       }
-    });
+    })
+      .RequireAuthorization();
 
     #endregion
 
     return app;
+  }
+  
+  public static IServiceCollection AddSCIMv2(this IServiceCollection services)
+  {
+    services.AddHttpContextAccessor();
+    services.AddSingleton<Users>();
+    services.AddSingleton<Groups>();
+    return services;
   }
 }

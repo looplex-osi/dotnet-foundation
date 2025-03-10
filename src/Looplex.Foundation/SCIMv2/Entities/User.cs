@@ -15,7 +15,7 @@ public class User : Resource
   public User() : base() { }
   #endregion
 
-  [ProtoMember(1)] public string UserName { get; set; }
+  [ProtoMember(1)] public string? UserName { get; set; }
 
   [ProtoMember(2)] public ScimName Name { get; set; }
 
