@@ -9,7 +9,7 @@ using Looplex.Foundation.Entities;
 using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
-using Looplex.Foundation.Serialization;
+using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
@@ -80,7 +80,7 @@ public class ClientCredentials : Service, IClientCredentials
         Resources = records.Select(r => r).ToList(), Page = page, PageSize = pageSize, TotalResults = Data.Count
       };
 
-      ctx.Result = result.JsonSerialize();
+      ctx.Result = result.Serialize();
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
@@ -120,7 +120,7 @@ public class ClientCredentials : Service, IClientCredentials
 
     if (!ctx.SkipDefaultAction)
     {
-      ctx.Result = ((ClientCredential)ctx.Roles["ClientCredential"]).JsonSerialize();
+      ctx.Result = ((ClientCredential)ctx.Roles["ClientCredential"]).Serialize();
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
@@ -136,7 +136,7 @@ public class ClientCredentials : Service, IClientCredentials
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_userContext!, GetType().Name, this.GetCallerName());
 
-    ClientCredential? clientCredential = json.JsonDeserialize<ClientCredential>();
+    ClientCredential? clientCredential = json.Deserialize<ClientCredential>();
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
@@ -171,7 +171,7 @@ public class ClientCredentials : Service, IClientCredentials
       ctx.Result = new ClientCredentialDto
       {
         ClientId = clientId, ClientSecret = Convert.ToBase64String(clientSecretBytes)
-      }.JsonSerialize();
+      }.Serialize();
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
@@ -258,7 +258,7 @@ public class ClientCredentials : Service, IClientCredentials
     {
       if (ctx.Roles.TryGetValue("ClientCredential", out dynamic? role))
       {
-        ctx.Result = ((ClientCredential)role).JsonSerialize();
+        ctx.Result = ((ClientCredential)role).Serialize();
       }
     }
 

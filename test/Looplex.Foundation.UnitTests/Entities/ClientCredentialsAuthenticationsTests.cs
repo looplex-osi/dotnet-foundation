@@ -2,6 +2,7 @@ using System.Text;
 
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
 
@@ -34,7 +35,7 @@ public class ClientCredentialsAuthenticationsTests
     // Arrange
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
-    ClientCredentialsAuthentications service = new(_mockConfiguration,
+    ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
       _mockClientCredentials, _mockJwtService);
 
     // Act & Assert
@@ -52,7 +53,7 @@ public class ClientCredentialsAuthenticationsTests
 
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "invalid" });
 
-    ClientCredentialsAuthentications service = new(_mockConfiguration,
+    ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
       _mockClientCredentials, _mockJwtService);
 
     // Act & Assert
@@ -88,7 +89,7 @@ public class ClientCredentialsAuthenticationsTests
     _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
       .Returns(JsonConvert.SerializeObject(clientCredential));
 
-    ClientCredentialsAuthentications service = new(_mockConfiguration,
+    ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
       _mockClientCredentials, _mockJwtService);
 
     // Act
@@ -113,7 +114,7 @@ public class ClientCredentialsAuthenticationsTests
     _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(string.Empty));
 
-    ClientCredentialsAuthentications service = new(_mockConfiguration,
+    ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
       _mockClientCredentials, _mockJwtService);
 
     // Act & Assert
@@ -144,7 +145,7 @@ public class ClientCredentialsAuthenticationsTests
     _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
       .Returns(JsonConvert.SerializeObject(clientCredential));
 
-    ClientCredentialsAuthentications service = new(_mockConfiguration,
+    ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
       _mockClientCredentials, _mockJwtService);
 
     // Act & Assert
@@ -175,7 +176,7 @@ public class ClientCredentialsAuthenticationsTests
     _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
       .Returns(JsonConvert.SerializeObject(clientCredential));
 
-    ClientCredentialsAuthentications service = new(_mockConfiguration,
+    ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
       _mockClientCredentials, _mockJwtService);
 
     // Act & Assert

@@ -1,7 +1,9 @@
 using System.ComponentModel;
 
 using Looplex.Foundation.SCIMv2.Entities;
-using Looplex.Foundation.Serialization;
+using Looplex.Foundation.Serialization.Json;
+using Looplex.Foundation.Serialization.Protobuf;
+using Looplex.Foundation.Serialization.Xml;
 
 namespace Looplex.Foundation.UnitTests.SCIMv2.Entities;
 
@@ -16,7 +18,7 @@ public class UserTests
               ""userName"": ""minimalUser""
             }";
 
-    User user = minimalJson.JsonDeserialize<User>();
+    User? user = ActorJsonSerializer.Deserialize<User>(minimalJson);
 
     Assert.IsNotNull(user, "Deserializing minimal user payload should not produce null.");
     Assert.AreEqual("minimalUser", user.UserName, "UserName must match minimal JSON payload.");
@@ -32,8 +34,8 @@ public class UserTests
 <User xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
   <UserName>minimalXmlUser</UserName>
 </User>";
-
-    User user = minimalXml.XmlDeserialize<User>();
+    
+    User user = ActorXmlSerializer.Deserialize<User>(minimalXml);
 
     Assert.IsNotNull(user, "Deserializing minimal user XML should not produce null.");
     Assert.AreEqual("minimalXmlUser", user.UserName, "UserName must match minimal XML payload.");
@@ -45,9 +47,10 @@ public class UserTests
   public void User_MinimalPayload_ShouldDeserializeProtobuf()
   {
     // Only userName is provided
-    byte[] minimalProtobuf = new User { UserName = "minimalUserProtobuf" }.ProtobufSerialize();
+    byte[] minimalProtobuf  = ActorProtobufSerializer
+      .Serialize<User>(new User { UserName = "minimalUserProtobuf" });
 
-    User user = minimalProtobuf.ProtobufDeserialize<User>();
+    User user = minimalProtobuf.Deserialize<User>();
 
     Assert.IsNotNull(user, "Deserializing minimal user XML should not produce null.");
     Assert.AreEqual("minimalUserProtobuf", user.UserName, "UserName must match minimal XML payload.");
@@ -95,7 +98,7 @@ public class UserTests
               }
             }";
 
-    User user = enterpriseJson.JsonDeserialize<User>();
+    User? user = ActorJsonSerializer.Deserialize<User>(enterpriseJson);
 
     Assert.IsNotNull(user, "Deserializing full enterprise user payload should not produce null.");
     Assert.AreEqual("2819c223-7f76-453a-919d-413861904646", user.Id, "Id must match the JSON payload.");
@@ -114,9 +117,9 @@ public class UserTests
     Assert.IsTrue(user.Meta.LastModified.HasValue, "LastModified date/time should be parsed into Meta.");
 
     // Round-trip
-    string reSerialized = user.JsonSerialize();
-    User reHydrated = reSerialized.JsonDeserialize<User>();
-    Assert.AreEqual(user.Id, reHydrated.Id, "Round-trip user ID must match.");
+    string reSerialized = ActorJsonSerializer.Serialize(user);
+    User? reHydrated = ActorJsonSerializer.Deserialize<User>(reSerialized);
+    Assert.AreEqual(user.Id, reHydrated!.Id, "Round-trip user ID must match.");
     Assert.AreEqual(user.Emails.Count, reHydrated.Emails.Count, "Round-trip emails count must match.");
   }
 
@@ -153,10 +156,10 @@ public class UserTests
   {
     User user = new() { Id = null, UserName = null, Active = false };
 
-    string json = user.JsonSerialize();
+    string json = ActorJsonSerializer.Serialize(user);
     Assert.IsNotNull(json, "Serialization should produce a valid JSON string even if some fields are null.");
 
-    User reHydrated = json.JsonDeserialize<User>();
+    User? reHydrated = ActorJsonSerializer.Deserialize<User>(json);
     Assert.IsNotNull(reHydrated, "We should be able to deserialize back from JSON with null fields.");
     Assert.IsNull(reHydrated.Id, "Id should remain null after round-trip.");
     Assert.IsNull(reHydrated.UserName, "UserName should remain null after round-trip.");

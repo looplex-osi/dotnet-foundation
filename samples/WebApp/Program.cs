@@ -1,6 +1,5 @@
 using Looplex.Foundation;
 using Looplex.Foundation.SCIMv2.Entities;
-using Looplex.Foundation.WebApp;
 using Looplex.Foundation.WebApp.Middlewares;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -49,9 +48,12 @@ public static class Program
     builder.Configuration.AddInMemoryCollection(inMemorySettings);
     builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
     builder.Services.AddLooplexFoundationServices();
-    builder.Services.AddWebAppServices();
-
+    builder.Services.AddOAuth2(builder.Configuration);
+    builder.Services.AddSCIMv2();
+    
     WebApplication app = builder.Build();
+
+    app.UseAuthentication();
 
     app.MapHealthChecks("/health", new HealthCheckOptions
     {
@@ -72,12 +74,13 @@ public static class Program
         });
         await context.Response.WriteAsync(result);
       }
-    });
-    
-    app.UseTokenRoute();
+    })
+      .AllowAnonymous();;
+
+    app.UseOAuth2();
     app.UseSCIMv2<User>("/Users");
     app.UseSCIMv2<Group>("/Groups");
-    
+
     app.Run();
   }
 

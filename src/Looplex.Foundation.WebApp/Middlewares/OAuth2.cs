@@ -1,15 +1,16 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
+﻿using System.Security.Claims;
+using System.Security.Cryptography;
 
-using Looplex.Foundation.OAuth2;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
+using Looplex.Foundation.WebApp.Adapters;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 
 using Newtonsoft.Json;
 
@@ -17,9 +18,33 @@ namespace Looplex.Foundation.WebApp.Middlewares;
 
 public static class OAuth2
 {
-  private const string Resource = "/token";
-
-  internal static readonly RequestDelegate TokenMiddleware = async context =>
+  public static WebApplication UseOAuth2(this WebApplication app, string prefix = "/token")
+  {
+    app.MapPost(
+      prefix,
+      TokenMiddleware);
+    return app;
+  }
+  
+  public static IServiceCollection AddOAuth2(
+    this IServiceCollection services,
+    IConfiguration configuration)
+  {
+    services.AddSingleton<IJwtService, JwtService>();
+    
+    services.AddAuthentication(options =>
+      {
+        options.DefaultAuthenticateScheme =
+          JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme =
+          JwtBearerDefaults.AuthenticationScheme;
+      })
+      .AddJwtBearer(options => JwtBearerMiddleware(options, configuration));
+    
+    return services;
+  }
+  
+  public static readonly RequestDelegate TokenMiddleware = async context =>
   {
     var factory = context.RequestServices.GetRequiredService<AuthenticationsFactory>();
     CancellationToken cancellationToken = context.RequestAborted;
@@ -39,14 +64,6 @@ public static class OAuth2
     await context.Response.WriteAsJsonAsync(result, cancellationToken);
   };
 
-  public static IEndpointRouteBuilder UseTokenRoute(this IEndpointRouteBuilder app)
-  {
-    app.MapPost(
-      Resource,
-      TokenMiddleware);
-    return app;
-  }
-
   private static GrantType ToGrantType(this string grantType)
   {
     return grantType switch
@@ -56,74 +73,51 @@ public static class OAuth2
       _ => throw new ArgumentException("Invalid value", nameof(grantType))
     };
   }
-  
-  public class Middleware(RequestDelegate next)
+
+  public static readonly Action<JwtBearerOptions, IConfiguration> JwtBearerMiddleware = (options, configuration) =>
   {
-    private readonly RequestDelegate _next = next ?? throw new ArgumentNullException(nameof(next));
-    private readonly HashSet<string> _publicEndpoints = new() { "/token", "/health" };
+    string issuer = configuration["Issuer"]!;
+    string audience = configuration["Audience"]!;
+    string publicKeyBase64 = configuration["PublicKey"]!;
+    string publicKey = StringUtils.Base64Decode(publicKeyBase64);
 
-    public async Task Invoke(HttpContext context, IConfiguration configuration, IJwtService jwtService)
+    RSA rsa = RSA.Create();
+    rsa.ImportFromPem(publicKey);
+
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-      string requestPath = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+      ValidateIssuer = true,
+      ValidIssuer = issuer,
+      ValidateAudience = true,
+      ValidAudience = audience,
+      ValidateIssuerSigningKey = true,
+      IssuerSigningKey =
+        new RsaSecurityKey(rsa)
+        {
+          CryptoProviderFactory = new CryptoProviderFactory { CacheSignatureProviders = false }
+        },
+      ClockSkew = TimeSpan.Zero
+    };
 
-      // Skip authentication for public endpoints
-      if (_publicEndpoints.Contains(requestPath))
+    options.Events = new JwtBearerEvents
+    {
+      OnTokenValidated = context =>
       {
-        await _next(context);
-        return;
+        var principal = context.Principal;
+        var httpContext = context.HttpContext;
+
+        string? tenant = httpContext.Request.Headers["X-looplex-tenant"];
+        if (string.IsNullOrWhiteSpace(tenant))
+        {
+          context.Fail("X-looplex-tenant header is missing");
+          return Task.CompletedTask;
+        }
+
+        var identity = principal!.Identity as ClaimsIdentity;
+        identity!.AddClaim(new Claim("tenant", tenant));
+
+        return Task.CompletedTask;
       }
-
-      string audience = configuration["Audience"] ??
-                        throw new InvalidOperationException("Audience configuration is missing");
-      string issuer = configuration["Issuer"] ??
-                      throw new InvalidOperationException("Issuer configuration is missing");
-
-      string accessToken = string.Empty;
-
-      string? authorization = context.Request.Headers["Authorization"];
-
-      if (authorization != null && authorization.StartsWith("Bearer ", StringComparison.Ordinal))
-      {
-        accessToken = authorization.Substring("Bearer ".Length).Trim();
-      }
-
-      string publicKey = StringUtils.Base64Decode(configuration["PublicKey"] ??
-                                                  throw new InvalidOperationException(
-                                                    "PublicKey configuration is missing"));
-      bool authenticated = jwtService.ValidateToken(publicKey, issuer, audience, accessToken);
-
-      if (!authenticated)
-      {
-        throw new Exception("AccessToken is invalid.");
-      }
-
-      JwtSecurityTokenHandler handler = new();
-      JwtSecurityToken? token = handler.ReadJwtToken(accessToken);
-
-      string? tenant = context.Request.Headers["X-looplex-tenant"];
-      if (string.IsNullOrWhiteSpace(tenant))
-      {
-        throw new InvalidOperationException(
-          "X-looplex-tenant header is missing");
-      }
-
-      List<Claim> claims = token.Claims.ToList();
-
-      if (claims.Any(c => c.Type == "name" || c.Type == "email"))
-      {
-        string? name = claims.FirstOrDefault(c => c.Type == "name")?.Value;
-        string? email = claims.FirstOrDefault(c => c.Type == "email")?.Value;
-
-        if (string.IsNullOrWhiteSpace(name) ||
-            string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(tenant))
-          throw new InvalidOperationException(
-            "User claims are missing");
-        
-        context.Items["UserContext"] = new UserContext { Name = name!, Email = email!, Tenant = tenant! };
-      }
-
-      await _next(context);
-    }
-  }
+    };
+  };
 }
