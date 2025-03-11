@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Security.Claims;
 
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
@@ -13,7 +14,7 @@ public class SCIMv2Tests
 {
   private Users _users = null!;
   private IRbacService _mockRbacService = null!;
-  private IUserContext _mockUserContext = null!;
+  private ClaimsPrincipal _mockUser = null!;
   private DbConnection _mockDbConnection = null!;
   private DbCommand _mockDbCommand = null!;
   private DbDataReader _mockDbDataReader = null!;
@@ -24,7 +25,7 @@ public class SCIMv2Tests
   public void Setup()
   {
     _mockRbacService = Substitute.For<IRbacService>();
-    _mockUserContext = Substitute.For<IUserContext>();
+    _mockUser = Substitute.For<ClaimsPrincipal>();
     _mockDbConnection = Substitute.For<DbConnection>();
     _mockDbCommand = Substitute.For<DbCommand>();
     _mockDbDataReader = Substitute.For<DbDataReader>();
@@ -37,7 +38,7 @@ public class SCIMv2Tests
     _mockDbCommand.ExecuteNonQueryAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(1));
 
     _cancellationToken = CancellationToken.None;
-    _users = new Users(_mockRbacService, _mockUserContext, _mockDbConnection);
+    _users = new Users(_mockRbacService, _mockUser, _mockDbConnection);
   }
 
   #region QueryAsync Tests

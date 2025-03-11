@@ -24,7 +24,7 @@ public class RbacService : IRbacService
 
   public virtual void ThrowIfUnauthorized(ClaimsPrincipal user, string resource, string action)
   {
-    string? email = user.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+    string? email = user.Claims.FirstOrDefault(c => c.Type == "email" || c.Type == ClaimTypes.Email)?.Value;
     string? tenant = user.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
 
     if (string.IsNullOrEmpty(tenant))
