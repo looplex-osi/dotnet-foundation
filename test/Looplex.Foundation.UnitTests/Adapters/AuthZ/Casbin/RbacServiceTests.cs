@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Claims;
 
 using Casbin;
 
@@ -16,7 +17,7 @@ public class RbacServiceTests
   private IEnforcer _enforcer = null!;
   private ILogger<RbacService> _logger = null!;
   private RbacService _rbacService = null!;
-  private IUserContext _userContext = null!;
+  private ClaimsPrincipal _user = null!;
 
   [TestInitialize]
   public void SetUp()
@@ -37,20 +38,23 @@ public class RbacServiceTests
     _rbacService = new RbacService(_enforcer, _logger);
 
     // Mock user context
-    _userContext = Substitute.For<IUserContext>();
+    _user = Substitute.For<ClaimsPrincipal>();
   }
 
   [TestMethod]
   public void ThrowIfUnauthorized_UserEmailIsEmpty_ExceptionIsThrown()
   {
     // Arrange
-    _userContext.Tenant.Returns("tenant");
-    _userContext.Email.Returns("");
+    _user.Claims.Returns(new[]
+    {
+      new Claim(ClaimTypes.Email, ""),
+      new Claim("tenant", "tenant")
+    });
 
     // Act & Assert
     ArgumentNullException ex =
       Assert.ThrowsException<ArgumentNullException>(() =>
-        _rbacService.ThrowIfUnauthorized(_userContext, "resource", "read"));
+        _rbacService.ThrowIfUnauthorized(_user, "resource", "read"));
     Assert.AreEqual("USER_EMAIL_REQUIRED_FOR_AUTHORIZATION (Parameter 'email')", ex.Message);
   }
 
@@ -58,13 +62,15 @@ public class RbacServiceTests
   public void ThrowIfUnauthorized_TenantIsNull_ExceptionIsThrown()
   {
     // Arrange
-    _userContext.Tenant.Returns((string?)null);
-    _userContext.Email.Returns("user@email.com");
+    _user.Claims.Returns(new[]
+    {
+      new Claim(ClaimTypes.Email, "user@email.com")
+    });
 
     // Act & Assert
     ArgumentNullException ex =
       Assert.ThrowsException<ArgumentNullException>(() =>
-        _rbacService.ThrowIfUnauthorized(_userContext, "resource", "read"));
+        _rbacService.ThrowIfUnauthorized(_user, "resource", "read"));
     Assert.AreEqual("TENANT_REQUIRED_FOR_AUTHORIZATION (Parameter 'tenant')", ex.Message);
   }
 
@@ -72,13 +78,16 @@ public class RbacServiceTests
   public void ThrowIfUnauthorized_TenantIsEmpty_ExceptionIsThrown()
   {
     // Arrange
-    _userContext.Tenant.Returns("");
-    _userContext.Email.Returns("user@email.com");
+    _user.Claims.Returns(new[]
+    {
+      new Claim(ClaimTypes.Email, "user@email.com"),
+      new Claim("tenant", "")
+    });
 
     // Act & Assert
     ArgumentNullException ex =
       Assert.ThrowsException<ArgumentNullException>(() =>
-        _rbacService.ThrowIfUnauthorized(_userContext, "resource", "read"));
+        _rbacService.ThrowIfUnauthorized(_user, "resource", "read"));
     Assert.AreEqual("TENANT_REQUIRED_FOR_AUTHORIZATION (Parameter 'tenant')", ex.Message);
   }
 
@@ -89,11 +98,14 @@ public class RbacServiceTests
   public void ThrowIfUnauthorized_UserHasPermission_NoExceptionThrown(string action)
   {
     // Arrange
-    _userContext.Tenant.Returns("looplex");
-    _userContext.Email.Returns("bob.rivest@email.com");
+    _user.Claims.Returns(new[]
+    {
+      new Claim(ClaimTypes.Email, "bob.rivest@email.com"),
+      new Claim("tenant", "looplex")
+    });
 
     // Act & Assert (No exception should be thrown)
-    _rbacService.ThrowIfUnauthorized(_userContext, "resource", action);
+    _rbacService.ThrowIfUnauthorized(_user, "resource", action);
   }
 
   [TestMethod]
@@ -101,13 +113,16 @@ public class RbacServiceTests
   public void ThrowIfUnauthorized_UserDoesNotHavePermission_ExceptionIsThrown(string action)
   {
     // Arrange
-    _userContext.Tenant.Returns("looplex");
-    _userContext.Email.Returns("bob.rivest@email.com");
-
+    _user.Claims.Returns(new[]
+    {
+      new Claim(ClaimTypes.Email, "bob.rivest@email.com"),
+      new Claim("tenant", "looplex")
+    });
+    
     // Act & Assert
     UnauthorizedAccessException ex =
       Assert.ThrowsException<UnauthorizedAccessException>(() =>
-        _rbacService.ThrowIfUnauthorized(_userContext, "resource", action));
+        _rbacService.ThrowIfUnauthorized(_user, "resource", action));
     Assert.AreEqual("UNAUTHORIZED_ACCESS", ex.Message);
   }
 }

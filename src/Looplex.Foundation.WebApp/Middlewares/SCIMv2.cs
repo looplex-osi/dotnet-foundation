@@ -28,7 +28,7 @@ public static class SCIMv2
 
     #region Query
 
-    group.MapGet("/", async context =>
+    var map = group.MapGet("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
       var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
@@ -60,14 +60,15 @@ public static class SCIMv2
       string json = result.Serialize();
       context.Response.ContentType = "application/json";
       await context.Response.WriteAsync(json, cancellationToken);
-    })
-      .RequireAuthorization();
+    });
+    if (authorize)
+      map.RequireAuthorization();
 
     #endregion
 
     #region Create
 
-    group.MapPost("/", async context =>
+    map = group.MapPost("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
       var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
@@ -84,12 +85,14 @@ public static class SCIMv2
       context.Response.StatusCode = (int)HttpStatusCode.Created;
       context.Response.Headers.Location = $"{context.Request.Path.Value}/{id}";
     });
-
+    if (authorize)
+      map.RequireAuthorization();
+    
     #endregion
 
     #region Retrieve
 
-    group.MapGet("/{id}", async (HttpContext context, Guid id) =>
+    map = group.MapGet("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
       var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
@@ -108,12 +111,14 @@ public static class SCIMv2
         await context.Response.WriteAsync(json, cancellationToken);
       }
     });
+    if (authorize)
+      map.RequireAuthorization();
 
     #endregion
 
     #region Update
 
-    group.MapPatch("/{id}", async (HttpContext context, Guid id) =>
+    map = group.MapPatch("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
       var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
@@ -140,12 +145,14 @@ public static class SCIMv2
         }
       }
     });
+    if (authorize)
+      map.RequireAuthorization();
 
     #endregion
 
     #region Delete
 
-    group.MapDelete("/{id}", async (HttpContext context, Guid id) =>
+    map = group.MapDelete("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
       var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
@@ -162,6 +169,8 @@ public static class SCIMv2
         context.Response.StatusCode = (int)HttpStatusCode.NoContent;
       }
     });
+    if (authorize)
+      map.RequireAuthorization();
 
     #endregion
 

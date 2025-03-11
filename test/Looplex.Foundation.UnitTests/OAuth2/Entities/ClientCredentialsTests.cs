@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
@@ -19,7 +21,7 @@ public class ClientCredentialsTests
   private IConfiguration _mockConfiguration = null!;
   private IJsonSchemaProvider _mockJsonSchemaProvider = null!;
   private IRbacService _mockRbacService = null!;
-  private IUserContext _mockUserContext = null!;
+  private ClaimsPrincipal _mockUser = null!;
 
   [TestInitialize]
   public void SetUp()
@@ -30,7 +32,7 @@ public class ClientCredentialsTests
     _mockConfiguration["ClientSecretByteLength"].Returns("72");
     _mockConfiguration["ClientSecretDigestCost"].Returns("4");
     _mockJsonSchemaProvider = Substitute.For<IJsonSchemaProvider>();
-    _mockUserContext = Substitute.For<IUserContext>();
+    _mockUser = Substitute.For<ClaimsPrincipal>();
     _cancellationToken = new CancellationToken();
   }
 
@@ -39,7 +41,7 @@ public class ClientCredentialsTests
   {
     // Arrange
     ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUserContext);
+      _mockUser);
     ClientCredentials.Data!.Add(new ClientCredential { Id = "1" });
 
     // Act
@@ -56,7 +58,7 @@ public class ClientCredentialsTests
   {
     // Arrange
     ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUserContext);
+      _mockUser);
     ClientCredential clientCredential = new() { Id = "123" };
     ClientCredentials.Data!.Add(clientCredential);
 
@@ -74,7 +76,7 @@ public class ClientCredentialsTests
   {
     // Arrange
     ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUserContext);
+      _mockUser);
     string inputJson = JsonConvert.SerializeObject(new ClientCredential { ClientName = "client-1" });
 
     // Act
@@ -96,7 +98,7 @@ public class ClientCredentialsTests
   {
     // Arrange
     ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUserContext);
+      _mockUser);
     ClientCredential clientCredential = new() { Id = "789" };
     ClientCredentials.Data!.Add(clientCredential);
 
@@ -113,7 +115,7 @@ public class ClientCredentialsTests
   {
     // Arrange
     ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUserContext);
+      _mockUser);
 
     // Act & Assert
     Exception exception =
@@ -126,7 +128,7 @@ public class ClientCredentialsTests
   {
     // Arrange
     ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUserContext);
+      _mockUser);
     ClientCredential clientCredential = new() { ClientName = "client-1" };
     string json = await service.CreateAsync(clientCredential.Serialize(), CancellationToken.None);
     ClientCredentialDto? clientCredentialDto = json.Deserialize<ClientCredentialDto>();

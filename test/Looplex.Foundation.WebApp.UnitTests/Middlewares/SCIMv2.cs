@@ -45,7 +45,7 @@ public class SCIMv2Tests
           app.UseRouting();
           app.UseEndpoints(endpoints =>
           {
-            endpoints.UseSCIMv2<User>("/users");
+            endpoints.UseSCIMv2<User>("/users", authorize: false);
           });
         });
       })
