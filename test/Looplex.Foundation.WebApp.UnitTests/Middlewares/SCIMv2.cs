@@ -71,7 +71,7 @@ public class SCIMv2Tests
     // Arrange
     User user = new() { UserName = "TestUser" };
     _users
-      .CreateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
+      .Create(Arg.Any<User>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(Guid.NewGuid()));
 
     StringContent content = new(JsonSerializer.Serialize(user), Encoding.UTF8, "application/json");
@@ -92,7 +92,7 @@ public class SCIMv2Tests
   public async Task QueryUsers_ValidRequest_ReturnsOk()
   {
     // Arrange
-    _users.QueryAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(),Arg.Any<string?>(),Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    _users.Query(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(),Arg.Any<string?>(),Arg.Any<string?>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(new ListResponse<User>()));
 
     // Act
@@ -110,7 +110,7 @@ public class SCIMv2Tests
   public async Task RetrieveUser_NotFound_ReturnsNotFound()
   {
     // Arrange
-    _users.RetrieveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    _users.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult<User?>(null));
 
     // Act
@@ -125,7 +125,7 @@ public class SCIMv2Tests
   {
     // Arrange
     User user = new() { UserName = "ExistingUser" };
-    _users.RetrieveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+    _users.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
       .Returns(Task.FromResult(user));
 
     // Act
@@ -143,7 +143,7 @@ public class SCIMv2Tests
   public async Task UpdateUser_NotFound_ReturnsNotFound()
   {
     // Arrange
-    _users.RetrieveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    _users.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult<User?>(null));
 
     // Act
@@ -158,9 +158,9 @@ public class SCIMv2Tests
   {
     // Arrange
     User user = new() { UserName = "ExistingUser" };
-    _users.RetrieveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+    _users.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
       .Returns(Task.FromResult(user));
-    _users.UpdateAsync(Arg.Any<Guid>(), Arg.Any<User>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    _users.Update(Arg.Any<Guid>(), Arg.Any<User>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(true));
 
     // Act
@@ -175,9 +175,9 @@ public class SCIMv2Tests
   {
     // Arrange
     User user = new() { UserName = "ExistingUser" };
-    _users.RetrieveAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+    _users.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
       .Returns(Task.FromResult(user));
-    _users.UpdateAsync(Arg.Any<Guid>(), Arg.Any<User>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    _users.Update(Arg.Any<Guid>(), Arg.Any<User>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(false));
 
     // Act
@@ -195,7 +195,7 @@ public class SCIMv2Tests
   public async Task DeleteUser_NotFound_ReturnsNotFound()
   {
     // Arrange
-    _users.DeleteAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    _users.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(false));
 
     // Act
@@ -209,7 +209,7 @@ public class SCIMv2Tests
   public async Task DeleteUser_Found_ReturnsNoContent()
   {
     // Arrange
-    _users.DeleteAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    _users.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(true));
 
     // Act

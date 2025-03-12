@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.WebApp.Adapters;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -22,8 +23,6 @@ public static class OAuth2
     this IServiceCollection services,
     IConfiguration configuration)
   {
-    services.AddSingleton<IJwtService, JwtService>();
-    
     services.AddAuthentication(options =>
       {
         options.DefaultAuthenticateScheme =
@@ -33,6 +32,23 @@ public static class OAuth2
       })
       .AddJwtBearer(options => JwtBearerMiddleware(options, configuration));
     services.AddAuthorization();
+    
+    services.AddSingleton<IJwtService, JwtService>();
+    services.AddSingleton<AuthenticationsFactory>();
+    services.AddSingleton<ClientCredentialsAuthentications>(s =>
+    {
+      var plugins = new List<IPlugin>();
+      var clientCredentials = s.GetRequiredService<IClientCredentials>();
+      var jwtService = s.GetRequiredService<IJwtService>();
+      return new ClientCredentialsAuthentications(plugins, configuration, clientCredentials, jwtService);
+    });
+    services.AddSingleton<TokenExchangeAuthentications>(s =>
+    {
+      var plugins = new List<IPlugin>();
+      var jwtService = s.GetRequiredService<IJwtService>();
+      var httpClient = s.GetRequiredService<HttpClient>();
+      return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient);
+    });
     
     return services;
   }
@@ -123,21 +139,6 @@ public static class OAuth2
         var identity = principal!.Identity as ClaimsIdentity;
         identity!.AddClaim(new Claim("tenant", tenant));
 
-        return Task.CompletedTask;
-      },
-      OnAuthenticationFailed = context =>
-      {
-        return Task.CompletedTask;
-      },
-
-      // Called when the user is not authenticated and a challenge is about to be sent 
-      OnChallenge = context =>
-      {
-        // The error is set by the JWT validation
-        Console.WriteLine("JWT Challenge triggered");
-        Console.WriteLine($"Error: {context.Error}");
-        Console.WriteLine($"Description: {context.ErrorDescription}");
-                
         return Task.CompletedTask;
       }
     };

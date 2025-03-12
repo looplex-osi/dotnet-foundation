@@ -1,8 +1,11 @@
+using System.Data.Common;
 using System.Net;
 
 using Looplex.Foundation.OAuth2.Entities;
+using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.Serialization.Json;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -16,8 +19,22 @@ public static class SCIMv2
   public static IServiceCollection AddSCIMv2(this IServiceCollection services)
   {
     services.AddHttpContextAccessor();
-    services.AddSingleton<Users>();
-    services.AddSingleton<Groups>();
+    services.AddSingleton<Users>(s =>
+    {
+      var plugins = new List<IPlugin>();
+      var rbacService = s.GetRequiredService<IRbacService>();
+      var httpContextAccessor = s.GetRequiredService<IHttpContextAccessor>();
+      var db = s.GetRequiredService<DbConnection>();
+      return new Users(plugins, rbacService, httpContextAccessor, db);
+    });
+    services.AddSingleton<Groups>(s =>
+    {
+      var plugins = new List<IPlugin>();
+      var rbacService = s.GetRequiredService<IRbacService>();
+      var httpContextAccessor = s.GetRequiredService<IHttpContextAccessor>();
+      var db = s.GetRequiredService<DbConnection>();
+      return new Groups(plugins, rbacService, httpContextAccessor, db);
+    });
     return services;
   }
   
@@ -56,7 +73,7 @@ public static class SCIMv2
           int.TryParse(startIndexStr, out var startIndex))
         page = (int)Math.Ceiling((double)startIndex / pageSize);
 
-      ListResponse<T> result = await svc.QueryAsync(page, pageSize, filter, sortBy, sortOrder, cancellationToken);
+      ListResponse<T> result = await svc.Query(page, pageSize, filter, sortBy, sortOrder, cancellationToken);
       string json = result.Serialize();
       context.Response.ContentType = "application/json";
       await context.Response.WriteAsync(json, cancellationToken);
@@ -81,7 +98,7 @@ public static class SCIMv2
       if (resource == null)
         throw new Exception($"Could not deserialize {typeof(T).Name}");
       
-      Guid id = await svc.CreateAsync(resource, cancellationToken);
+      Guid id = await svc.Create(resource, cancellationToken);
       context.Response.StatusCode = (int)HttpStatusCode.Created;
       context.Response.Headers.Location = $"{context.Request.Path.Value}/{id}";
     });
@@ -98,7 +115,7 @@ public static class SCIMv2
       var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
       var svc = factory.GetService<T>();
       
-      T? result = await svc.RetrieveAsync(id, cancellationToken);
+      T? result = await svc.Retrieve(id, cancellationToken);
 
       if (result == null)
       {
@@ -124,7 +141,7 @@ public static class SCIMv2
       var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
       var svc = factory.GetService<T>();
       
-      T? resource = await svc.RetrieveAsync(id, cancellationToken);
+      T? resource = await svc.Retrieve(id, cancellationToken);
       if (resource == null)
       {
         context.Response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -133,7 +150,7 @@ public static class SCIMv2
       {
         string? fields = null; // TODO
 
-        bool updated = await svc.UpdateAsync(id, resource, fields, cancellationToken);
+        bool updated = await svc.Update(id, resource, fields, cancellationToken);
 
         if (!updated)
         {
@@ -158,7 +175,7 @@ public static class SCIMv2
       var factory = context.RequestServices.GetRequiredService<SCIMv2Factory>();
       var svc = factory.GetService<T>();
       
-      bool deleted = await svc.DeleteAsync(id, cancellationToken);
+      bool deleted = await svc.Delete(id, cancellationToken);
 
       if (!deleted)
       {

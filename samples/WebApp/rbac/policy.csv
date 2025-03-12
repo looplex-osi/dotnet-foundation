@@ -1,0 +1,11 @@
+p, dev, looplex.com.br, Users, Query
+p, dev, looplex.com.br, Users, Retrieve
+p, dev, looplex.com.br, Users, Create
+p, dev, looplex.com.br, Users, Update
+p, dev, looplex.com.br, Users, Delete
+
+g, fabio.nagao@looplex.com.br, dev, looplex.com.br
+g, fabio.santos@looplex.com.br, dev, looplex.com.br
+g, fernando.cruz@looplex.com.br, dev, looplex.com.br
+g, rafael.imakawa@looplex.com.br, dev, looplex.com.br
+g, guilherme.camara@looplex.com.br, dev, looplex.com.br

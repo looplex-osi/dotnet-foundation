@@ -4,6 +4,9 @@ using System.Security.Claims;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.OpenForExtension.Abstractions.Contexts;
+using Looplex.OpenForExtension.Abstractions.Plugins;
+
+using Microsoft.AspNetCore.Http;
 
 using NSubstitute;
 
@@ -26,6 +29,9 @@ public class SCIMv2Tests
   {
     _mockRbacService = Substitute.For<IRbacService>();
     _mockUser = Substitute.For<ClaimsPrincipal>();
+    var mockHttpAccessor = Substitute.For<IHttpContextAccessor>();
+    var httpContext = new DefaultHttpContext() { User = _mockUser };
+    mockHttpAccessor.HttpContext.Returns(httpContext);
     _mockDbConnection = Substitute.For<DbConnection>();
     _mockDbCommand = Substitute.For<DbCommand>();
     _mockDbDataReader = Substitute.For<DbDataReader>();
@@ -38,7 +44,7 @@ public class SCIMv2Tests
     _mockDbCommand.ExecuteNonQueryAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(1));
 
     _cancellationToken = CancellationToken.None;
-    _users = new Users(_mockRbacService, _mockUser, _mockDbConnection);
+    _users = new Users(new List<IPlugin>(), _mockRbacService, mockHttpAccessor, _mockDbConnection);
   }
 
   #region QueryAsync Tests
@@ -51,7 +57,7 @@ public class SCIMv2Tests
     _mockDbDataReader["UserName"].Returns("TestUser");
 
     // Act
-    var result = await _users.QueryAsync(1, 10, Arg.Any<string?>(), Arg.Any<string?>(), "name=test",
+    var result = await _users.Query(1, 10, Arg.Any<string?>(), Arg.Any<string?>(), "name=test",
       _cancellationToken);
 
     // Assert
@@ -64,7 +70,7 @@ public class SCIMv2Tests
   public async Task QueryAsync_NullFilter_ThrowsArgumentNullException()
   {
     await Assert.ThrowsExceptionAsync<ArgumentNullException>(
-      () => _users.QueryAsync(1, 10, null, Arg.Any<string?>(), Arg.Any<string?>(), _cancellationToken));
+      () => _users.Query(1, 10, null, Arg.Any<string?>(), Arg.Any<string?>(), _cancellationToken));
   }
 
   #endregion
@@ -78,7 +84,7 @@ public class SCIMv2Tests
     var user = new User { UserName = "TestUser" };
 
     // Act
-    var result = await _users.CreateAsync(user, _cancellationToken);
+    var result = await _users.Create(user, _cancellationToken);
 
     // Assert
     Assert.IsInstanceOfType(result, typeof(Guid));
@@ -91,7 +97,7 @@ public class SCIMv2Tests
     var user = new User(); // UserName is null
 
     // Act & Assert
-    await Assert.ThrowsExceptionAsync<Exception>(() => _users.CreateAsync(user, _cancellationToken));
+    await Assert.ThrowsExceptionAsync<Exception>(() => _users.Create(user, _cancellationToken));
   }
 
   #endregion
@@ -107,7 +113,7 @@ public class SCIMv2Tests
     _mockDbDataReader["UserName"].Returns("TestUser");
 
     // Act
-    var result = await _users.RetrieveAsync(userId, _cancellationToken);
+    var result = await _users.Retrieve(userId, _cancellationToken);
 
     // Assert
     Assert.IsNotNull(result);
@@ -122,7 +128,7 @@ public class SCIMv2Tests
     _mockDbDataReader.ReadAsync().Returns(Task.FromResult(false));
 
     // Act
-    var result = await _users.RetrieveAsync(userId, _cancellationToken);
+    var result = await _users.Retrieve(userId, _cancellationToken);
 
     // Assert
     Assert.IsNull(result);
@@ -140,7 +146,7 @@ public class SCIMv2Tests
     var user = new User { UserName = "UpdatedUser" };
 
     // Act
-    var result = await _users.UpdateAsync(userId, user, null, _cancellationToken);
+    var result = await _users.Update(userId, user, null, _cancellationToken);
 
     // Assert
     Assert.IsTrue(result);
@@ -155,7 +161,7 @@ public class SCIMv2Tests
     _mockDbCommand.ExecuteNonQueryAsync(_cancellationToken).Returns(Task.FromResult(0)); // Simulate no update
 
     // Act
-    var result = await _users.UpdateAsync(userId, user, null, _cancellationToken);
+    var result = await _users.Update(userId, user, null, _cancellationToken);
 
     // Assert
     Assert.IsFalse(result);
@@ -172,7 +178,7 @@ public class SCIMv2Tests
     Guid userId = Guid.NewGuid();
 
     // Act
-    var result = await _users.DeleteAsync(userId, _cancellationToken);
+    var result = await _users.Delete(userId, _cancellationToken);
 
     // Assert
     Assert.IsTrue(result);
@@ -186,7 +192,7 @@ public class SCIMv2Tests
     _mockDbCommand.ExecuteNonQueryAsync(_cancellationToken).Returns(Task.FromResult(0)); // Simulate no deletion
 
     // Act
-    var result = await _users.DeleteAsync(userId, _cancellationToken);
+    var result = await _users.Delete(userId, _cancellationToken);
 
     // Assert
     Assert.IsFalse(result);
