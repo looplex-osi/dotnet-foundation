@@ -10,6 +10,8 @@ using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.Samples.Entities;
 
+using Microsoft.AspNetCore.Http;
+
 namespace Looplex.Samples;
 
 public class Notejam : Service
@@ -27,11 +29,11 @@ public class Notejam : Service
 
   #endregion
 
-  public Notejam(IList<IPlugin> plugins, IRbacService rbacService, ClaimsPrincipal user, DbConnection db) :
+  public Notejam(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor, DbConnection db) :
     base(plugins)
   {
     _rbacService = rbacService;
-    _user = user;
+    _user = httpContextAccessor.HttpContext.User;
     _db = db;
   }
 

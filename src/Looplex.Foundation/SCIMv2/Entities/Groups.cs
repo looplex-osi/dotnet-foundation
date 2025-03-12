@@ -10,6 +10,9 @@ using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
+using Looplex.OpenForExtension.Abstractions.Plugins;
+
+using Microsoft.AspNetCore.Http;
 
 namespace Looplex.Foundation.SCIMv2.Entities;
 
@@ -28,16 +31,17 @@ public class Groups : SCIMv2<Group>
 
   #endregion
 
-  public Groups(IRbacService rbacService, ClaimsPrincipal user, DbConnection db)
+  public Groups(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
+    DbConnection db) : base(plugins)
   {
     _db = db;
     _rbacService = rbacService;
-    _user = user;
+    _user = httpContextAccessor.HttpContext.User;
   }
 
   #region Query
 
-  public override async Task<ListResponse<Group>> QueryAsync(int page, int pageSize,
+  public override async Task<ListResponse<Group>> Query(int page, int pageSize,
     string? filter, string? sortBy, string? sortOrder,
     CancellationToken cancellationToken)
   {
@@ -51,6 +55,7 @@ public class Groups : SCIMv2<Group>
     {
       throw new ArgumentNullException(nameof(filter));
     }
+
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
     // Determine stored proc name.
@@ -113,7 +118,7 @@ public class Groups : SCIMv2<Group>
 
   #region Create
 
-  public override async Task<Guid> CreateAsync(Group resource,
+  public override async Task<Guid> Create(Group resource,
     CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
@@ -163,7 +168,7 @@ public class Groups : SCIMv2<Group>
 
   #region Retrieve
 
-  public override async Task<Group?> RetrieveAsync(Guid id, CancellationToken cancellationToken)
+  public override async Task<Group?> Retrieve(Guid id, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -209,12 +214,12 @@ public class Groups : SCIMv2<Group>
 
   #region Update
 
-  public override async Task<bool> UpdateAsync(Guid id, Group resource, string? fields, CancellationToken cancellationToken)
+  public override async Task<bool> Update(Guid id, Group resource, string? fields, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-    
+
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
@@ -258,7 +263,7 @@ public class Groups : SCIMv2<Group>
 
   #region Delete
 
-  public override async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+  public override async Task<bool> Delete(Guid id, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -289,10 +294,10 @@ public class Groups : SCIMv2<Group>
 
       ctx.Result = rows > 0;
     }
-    
+
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-    
+
     return (bool)ctx.Result;
   }
 

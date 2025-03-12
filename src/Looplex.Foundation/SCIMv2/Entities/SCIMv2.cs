@@ -1,10 +1,13 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 namespace Looplex.Foundation.SCIMv2.Entities;
 
@@ -14,23 +17,27 @@ public abstract class SCIMv2<T> : Service
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-  public SCIMv2() : base()
+  public SCIMv2() : base(new List<IPlugin>())
   {
   }
 
   #endregion
   
-  public abstract Task<ListResponse<T>> QueryAsync(int page, int pageSize,
+  public SCIMv2(IList<IPlugin> plugins) : base(plugins)
+  {
+  }
+  
+  public abstract Task<ListResponse<T>> Query(int page, int pageSize,
     string? filter, string? sortBy, string? sortOrder,
     CancellationToken cancellationToken);
 
-  public abstract Task<Guid> CreateAsync(T resource, CancellationToken cancellationToken);
+  public abstract Task<Guid> Create(T resource, CancellationToken cancellationToken);
 
-  public abstract Task<T?> RetrieveAsync(Guid id, CancellationToken cancellationToken);
+  public abstract Task<T?> Retrieve(Guid id, CancellationToken cancellationToken);
 
-  public abstract Task<bool> UpdateAsync(Guid id, T resource, string? fields, CancellationToken cancellationToken);
+  public abstract Task<bool> Update(Guid id, T resource, string? fields, CancellationToken cancellationToken);
 
-  public abstract Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken);
+  public abstract Task<bool> Delete(Guid id, CancellationToken cancellationToken);
   
   protected virtual IDbDataParameter CreateParameter(IDbCommand command, string name, object value, DbType dbType)
   {

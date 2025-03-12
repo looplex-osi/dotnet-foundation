@@ -1,8 +1,15 @@
+using System.Data.Common;
+using System.Reflection;
+
+using Casbin;
+
 using Looplex.Foundation;
+using Looplex.Foundation.Adapters.AuthZ.Casbin;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.WebApp.Middlewares;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Data.SqlClient;
 
 using Newtonsoft.Json;
 
@@ -21,7 +28,8 @@ public static class Program
       .AddPolicyHandler(GetRetryPolicy());
 
     builder.Services.AddTransient(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Default"));
-
+    builder.Services.AddTransient<DbConnection>(sp => new SqlConnection(""));
+    
     builder.Services.AddHealthChecks()
       .AddCheck<HealthCheck>("Default");
 
@@ -50,6 +58,7 @@ public static class Program
     builder.Services.AddLooplexFoundationServices();
     builder.Services.AddOAuth2(builder.Configuration);
     builder.Services.AddSCIMv2();
+    builder.Services.AddAuthZ(InitRbacEnforcer());
     
     WebApplication app = builder.Build();
 
@@ -89,5 +98,15 @@ public static class Program
       .WaitAndRetryAsync(3,
         retryAttempt =>
           TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))); // Retry 3 times with exponential backoff
+  }
+  
+  private static IEnforcer InitRbacEnforcer()
+  {
+    string dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
+                 ?? throw new InvalidOperationException("Could not determine directory");
+    string modelPath = Path.Combine(dir, "rbac", "model.ini");
+    string policyPath = Path.Combine(dir, "rbac", "policy.csv");
+
+    return new Enforcer(modelPath, policyPath);
   }
 }
