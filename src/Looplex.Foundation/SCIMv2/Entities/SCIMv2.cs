@@ -1,13 +1,11 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Data;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
-using Looplex.OpenForExtension.Abstractions.Plugins;
+using Looplex.Foundation.Ports;
 
 namespace Looplex.Foundation.SCIMv2.Entities;
 
@@ -17,17 +15,17 @@ public abstract class SCIMv2<T> : Service
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-  public SCIMv2() : base(new List<IPlugin>())
+  public SCIMv2() : base()
   {
   }
 
   #endregion
   
-  public SCIMv2(IList<IPlugin> plugins) : base(plugins)
+  public SCIMv2(IPluginsFactory pluginsFactory) : base(pluginsFactory)
   {
   }
   
-  public abstract Task<ListResponse<T>> Query(int page, int pageSize,
+  public abstract Task<ListResponse<T>> Query(int startIndex, int count,
     string? filter, string? sortBy, string? sortOrder,
     CancellationToken cancellationToken);
 
@@ -86,5 +84,11 @@ public abstract class SCIMv2<T> : Service
     }
 
     return default;
+  }
+
+  protected static int Page(int startIndex, int count)
+  {
+    var page = (int)Math.Ceiling((double)startIndex / count);
+    return page;
   }
 }

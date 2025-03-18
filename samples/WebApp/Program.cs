@@ -3,10 +3,10 @@ using System.Reflection;
 
 using Casbin;
 
-using Looplex.Foundation;
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
-using Looplex.Foundation.SCIMv2.Entities;
+using Looplex.Foundation.Ports;
 using Looplex.Foundation.WebApp.Middlewares;
+using Looplex.Samples.WebApp.Adapters;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Data.SqlClient;
@@ -55,7 +55,7 @@ public static class Program
     };
     builder.Configuration.AddInMemoryCollection(inMemorySettings);
     builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
-    builder.Services.AddLooplexFoundationServices();
+    builder.Services.AddSingleton<IPluginsFactory, PluginsFactory>();
     builder.Services.AddOAuth2(builder.Configuration);
     builder.Services.AddSCIMv2();
     builder.Services.AddAuthZ(InitRbacEnforcer());
@@ -66,7 +66,7 @@ public static class Program
     {
       ResponseWriter = async (context, report) =>
       {
-        context.Response.ContentType = "application/json";
+        context.Response.ContentType = "application/json; charset=utf-8";
         string result = JsonConvert.SerializeObject(new
         {
           status = report.Status.ToString(),
@@ -85,8 +85,7 @@ public static class Program
       .AllowAnonymous();
 
     app.UseOAuth2();
-    app.UseSCIMv2<User>("/Users");
-    app.UseSCIMv2<Group>("/Groups");
+    app.UseSCIMv2();
 
     app.Run();
   }

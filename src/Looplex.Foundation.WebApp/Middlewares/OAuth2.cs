@@ -4,7 +4,6 @@ using System.Security.Cryptography;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.WebApp.Adapters;
-using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -35,20 +34,8 @@ public static class OAuth2
     
     services.AddSingleton<IJwtService, JwtService>();
     services.AddSingleton<AuthenticationsFactory>();
-    services.AddSingleton<ClientCredentialsAuthentications>(s =>
-    {
-      var plugins = new List<IPlugin>();
-      var clientCredentials = s.GetRequiredService<IClientCredentials>();
-      var jwtService = s.GetRequiredService<IJwtService>();
-      return new ClientCredentialsAuthentications(plugins, configuration, clientCredentials, jwtService);
-    });
-    services.AddSingleton<TokenExchangeAuthentications>(s =>
-    {
-      var plugins = new List<IPlugin>();
-      var jwtService = s.GetRequiredService<IJwtService>();
-      var httpClient = s.GetRequiredService<HttpClient>();
-      return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient);
-    });
+    services.AddSingleton<ClientCredentialsAuthentications>();
+    services.AddSingleton<TokenExchangeAuthentications>();
     
     return services;
   }
@@ -82,7 +69,7 @@ public static class OAuth2
 
     string json = await service.CreateAccessToken(credentials, authorization, cancellationToken);
 
-    context.Response.ContentType = "application/json";
+    context.Response.ContentType = "application/json; charset=utf-8";
     await context.Response.WriteAsync(json, cancellationToken);
   };
 
