@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +10,6 @@ using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
-using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,7 +25,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-  public ClientCredentialsAuthentications() : base(new List<IPlugin>())
+  public ClientCredentialsAuthentications() : base()
   {
   }
 
@@ -35,10 +33,10 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
 
   [ActivatorUtilitiesConstructor]
   public ClientCredentialsAuthentications(
-    IList<IPlugin> plugins,
+    IPluginsFactory pluginsFactory,
     IConfiguration configuration,
     IClientCredentials clientCredentials,
-    IJwtService jwtService) : base(plugins)
+    IJwtService jwtService) : base(pluginsFactory)
   {
     _configuration = configuration;
     _clientCredentials = clientCredentials;

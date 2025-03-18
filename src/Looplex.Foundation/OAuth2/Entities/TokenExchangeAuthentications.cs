@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Claims;
@@ -13,7 +12,6 @@ using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
-using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,7 +29,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-  public TokenExchangeAuthentications() : base(new List<IPlugin>())
+  public TokenExchangeAuthentications() : base()
   {
   }
 
@@ -39,10 +37,10 @@ public class TokenExchangeAuthentications : Service, IAuthentications
 
   [ActivatorUtilitiesConstructor]
   public TokenExchangeAuthentications(
-    IList<IPlugin> plugins,
+    IPluginsFactory pluginsFactory,
     IConfiguration configuration,
     IJwtService jwtService,
-    HttpClient httpClient) : base(plugins)
+    HttpClient httpClient) : base(pluginsFactory)
   {
     _configuration = configuration;
     _jwtService = jwtService;

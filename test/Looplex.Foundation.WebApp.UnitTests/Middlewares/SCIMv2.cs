@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
-using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.WebApp.Middlewares;
 
@@ -37,7 +36,7 @@ public class SCIMv2Tests
         {
           services.AddRouting();
           services.AddSingleton(_users);
-          services.AddSingleton<SCIMv2Factory>();
+          services.AddSingleton<ServiceProviderConfiguration>();
 
         });
         webBuilder.Configure(app =>

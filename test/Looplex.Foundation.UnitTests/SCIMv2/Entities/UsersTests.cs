@@ -62,8 +62,8 @@ public class SCIMv2Tests
 
     // Assert
     Assert.IsNotNull(result);
-    Assert.AreEqual(1, result.Page);
-    Assert.AreEqual(10, result.PageSize);
+    Assert.AreEqual(1, result.StartIndex);
+    Assert.AreEqual(10, result.ItemsPerPage);
   }
 
   [TestMethod]

@@ -14,9 +14,9 @@ using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
-using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 using Org.BouncyCastle.Crypto.Generators;
 
@@ -41,11 +41,12 @@ public class ClientCredentials : Service, IClientCredentials
 
   #endregion
 
-  public ClientCredentials(IList<IPlugin> plugins,
+  [ActivatorUtilitiesConstructor]
+  public ClientCredentials(IPluginsFactory pluginsFactory,
     IRbacService rbacService,
     IConfiguration configuration,
     IJsonSchemaProvider jsonSchemaProvider,
-    ClaimsPrincipal user) : base(plugins)
+    ClaimsPrincipal user) : base(pluginsFactory)
   {
     _rbacService = rbacService;
     _configuration = configuration;
@@ -78,7 +79,10 @@ public class ClientCredentials : Service, IClientCredentials
 
       ListResponse<ClientCredential> result = new()
       {
-        Resources = records.Select(r => r).ToList(), Page = page, PageSize = pageSize, TotalResults = Data.Count
+        Resources = records.Select(r => r).ToList(),
+        StartIndex = (page - 1) * pageSize + 1,
+        ItemsPerPage = pageSize,
+        TotalResults = Data!.Count
       };
 
       ctx.Result = result.Serialize();

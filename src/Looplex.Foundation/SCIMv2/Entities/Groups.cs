@@ -10,9 +10,9 @@ using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
-using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Looplex.Foundation.SCIMv2.Entities;
 
@@ -31,8 +31,9 @@ public class Groups : SCIMv2<Group>
 
   #endregion
 
-  public Groups(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
-    DbConnection db) : base(plugins)
+  [ActivatorUtilitiesConstructor]
+  public Groups(IPluginsFactory pluginsFactory, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
+    DbConnection db) : base(pluginsFactory)
   {
     _db = db;
     _rbacService = rbacService;
@@ -41,14 +42,15 @@ public class Groups : SCIMv2<Group>
 
   #region Query
 
-  public override async Task<ListResponse<Group>> Query(int page, int pageSize,
+  public override async Task<ListResponse<Group>> Query(int startIndex, int count,
     string? filter, string? sortBy, string? sortOrder,
     CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
+    
+    int page = Page(startIndex, count);
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
     if (filter == null)
@@ -87,7 +89,7 @@ public class Groups : SCIMv2<Group>
       // Add expected parameters.
       command.Parameters.Add(CreateParameter(command, "@do_count", 0, DbType.Boolean));
       command.Parameters.Add(CreateParameter(command, "@page", page, DbType.Int32));
-      command.Parameters.Add(CreateParameter(command, "@page_size", pageSize, DbType.Int32));
+      command.Parameters.Add(CreateParameter(command, "@page_size", count, DbType.Int32));
       command.Parameters.Add(CreateParameter(command, "@filter_active", 1, DbType.Boolean));
       command.Parameters.Add(CreateParameter(command, "@filter_name", filter ?? (object)DBNull.Value, DbType.String));
       command.Parameters.Add(CreateParameter(command, "@filter_email", DBNull.Value, DbType.String));
@@ -103,7 +105,7 @@ public class Groups : SCIMv2<Group>
 
       ctx.Result = new ListResponse<Group>
       {
-        Page = page, PageSize = pageSize, Resources = list, TotalResults = 0 // TODO
+        StartIndex = startIndex, ItemsPerPage = count, Resources = list, TotalResults = 0 // TODO
       };
     }
 
