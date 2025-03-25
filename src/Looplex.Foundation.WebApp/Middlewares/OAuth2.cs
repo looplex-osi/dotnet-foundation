@@ -4,6 +4,8 @@ using System.Security.Cryptography;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.WebApp.Adapters;
+using Looplex.OpenForExtension.Abstractions.Plugins;
+using Looplex.OpenForExtension.Loader;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -34,8 +36,24 @@ public static class OAuth2
     
     services.AddSingleton<IJwtService, JwtService>();
     services.AddSingleton<AuthenticationsFactory>();
-    services.AddSingleton<ClientCredentialsAuthentications>();
-    services.AddSingleton<TokenExchangeAuthentications>();
+    services.AddScoped<ClientCredentialsAuthentications>(sp =>
+    {
+      PluginLoader loader = new();
+      IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
+      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+      var clientCredentials = sp.GetRequiredService<IClientCredentials>();
+      var jwtService = sp.GetRequiredService<IJwtService>();
+      return new ClientCredentialsAuthentications(plugins, configuration, clientCredentials, jwtService);
+    });
+    services.AddScoped<TokenExchangeAuthentications>(sp =>
+    {
+      PluginLoader loader = new();
+      IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
+      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+      var jwtService = sp.GetRequiredService<IJwtService>();
+      var httpClient = sp.GetRequiredService<HttpClient>();
+      return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient);
+    });
     
     return services;
   }

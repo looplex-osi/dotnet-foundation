@@ -18,7 +18,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EPTracker.Plugin", "samples
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CLIApp", "samples\CLIApp\CLIApp.csproj", "{852705F6-8F83-45B9-A551-500892EBD89E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApp", "samples\WebApp\WebApp.csproj", "{405E2BAC-236B-4962-BB55-30C079180E00}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notejam.WebApp", "samples\Notejam.WebApp\Notejam.WebApp.csproj", "{405E2BAC-236B-4962-BB55-30C079180E00}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.WebApp", "src\Looplex.Foundation.WebApp\Looplex.Foundation.WebApp.csproj", "{10CCE025-B4B9-49A4-9C9C-A21A4906E120}"
 EndProject

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,10 +35,10 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
 
   [ActivatorUtilitiesConstructor]
   public ClientCredentialsAuthentications(
-    IPluginsFactory pluginsFactory,
+    IList<IPlugin> plugins,
     IConfiguration configuration,
     IClientCredentials clientCredentials,
-    IJwtService jwtService) : base(pluginsFactory)
+    IJwtService jwtService) : base(plugins)
   {
     _configuration = configuration;
     _clientCredentials = clientCredentials;

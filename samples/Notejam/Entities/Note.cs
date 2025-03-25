@@ -1,11 +1,11 @@
-﻿using Looplex.Foundation.Entities;
+﻿using Looplex.Foundation.SCIMv2.Entities;
 
 using PropertyChanged;
 
 namespace Looplex.Samples.Entities;
 
 [AddINotifyPropertyChangedInterface]
-public class Note : Actor
+public class Note : Resource
 {
   #region Reflectivity
 

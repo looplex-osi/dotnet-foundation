@@ -1,12 +1,12 @@
-using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Data;
 using System.Data.Common;
+using System.Reflection;
 using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
 
+using Looplex.Foundation;
 using Looplex.Foundation.Ports;
+using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
@@ -15,9 +15,9 @@ using Looplex.OpenForExtension.Abstractions.Plugins;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Looplex.Foundation.SCIMv2.Entities;
+namespace Looplex.Samples.Entities;
 
-public class Groups : SCIMv2<Group>
+public class Notes : SCIMv2<Note>
 {
   private readonly DbConnection? _db;
   private readonly IRbacService? _rbacService;
@@ -26,14 +26,14 @@ public class Groups : SCIMv2<Group>
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-  public Groups() : base()
+  public Notes() : base()
   {
   }
 
   #endregion
 
   [ActivatorUtilitiesConstructor]
-  public Groups(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
+  public Notes(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
     DbConnection db) : base(plugins)
   {
     _db = db;
@@ -43,15 +43,16 @@ public class Groups : SCIMv2<Group>
 
   #region Query
 
-  public override async Task<ListResponse<Group>> Query(int startIndex, int count,
+  public override async Task<ListResponse<Note>> Query(int startIndex, int count,
     string? filter, string? sortBy, string? sortOrder,
     CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-    
+
     int page = Page(startIndex, count);
+
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
     if (filter == null)
@@ -61,10 +62,7 @@ public class Groups : SCIMv2<Group>
 
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    // Determine stored proc name.
-    // For queries, the convention is USP_{resourceCollection}_pquery.
-    // Example: for T == Group, resource name is "group", and collection is "groups".
-    string resourceName = nameof(Group).ToLower();
+    string resourceName = nameof(Note).ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_pquery";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
@@ -73,7 +71,7 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      List<Group> list = new();
+      List<Note> list = new();
 
       string procName = ctx.Roles["ProcName"];
 
@@ -94,12 +92,12 @@ public class Groups : SCIMv2<Group>
       using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
       while (await reader.ReadAsync(cancellationToken))
       {
-        Group obj = new();
+        Note obj = new();
         MapDataRecordToResource(reader, obj);
         list.Add(obj);
       }
 
-      ctx.Result = new ListResponse<Group>
+      ctx.Result = new ListResponse<Note>
       {
         StartIndex = startIndex, ItemsPerPage = count, Resources = list, TotalResults = 0 // TODO
       };
@@ -109,14 +107,14 @@ public class Groups : SCIMv2<Group>
 
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
-    return (ListResponse<Group>)ctx.Result;
+    return (ListResponse<Note>)ctx.Result;
   }
 
   #endregion
 
   #region Create
 
-  public override async Task<Guid> Create(Group resource,
+  public override async Task<Guid> Create(Note resource,
     CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
@@ -126,9 +124,7 @@ public class Groups : SCIMv2<Group>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    // Determine stored proc name.
-    // For creation, convention is USP_{resource}_create.
-    string resourceName = nameof(Group).ToLower();
+    string resourceName = nameof(Note).ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_create";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
@@ -142,13 +138,17 @@ public class Groups : SCIMv2<Group>
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
-      // For example, for a Group resource we assume:
-      // - Property "GroupName" maps to @name.
+      // For example, for a User resource we assume:
+      // - Property "UserName" maps to @name.
+      // - Property "Emails" (a collection) provides the first email's Value for @email.
       // You can customize this mapping as needed.
-      string nameValue = GetPropertyValue<string>(resource, "GroupName")
-                         ?? throw new Exception("GroupName is required.");
+      string nameValue = GetPropertyValue<string>(resource, "UserName")
+                         ?? throw new Exception("UserName is required.");
+      string emailValue = GetFirstEmailValue(resource)
+                          ?? throw new Exception("At least one email is required.");
 
       command.Parameters.Add(CreateParameter(command, "@name", nameValue, DbType.String));
+      command.Parameters.Add(CreateParameter(command, "@email", emailValue, DbType.String));
       // Rely on defaults for @active, @status, and @custom_fields.
 
       // Execute and return the new resource's GUID.
@@ -166,7 +166,7 @@ public class Groups : SCIMv2<Group>
 
   #region Retrieve
 
-  public override async Task<Group?> Retrieve(Guid id, CancellationToken cancellationToken)
+  public override async Task<Note?> Retrieve(Guid id, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -175,7 +175,7 @@ public class Groups : SCIMv2<Group>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    string resourceName = nameof(Group).ToLower();
+    string resourceName = nameof(Note).ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_retrieve";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
@@ -191,11 +191,11 @@ public class Groups : SCIMv2<Group>
 
       command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
 
-      Group? obj = null;
+      Note? obj = null;
       using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
       if (await reader.ReadAsync(cancellationToken))
       {
-        obj = new Group();
+        obj = new Note();
         MapDataRecordToResource(reader, obj);
       }
 
@@ -205,14 +205,14 @@ public class Groups : SCIMv2<Group>
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
-    return (Group?)ctx.Result;
+    return (Note?)ctx.Result;
   }
 
   #endregion
 
   #region Update
 
-  public override async Task<bool> Update(Guid id, Group resource, string? fields, CancellationToken cancellationToken)
+  public override async Task<bool> Update(Guid id, Note resource, string? fields, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -221,7 +221,7 @@ public class Groups : SCIMv2<Group>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    string resourceName = nameof(Group).ToLower();
+    string resourceName = nameof(Note).ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_update";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
@@ -237,13 +237,19 @@ public class Groups : SCIMv2<Group>
 
       command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
 
-      // Update mapping: if the resource contains a non-null GroupName, update @name.
-      string? nameValue = GetPropertyValue<string>(resource, "GroupName");
+      // Update mapping: if the resource contains a non-null UserName, update @name.
+      string? nameValue = GetPropertyValue<string>(resource, "UserName");
       if (!string.IsNullOrWhiteSpace(nameValue))
       {
         command.Parameters.Add(CreateParameter(command, "@name", nameValue!, DbType.String));
       }
 
+      // Similarly, update email if available.
+      string? emailValue = GetFirstEmailValue(resource);
+      if (!string.IsNullOrWhiteSpace(emailValue))
+      {
+        command.Parameters.Add(CreateParameter(command, "@email", emailValue!, DbType.String));
+      }
       // Additional parameters (active, status, custom_fields) can be mapped as needed.
 
       int rows = await command.ExecuteNonQueryAsync(cancellationToken);
@@ -270,7 +276,7 @@ public class Groups : SCIMv2<Group>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    string resourceName = nameof(Group).ToLower();
+    string resourceName = nameof(Note).ToLower();
     ctx.Roles["ProcName"] = $"USP_{resourceName}_delete";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
@@ -297,6 +303,39 @@ public class Groups : SCIMv2<Group>
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
     return (bool)ctx.Result;
+  }
+
+  #endregion
+
+  #region Helper Methods
+
+  private static string? GetFirstEmailValue(object resource)
+  {
+    // Assume resource has a property named "Emails" that is an IEnumerable.
+    PropertyInfo? emailsProp = resource.GetType().GetProperty("Emails", BindingFlags.Public | BindingFlags.Instance);
+    if (emailsProp == null)
+    {
+      return null;
+    }
+
+    if (emailsProp.GetValue(resource) is IEnumerable emails)
+    {
+      foreach (object? item in emails)
+      {
+        // Assume each email item has a property "Value".
+        PropertyInfo? valueProp = item.GetType().GetProperty("Value", BindingFlags.Public | BindingFlags.Instance);
+        if (valueProp != null)
+        {
+          object? val = valueProp.GetValue(item);
+          if (val != null)
+          {
+            return val.ToString();
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   #endregion

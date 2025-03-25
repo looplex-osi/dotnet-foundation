@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Claims;
@@ -12,6 +13,7 @@ using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,10 +39,10 @@ public class TokenExchangeAuthentications : Service, IAuthentications
 
   [ActivatorUtilitiesConstructor]
   public TokenExchangeAuthentications(
-    IPluginsFactory pluginsFactory,
+    IList<IPlugin> plugins,
     IConfiguration configuration,
     IJwtService jwtService,
-    HttpClient httpClient) : base(pluginsFactory)
+    HttpClient httpClient) : base(plugins)
   {
     _configuration = configuration;
     _jwtService = jwtService;
