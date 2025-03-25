@@ -86,10 +86,4 @@ public abstract class SCIMv2<T> : Service
 
     return default;
   }
-
-  protected static int Page(int startIndex, int count)
-  {
-    var page = (int)Math.Ceiling((double)startIndex / count);
-    return page;
-  }
 }

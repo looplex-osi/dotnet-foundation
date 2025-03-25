@@ -11,14 +11,16 @@ public class SCIMv2Exception : Exception
   public SCIMv2Exception(
     string detail,
     ErrorScimType scimType,
-    int status) : base()
+    int status,
+    Exception? innerException = null) : base(detail, innerException)
   {
     Error = new Error(detail, scimType, status);
   }
     
   public SCIMv2Exception(
     string detail,
-    int status) : base()
+    int status,
+    Exception? innerException = null) : base(detail, innerException)
   {
     Error = new Error(detail, status);
   }

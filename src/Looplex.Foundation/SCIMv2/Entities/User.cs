@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 
+using Newtonsoft.Json;
+
 using PropertyChanged;
 
 using ProtoBuf;
@@ -14,6 +16,8 @@ public class User : Resource
   // ReSharper disable once EmptyConstructor
   public User() : base() { }
   #endregion
+
+  [JsonIgnore] public int? UserId { get; set; }
 
   [ProtoMember(1)] public string? UserName { get; set; }
 
