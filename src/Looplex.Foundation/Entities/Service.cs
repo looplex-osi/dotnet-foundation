@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 
-using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Contexts;
@@ -13,9 +12,9 @@ public abstract class Service : Actor
   protected Service() { }
   #endregion
   #region Micro-Kernel
-  protected Service(IPluginsFactory pluginsFactory)
+  protected Service(IList<IPlugin> plugins)
   {
-    Plugins = pluginsFactory.GetForService(GetType());
+    Plugins = plugins;
   }
   protected IList<IPlugin> Plugins { get; set; }
 

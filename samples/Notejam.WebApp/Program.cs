@@ -6,7 +6,9 @@ using Casbin;
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.WebApp.Middlewares;
-using Looplex.Samples.WebApp.Adapters;
+using Looplex.OpenForExtension.Abstractions.Plugins;
+using Looplex.OpenForExtension.Loader;
+using Looplex.Samples.Entities;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Data.SqlClient;
@@ -55,10 +57,20 @@ public static class Program
     };
     builder.Configuration.AddInMemoryCollection(inMemorySettings);
     builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
-    builder.Services.AddSingleton<IPluginsFactory, PluginsFactory>();
     builder.Services.AddOAuth2(builder.Configuration);
     builder.Services.AddSCIMv2();
     builder.Services.AddAuthZ(InitRbacEnforcer());
+    
+    builder.Services.AddScoped<Notes>(sp =>
+    {
+      PluginLoader loader = new();
+      IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
+      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+      var rbacService = sp.GetRequiredService<IRbacService>();
+      var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+      var dbConnection = sp.GetRequiredService<DbConnection>();
+      return new Notes(plugins, rbacService, httpContextAccessor, dbConnection);
+    });
     
     WebApplication app = builder.Build();
 

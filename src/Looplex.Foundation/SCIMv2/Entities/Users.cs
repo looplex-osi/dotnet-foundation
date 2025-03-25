@@ -12,6 +12,7 @@ using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,8 +35,8 @@ public class Users : SCIMv2<User>
   #endregion
 
   [ActivatorUtilitiesConstructor]
-  public Users(IPluginsFactory pluginsFactory, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
-    DbConnection db) : base(pluginsFactory)
+  public Users(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
+    DbConnection db) : base(plugins)
   {
     _db = db;
     _rbacService = rbacService;
@@ -67,11 +68,6 @@ public class Users : SCIMv2<User>
     // For queries, the convention is USP_{resourceCollection}_pquery.
     // Example: for T == User, resource name is "user", and collection is "users".
     string resourceName = nameof(User).ToLower();
-    if (!resourceName.EndsWith("s"))
-    {
-      resourceName += "s";
-    }
-
     ctx.Roles["ProcName"] = $"USP_{resourceName}_pquery";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 

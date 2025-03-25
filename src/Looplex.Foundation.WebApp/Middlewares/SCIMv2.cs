@@ -1,8 +1,11 @@
+using System.Data.Common;
 using System.Net;
-using System.Reflection;
 
+using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.Serialization.Json;
+using Looplex.OpenForExtension.Abstractions.Plugins;
+using Looplex.OpenForExtension.Loader;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -19,10 +22,35 @@ public static class SCIMv2
   {
     services.AddHttpContextAccessor();
     services.AddSingleton(ServiceProviderConfiguration);
-    services.AddTransient<Bulks>();
-
-    foreach (var type in ServiceProviderConfiguration.Services)
-      services.AddTransient(type);
+    services.AddScoped<Bulks>(sp =>
+    {
+      PluginLoader loader = new();
+      IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
+      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+      var serviceProvider = sp.GetRequiredService<IServiceProvider>();
+      var serviceProviderConfiguration = sp.GetRequiredService<ServiceProviderConfiguration>();
+      return new Bulks(plugins, serviceProvider, serviceProviderConfiguration);
+    });
+    services.AddScoped<Users>(sp =>
+    {
+      PluginLoader loader = new();
+      IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
+      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+      var rbacService = sp.GetRequiredService<IRbacService>();
+      var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+      var dbConnection = sp.GetRequiredService<DbConnection>();
+      return new Users(plugins, rbacService, httpContextAccessor, dbConnection);
+    });
+    services.AddScoped<Groups>(sp =>
+    {
+      PluginLoader loader = new();
+      IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
+      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+      var rbacService = sp.GetRequiredService<IRbacService>();
+      var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+      var dbConnection = sp.GetRequiredService<DbConnection>();
+      return new Groups(plugins, rbacService, httpContextAccessor, dbConnection);
+    });
 
     return services;
   }
@@ -35,79 +63,19 @@ public static class SCIMv2
   /// <returns></returns>
   public static IEndpointRouteBuilder UseSCIMv2(this IEndpointRouteBuilder app, bool authorize = true)
   {
-    app.UseSCIMv2<User>("/Users", authorize);
-    app.UseSCIMv2<Group>("/Groups", authorize);
+    app.UseSCIMv2<User, Users>("/Users", authorize);
+    app.UseSCIMv2<Group, Groups>("/Groups", authorize);
 
     app.UseBulk("/Bulk", authorize);
 
     return app;
   }
 
-  public static IEndpointRouteBuilder RegisterSCIMv2Services(this IEndpointRouteBuilder app, Assembly assembly)
+  public static IEndpointRouteBuilder UseSCIMv2<TRes, TSCIMv2Svc>(this IEndpointRouteBuilder app, string prefix, bool authorize = true)
+    where TRes : Resource, new()
+    where TSCIMv2Svc : SCIMv2<TRes>
   {
-    var openGeneric = typeof(SCIMv2<>);
-
-    Type[] types;
-    try
-    {
-      types = assembly.GetTypes();
-    }
-    catch (ReflectionTypeLoadException ex)
-    {
-      // Some assemblies might fail to load certain types. 
-      // We can safely skip or log them:
-      types = (ex.Types?.Where(t => t != null) ?? []).ToArray()!;
-    }
-
-    foreach (var type in types)
-    {
-      if (!type.IsGenericType)
-        continue;
-
-      var genericDefinition = type.GetGenericTypeDefinition();
-
-      if (genericDefinition == openGeneric && ServiceProviderConfiguration.Services.All(s => s != type))
-      {
-        ServiceProviderConfiguration.Services.Add(type);
-      }
-    }
-
-    return app;
-  }
-  
-  public static bool InheritsFromSCIMv2OfType(Type candidateType, Type runtimeType)
-  {
-    while (candidateType != typeof(object))
-    {
-      if (candidateType.IsGenericType &&
-          candidateType.GetGenericTypeDefinition() == typeof(SCIMv2<>))
-      {
-        Type[] genericArgs = candidateType.GetGenericArguments();
-        if (genericArgs.Length == 1 && genericArgs[0] == runtimeType)
-        {
-          return true;
-        }
-      }
-
-      if (candidateType.BaseType == null) break;
-      
-      candidateType = candidateType.BaseType;
-    }
-
-    return false;
-  }
-
-  public static IEndpointRouteBuilder UseSCIMv2<T>(this IEndpointRouteBuilder app, string prefix, bool authorize = true)
-    where T : Resource, new()
-  {
-    var serviceType = ServiceProviderConfiguration.Services.FirstOrDefault(type =>InheritsFromSCIMv2OfType(type, typeof(T)));
-
-    if (serviceType == null)
-      throw new Exception(
-        $"A service type configuration for {typeof(T).Name} was not found. Make sure to call RegisterSCIMv2Services for your assemblies.");
-    
-    var resourceMap = new ResourceMap(typeof(T), prefix, serviceType);
-
+    var resourceMap = new ResourceMap(typeof(TRes), prefix);
     ServiceProviderConfiguration.Map.Add(resourceMap);
 
     RouteGroupBuilder group = app.MapGroup(prefix);
@@ -117,7 +85,7 @@ public static class SCIMv2
     var map = group.MapGet("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      SCIMv2<T> svc = GetService<T>(app.ServiceProvider, resourceMap);
+      var svc = app.ServiceProvider.GetRequiredService<TSCIMv2Svc>();
 
       // [SCIMv2 Filtering](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
       string? filter = null;
@@ -142,7 +110,7 @@ public static class SCIMv2
       {
       }
 
-      ListResponse<T> result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
+      ListResponse<TRes> result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
       string json = result.Serialize();
       context.Response.ContentType = "application/json; charset=utf-8";
       await context.Response.WriteAsync(json, cancellationToken);
@@ -157,14 +125,14 @@ public static class SCIMv2
     map = group.MapPost("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      SCIMv2<T> svc = GetService<T>(app.ServiceProvider, resourceMap);
+      var svc = app.ServiceProvider.GetRequiredService<TSCIMv2Svc>();
 
       using StreamReader reader = new(context.Request.Body);
       string json = await reader.ReadToEndAsync(cancellationToken);
-      T? resource = json.Deserialize<T>();
+      TRes? resource = json.Deserialize<TRes>();
 
       if (resource == null)
-        throw new Exception($"Could not deserialize {typeof(T).Name}");
+        throw new Exception($"Could not deserialize {typeof(TRes).Name}");
 
       Guid id = await svc.Create(resource, cancellationToken);
       context.Response.StatusCode = (int)HttpStatusCode.Created;
@@ -180,9 +148,9 @@ public static class SCIMv2
     map = group.MapGet("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      SCIMv2<T> svc = GetService<T>(app.ServiceProvider, resourceMap);
+      var svc = app.ServiceProvider.GetRequiredService<TSCIMv2Svc>();
 
-      T? result = await svc.Retrieve(id, cancellationToken);
+      TRes? result = await svc.Retrieve(id, cancellationToken);
 
       if (result == null)
       {
@@ -205,9 +173,9 @@ public static class SCIMv2
     map = group.MapPatch("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      SCIMv2<T> svc = GetService<T>(app.ServiceProvider, resourceMap);
+      var svc = app.ServiceProvider.GetRequiredService<TSCIMv2Svc>();
 
-      T? resource = await svc.Retrieve(id, cancellationToken);
+      TRes? resource = await svc.Retrieve(id, cancellationToken);
       if (resource == null)
       {
         context.Response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -238,7 +206,7 @@ public static class SCIMv2
     map = group.MapDelete("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      SCIMv2<T> svc = GetService<T>(app.ServiceProvider, resourceMap);
+      var svc = app.ServiceProvider.GetRequiredService<TSCIMv2Svc>();
 
       bool deleted = await svc.Delete(id, cancellationToken);
 
@@ -257,15 +225,6 @@ public static class SCIMv2
     #endregion
 
     return app;
-  }
-
-  private static SCIMv2<T> GetService<T>(IServiceProvider serviceProvider, ResourceMap resourceMap) where T : Resource, new()
-  {
-    var svc = serviceProvider.GetService(resourceMap.Service) as SCIMv2<T>;
-    if (svc == null)
-      throw new Exception(
-        $"Could not instantiate {nameof(SCIMv2<T>)}. Make sure to call AddSCIMv2 after the RegisterSCIMv2Services.");
-    return svc;
   }
 
   public static IEndpointRouteBuilder UseBulk(this IEndpointRouteBuilder app, string prefix = "/Bulk",

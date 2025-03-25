@@ -1,11 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
-using Looplex.Foundation.Ports;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 namespace Looplex.Foundation.SCIMv2.Entities;
 
@@ -21,7 +22,7 @@ public abstract class SCIMv2<T> : Service
 
   #endregion
   
-  public SCIMv2(IPluginsFactory pluginsFactory) : base(pluginsFactory)
+  public SCIMv2(IList<IPlugin> plugins) : base(plugins)
   {
   }
   

@@ -1,4 +1,3 @@
-using System.Data.Common;
 using System.Reflection;
 using System.Security.Claims;
 
@@ -10,6 +9,7 @@ using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
+using Looplex.Samples.Entities;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -51,10 +51,9 @@ public class NotejamTests
     var mockHttpAccessor = Substitute.For<IHttpContextAccessor>();
     var httpContext = new DefaultHttpContext() { User = user };
     mockHttpAccessor.HttpContext.Returns(httpContext);
-    DbConnection? db = Substitute.For<DbConnection>();
 
     IList<IPlugin> plugins = [];
-    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor, db);
+    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor);
 
     // Act
     string result = await notejam.Echo("World", CancellationToken.None);
@@ -72,7 +71,6 @@ public class NotejamTests
     var mockHttpAccessor = Substitute.For<IHttpContextAccessor>();
     var httpContext = new DefaultHttpContext() { User = user };
     mockHttpAccessor.HttpContext.Returns(httpContext);
-    DbConnection? db = Substitute.For<DbConnection>();
     IPlugin? plugin = Substitute.For<IPlugin>();
 
     IList<IPlugin> plugins = [plugin];
@@ -90,7 +88,7 @@ public class NotejamTests
 
     #endregion
 
-    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor, db);
+    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor);
 
     // Act
     string result = await notejam.Echo("World", CancellationToken.None);
@@ -109,14 +107,13 @@ public class NotejamTests
     var mockHttpAccessor = Substitute.For<IHttpContextAccessor>();
     var httpContext = new DefaultHttpContext() { User = user };
     mockHttpAccessor.HttpContext.Returns(httpContext);
-    DbConnection? db = Substitute.For<DbConnection>();
 
     PluginLoader loader = new();
 
     IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
     IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
 
-    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor, db);
+    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor);
 
     // Act
     string result = await notejam.Echo("World", CancellationToken.None);
@@ -139,13 +136,12 @@ public class NotejamTests
     var mockHttpAccessor = Substitute.For<IHttpContextAccessor>();
     var httpContext = new DefaultHttpContext() { User = user };
     mockHttpAccessor.HttpContext.Returns(httpContext);
-    DbConnection? db = Substitute.For<DbConnection>();
     ILogger<RbacService>? logger = Substitute.For<ILogger<RbacService>>();
     RbacService rbacSvc = new(InitRbacEnforcer(), logger);
 
     IList<IPlugin> plugins = [plugin];
 
-    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor, db);
+    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor);
 
     plugin.ExecuteAsync<IBeforeAction>(Arg.Any<IContext>(), CancellationToken.None)
       .Returns(callInfo =>
@@ -173,13 +169,12 @@ public class NotejamTests
     var mockHttpAccessor = Substitute.For<IHttpContextAccessor>();
     var httpContext = new DefaultHttpContext() { User = user };
     mockHttpAccessor.HttpContext.Returns(httpContext);
-    DbConnection? db = Substitute.For<DbConnection>();
     ILogger<RbacService>? logger = Substitute.For<ILogger<RbacService>>();
     RbacService rbacSvc = new(InitRbacEnforcer(), logger);
 
     IList<IPlugin> plugins = [plugin];
 
-    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor, db);
+    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor);
 
     plugin.ExecuteAsync<IBeforeAction>(Arg.Any<IContext>(), CancellationToken.None)
       .Returns(callInfo =>

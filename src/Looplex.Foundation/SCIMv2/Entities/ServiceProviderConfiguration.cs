@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 
 using Looplex.Foundation.Entities;
-using Looplex.Foundation.OAuth2.Entities;
 
 using Newtonsoft.Json;
 
@@ -63,9 +62,6 @@ public class ServiceProviderConfiguration : Actor
 
   [JsonIgnore]
   public virtual List<ResourceMap> Map { get; private set; } = new();
-  
-  [JsonIgnore]
-  public virtual List<Type> Services { get; private set; } = [typeof(Users), typeof(Groups), typeof(ClientCredentials)];
 }
 
 public class AuthenticationScheme
@@ -192,14 +188,12 @@ public class Sort
 
 public class ResourceMap
 {
-  public ResourceMap(Type type, string resource, Type service)
+  public ResourceMap(Type type, string resource)
   {
     Type = type ?? throw new ArgumentNullException(nameof(type));
     Resource = resource ?? throw new ArgumentNullException(nameof(resource));
-    Service = service ?? throw new ArgumentNullException(nameof(service));
   }
 
   public Type Type { get; set; }
   public string Resource { get; set; }
-  public Type Service { get; set; }
 }

@@ -14,6 +14,7 @@ using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,11 +43,11 @@ public class ClientCredentials : Service, IClientCredentials
   #endregion
 
   [ActivatorUtilitiesConstructor]
-  public ClientCredentials(IPluginsFactory pluginsFactory,
+  public ClientCredentials(IList<IPlugin> plugins,
     IRbacService rbacService,
     IConfiguration configuration,
     IJsonSchemaProvider jsonSchemaProvider,
-    ClaimsPrincipal user) : base(pluginsFactory)
+    ClaimsPrincipal user) : base(plugins)
   {
     _rbacService = rbacService;
     _configuration = configuration;

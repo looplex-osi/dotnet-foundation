@@ -6,11 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
-using Looplex.Foundation.Ports;
 using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -35,9 +35,9 @@ public class Bulks : Service
 
   [ActivatorUtilitiesConstructor]
   public Bulks(
-    IPluginsFactory pluginsFactory,
+    IList<IPlugin> plugins,
     IServiceProvider serviceProvider,
-    ServiceProviderConfiguration serviceProviderConfiguration) : base(pluginsFactory)
+    ServiceProviderConfiguration serviceProviderConfiguration) : base(plugins)
   {
     _serviceProvider = serviceProvider;
     _serviceProviderConfiguration = serviceProviderConfiguration;
