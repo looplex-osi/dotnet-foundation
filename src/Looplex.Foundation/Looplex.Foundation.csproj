@@ -20,11 +20,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.7.0" />
     <PackageReference Include="BouncyCastle.NetCore" Version="2.2.1"/>
     <PackageReference Include="Casbin.NET" Version="2.12.0"/>
     <PackageReference Include="Looplex.OpenForExtension" Version="1.1.8"/>
     <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.3.0"/>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
+    <PackageReference Include="Polly" Version="8.5.2" />
     <PackageReference Include="PropertyChanged.Fody" Version="4.1.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>

@@ -35,7 +35,7 @@ public static class OAuth2
     services.AddAuthorization();
     
     services.AddSingleton<IJwtService, JwtService>();
-    services.AddSingleton<AuthenticationsFactory>();
+    services.AddScoped<AuthenticationsFactory>();
     services.AddScoped<ClientCredentialsAuthentications>(sp =>
     {
       PluginLoader loader = new();

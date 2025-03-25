@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 
 namespace Looplex.Foundation.SCIMv2.Entities;
 
-public class ListResponse<T> : Actor where T : Resource
+public class ListResponse<T> : Actor
 {
   /// <summary>
   /// The total number of results returned by the list or query operation. This value may be larger than the number of resources returned if pagination is used. REQUIRED.
@@ -28,4 +28,12 @@ public class ListResponse<T> : Actor where T : Resource
   /// The number of resources returned in a list response page. REQUIRED when partial results are returned due to pagination.
   /// </summary>
   public long ItemsPerPage { get; set; }
+}
+
+public partial class ListResponseContinuous<T> : Actor
+{
+  public long StartIndex { get; set; }
+  public long ItemsPerPage { get; set; }
+  public bool? HasNext { get; set; } = null;
+  public List<T> Resources { get; set; } = [];
 }

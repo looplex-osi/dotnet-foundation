@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 using Looplex.OpenForExtension.Abstractions.Contexts;
@@ -21,6 +22,13 @@ public abstract class Service : Actor
   public virtual IContext NewContext()
   {
     return DefaultContext.New(Plugins);
+  }
+  #endregion
+  #region Helpers
+  protected static int Page(int startIndex, int count)
+  {
+    var page = (int)Math.Ceiling((double)startIndex / count);
+    return page;
   }
   #endregion
 }
