@@ -85,7 +85,7 @@ public static class SCIMv2
     var map = group.MapGet("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      var svc = app.ServiceProvider.GetRequiredService<TSCIMv2Svc>();
+      var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
 
       // [SCIMv2 Filtering](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
       string? filter = null;
@@ -125,7 +125,7 @@ public static class SCIMv2
     map = group.MapPost("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      var svc = app.ServiceProvider.GetRequiredService<TSCIMv2Svc>();
+      var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
 
       using StreamReader reader = new(context.Request.Body);
       string json = await reader.ReadToEndAsync(cancellationToken);
@@ -148,7 +148,7 @@ public static class SCIMv2
     map = group.MapGet("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      var svc = app.ServiceProvider.GetRequiredService<TSCIMv2Svc>();
+      var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
 
       TRes? result = await svc.Retrieve(id, cancellationToken);
 
@@ -173,7 +173,7 @@ public static class SCIMv2
     map = group.MapPatch("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      var svc = app.ServiceProvider.GetRequiredService<TSCIMv2Svc>();
+      var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
 
       TRes? resource = await svc.Retrieve(id, cancellationToken);
       if (resource == null)
@@ -206,7 +206,7 @@ public static class SCIMv2
     map = group.MapDelete("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      var svc = app.ServiceProvider.GetRequiredService<TSCIMv2Svc>();
+      var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
 
       bool deleted = await svc.Delete(id, cancellationToken);
 
