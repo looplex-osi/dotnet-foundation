@@ -44,7 +44,7 @@ public class SCIMv2ToSQLVisitorTests
   public void TestSwOperator()
   {
     var sql = ConvertToSql("email sw \"admin\"");
-    Assert.AreEqual("email LIKE '$admin%'", sql); // NOTE: Adjust $ to '' if needed
+    Assert.AreEqual("email LIKE '$admin%'", sql);
   }
 
   [TestMethod]
