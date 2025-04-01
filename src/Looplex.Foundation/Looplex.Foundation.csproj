@@ -33,4 +33,8 @@
     <PackageReference Include="protobuf-net" Version="3.2.46"/>
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.6.0"/>
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Looplex.Foundation.SCIMv2.Antlr\Looplex.Foundation.SCIMv2.Antlr.csproj" />
+  </ItemGroup>
 </Project>
