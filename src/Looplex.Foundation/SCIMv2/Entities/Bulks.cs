@@ -80,7 +80,7 @@ public class Bulks : Service
 
           if (operation.Data != null)
           {
-            JsonUtils.Traverse(operation.Data, BulkIdVisitor(bulkIdCrossReference));
+            JsonHelper.Traverse(operation.Data, BulkIdVisitor(bulkIdCrossReference));
           }
 
           if (operation.Method == Method.Post)

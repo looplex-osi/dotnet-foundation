@@ -3,7 +3,7 @@ using System.Text;
 
 namespace Looplex.Foundation;
 
-public static class StringUtils
+public static class StringHelper
 {
   public static string Base64Decode(string base64EncodedData)
   {

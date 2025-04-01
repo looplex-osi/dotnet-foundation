@@ -106,7 +106,7 @@ public static class OAuth2
     string issuer = configuration["Issuer"]!;
     string audience = configuration["Audience"]!;
     string publicKeyBase64 = configuration["PublicKey"]!;
-    string publicKey = StringUtils.Base64Decode(publicKeyBase64);
+    string publicKey = StringHelper.Base64Decode(publicKeyBase64);
 
     RSA rsa = RSA.Create();
     rsa.ImportFromPem(publicKey);
