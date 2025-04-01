@@ -119,7 +119,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
 
   private static (Guid, string) DecodeCredentials(string credentials)
   {
-    string[] parts = StringUtils.Base64Decode(credentials).Split(':');
+    string[] parts = StringHelper.Base64Decode(credentials).Split(':');
 
     if (parts.Length != 2)
     {
@@ -178,7 +178,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     string issuer = _configuration["Issuer"]!;
     var tokenExpirationTimeInMinutes = int.Parse(_configuration["TokenExpirationTimeInMinutes"]!);
 
-    string privateKey = StringUtils.Base64Decode(_configuration["PrivateKey"]!);
+    string privateKey = StringHelper.Base64Decode(_configuration["PrivateKey"]!);
 
     string accessToken = _jwtService!.GenerateToken(privateKey, issuer, audience, claims,
       TimeSpan.FromMinutes(tokenExpirationTimeInMinutes));
