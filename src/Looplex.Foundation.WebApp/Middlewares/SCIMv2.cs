@@ -12,13 +12,16 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
+using Newtonsoft.Json.Linq;
+
 namespace Looplex.Foundation.WebApp.Middlewares;
 
 public static class SCIMv2
 {
   private static readonly ServiceProviderConfiguration ServiceProviderConfiguration = new();
 
-  public static IServiceCollection AddSCIMv2(this IServiceCollection services)
+  public static IServiceCollection AddSCIMv2(this IServiceCollection services, Func<DbConnection> dbCommandFunc,
+    Func<DbConnection> dbQueryFunc)
   {
     services.AddHttpContextAccessor();
     services.AddSingleton(ServiceProviderConfiguration);
@@ -39,7 +42,7 @@ public static class SCIMv2
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
       var dbConnection = sp.GetRequiredService<DbConnection>();
-      return new Users(plugins, rbacService, httpContextAccessor, dbConnection);
+      return new Users(plugins, rbacService, httpContextAccessor, dbCommandFunc(), dbQueryFunc());
     });
     services.AddScoped<Groups>(sp =>
     {
@@ -49,7 +52,7 @@ public static class SCIMv2
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
       var dbConnection = sp.GetRequiredService<DbConnection>();
-      return new Groups(plugins, rbacService, httpContextAccessor, dbConnection);
+      return new Groups(plugins, rbacService, httpContextAccessor, dbCommandFunc(), dbQueryFunc());
     });
 
     return services;
@@ -71,7 +74,8 @@ public static class SCIMv2
     return app;
   }
 
-  public static IEndpointRouteBuilder UseSCIMv2<TRes, TSCIMv2Svc>(this IEndpointRouteBuilder app, string prefix, bool authorize = true)
+  public static IEndpointRouteBuilder UseSCIMv2<TRes, TSCIMv2Svc>(this IEndpointRouteBuilder app, string prefix,
+    bool authorize = true)
     where TRes : Resource, new()
     where TSCIMv2Svc : SCIMv2<TRes>
   {
@@ -111,7 +115,15 @@ public static class SCIMv2
       }
 
       ListResponse<TRes> result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
-      string json = result.Serialize();
+      var objects = result.Resources.Select(JObject.FromObject);
+      var processedResult = new ListResponse<JObject>
+      {
+        StartIndex = result.StartIndex,
+        ItemsPerPage = result.ItemsPerPage,
+        Resources = objects.ProcessAttributes(context).ToList(),
+        TotalResults = result.TotalResults
+      };
+      string json = processedResult.Serialize();
       context.Response.ContentType = "application/json; charset=utf-8";
       await context.Response.WriteAsync(json, cancellationToken);
     });

@@ -21,13 +21,10 @@ public class AttributeProcessorTests
     return context;
   }
 
-  private static AttributesProcessor CreateProcessor() => new AttributesProcessor();
-
   [TestMethod]
   public void SimpleJson_AttributesOnly()
   {
     var context = CreateHttpContext("name");
-    var processor = CreateProcessor();
       
     var records = new List<JObject>
     {
@@ -35,7 +32,7 @@ public class AttributeProcessorTests
       new JObject { ["name"] = "Jane", ["age"] = 25, ["email"] = "jane@example.com" }
     };
 
-    var result = processor.ProcessAttributes(context, records);
+    var result =  records.ProcessAttributes(context);
 
     foreach (var r in result)
     {
@@ -49,7 +46,6 @@ public class AttributeProcessorTests
   public void SimpleJson_ExcludedAttributesOnly()
   {
     var context = CreateHttpContext(null, "email");
-    var processor = CreateProcessor();
       
     var records = new List<JObject>
     {
@@ -57,7 +53,7 @@ public class AttributeProcessorTests
       new JObject { ["name"] = "Jane", ["age"] = 25, ["email"] = "jane@example.com" }
     };
 
-    var result = processor.ProcessAttributes(context, records);
+    var result =  records.ProcessAttributes(context);
 
     foreach (var r in result)
     {
@@ -71,7 +67,6 @@ public class AttributeProcessorTests
   public void SimpleJson_BothAttributesAndExcluded()
   {
     var context = CreateHttpContext("name,email", "email");
-    var processor = CreateProcessor();
       
     var records = new List<JObject>
     {
@@ -79,7 +74,7 @@ public class AttributeProcessorTests
       new JObject { ["name"] = "Jane", ["age"] = 25, ["email"] = "jane@example.com" }
     };
 
-    var result = processor.ProcessAttributes(context, records);
+    var result = records.ProcessAttributes(context);
 
     foreach (var r in result)
     {
@@ -92,7 +87,6 @@ public class AttributeProcessorTests
   [TestMethod]
   public void NestedJson_TwoDepth()
   {
-    var processor = CreateProcessor();
     var context = CreateHttpContext("profile.name,profile.address.city");
 
     var records = new List<JObject>
@@ -105,7 +99,7 @@ public class AttributeProcessorTests
                 }")
     };
 
-    var result = processor.ProcessAttributes(context, records);
+    var result =  records.ProcessAttributes(context);
     var first = result.First();
 
     Assert.AreEqual("John", first["profile"]?["name"]);
@@ -116,7 +110,6 @@ public class AttributeProcessorTests
   [TestMethod]
   public void ArrayOfObjects_AttributesOnly()
   {
-    var processor = CreateProcessor();
     var context = CreateHttpContext("items[0].name");
 
     var records = new List<JObject>
@@ -129,7 +122,7 @@ public class AttributeProcessorTests
                 }")
     };
 
-    var result = processor.ProcessAttributes(context, records);
+    var result =  records.ProcessAttributes(context);
     var array = (JArray)result.First()["items"]!;
 
     foreach (var item in array)
@@ -142,7 +135,6 @@ public class AttributeProcessorTests
   [TestMethod]
   public void ArrayOfObjects_WithChild()
   {
-    var processor = CreateProcessor();
     var context = CreateHttpContext("items[0].details.value");
 
     var records = new List<JObject>
@@ -155,7 +147,7 @@ public class AttributeProcessorTests
                 }")
     };
 
-    var result = processor.ProcessAttributes(context, records);
+    var result =  records.ProcessAttributes(context);
     var array = (JArray)result.First()["items"]!;
 
     foreach (var item in array)

@@ -30,8 +30,9 @@ public static class Program
       .AddPolicyHandler(GetRetryPolicy());
 
     builder.Services.AddTransient(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Default"));
-    builder.Services.AddTransient<DbConnection>(sp => new SqlConnection(""));
-    
+    DbConnection DbCommand() => new SqlConnection("");
+    DbConnection DbQuery() => new SqlConnection("");
+
     builder.Services.AddHealthChecks()
       .AddCheck<HealthCheck>("Default");
 
@@ -58,7 +59,7 @@ public static class Program
     builder.Configuration.AddInMemoryCollection(inMemorySettings);
     builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
     builder.Services.AddOAuth2(builder.Configuration);
-    builder.Services.AddSCIMv2();
+    builder.Services.AddSCIMv2(DbCommand, DbQuery);
     builder.Services.AddAuthZ(InitRbacEnforcer());
     
     builder.Services.AddScoped<Notes>(sp =>
@@ -68,8 +69,7 @@ public static class Program
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-      var dbConnection = sp.GetRequiredService<DbConnection>();
-      return new Notes(plugins, rbacService, httpContextAccessor, dbConnection);
+      return new Notes(plugins, rbacService, httpContextAccessor, DbCommand(), DbQuery());
     });
     
     WebApplication app = builder.Build();

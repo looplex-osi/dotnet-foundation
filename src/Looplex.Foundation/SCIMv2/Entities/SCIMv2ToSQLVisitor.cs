@@ -27,7 +27,7 @@ public class SCIMv2ToSQLVisitor : ScimFilterBaseVisitor<string>
     };
 
     if (op == "co") value = $"'%{TrimQuotes(value)}%'";
-    else if (op == "sw") value = $"'${TrimQuotes(value)}%'";
+    else if (op == "sw") value = $"'{TrimQuotes(value)}%'";
     else if (op == "ew") value = $"'%{TrimQuotes(value)}'";
     else value = IsNumeric(value) ? value : $"'{TrimQuotes(value)}'";
 

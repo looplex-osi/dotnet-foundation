@@ -19,7 +19,8 @@ namespace Looplex.Foundation.SCIMv2.Entities;
 
 public class Groups : SCIMv2<Group>
 {
-  private readonly DbConnection? _db;
+  private readonly DbConnection? _dbCommand;
+  private readonly DbConnection? _dbQuery;
   private readonly IRbacService? _rbacService;
   private readonly ClaimsPrincipal? _user;
 
@@ -34,9 +35,10 @@ public class Groups : SCIMv2<Group>
 
   [ActivatorUtilitiesConstructor]
   public Groups(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
-    DbConnection db) : base(plugins)
+    DbConnection dbCommand, DbConnection dbQuery) : base(plugins)
   {
-    _db = db;
+    _dbCommand = dbCommand;
+    _dbQuery = dbQuery;
     _rbacService = rbacService;
     _user = httpContextAccessor.HttpContext.User;
   }
@@ -77,8 +79,8 @@ public class Groups : SCIMv2<Group>
 
       string procName = ctx.Roles["ProcName"];
 
-      await _db!.OpenAsync(cancellationToken);
-      using DbCommand command = _db.CreateCommand();
+      await _dbQuery!.OpenAsync(cancellationToken);
+      using DbCommand command = _dbQuery.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = procName;
 
@@ -137,8 +139,8 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _db!.OpenAsync(cancellationToken);
-      using DbCommand command = _db.CreateCommand();
+      await _dbCommand!.OpenAsync(cancellationToken);
+      using DbCommand command = _dbCommand.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
@@ -184,8 +186,8 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _db!.OpenAsync(cancellationToken);
-      using DbCommand command = _db.CreateCommand();
+      await _dbQuery!.OpenAsync(cancellationToken);
+      using DbCommand command = _dbQuery.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
@@ -230,8 +232,8 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _db!.OpenAsync(cancellationToken);
-      using DbCommand command = _db.CreateCommand();
+      await _dbCommand!.OpenAsync(cancellationToken);
+      using DbCommand command = _dbCommand.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
@@ -279,8 +281,8 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _db!.OpenAsync(cancellationToken);
-      using DbCommand command = _db.CreateCommand();
+      await _dbCommand!.OpenAsync(cancellationToken);
+      using DbCommand command = _dbCommand.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 

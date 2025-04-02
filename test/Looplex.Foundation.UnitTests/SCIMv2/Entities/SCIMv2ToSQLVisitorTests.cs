@@ -23,7 +23,7 @@ public class SCIMv2ToSQLVisitorTests
   public void TestEqOperator()
   {
     var sql = ConvertToSql("userName eq \"john\"");
-    Assert.AreEqual("userName = 'john'", sql);
+    Assert.AreEqual("userName = criteria.p1", sql);
   }
 
   [TestMethod]
@@ -44,7 +44,7 @@ public class SCIMv2ToSQLVisitorTests
   public void TestSwOperator()
   {
     var sql = ConvertToSql("email sw \"admin\"");
-    Assert.AreEqual("email LIKE '$admin%'", sql);
+    Assert.AreEqual("email LIKE 'admin%'", sql);
   }
 
   [TestMethod]
