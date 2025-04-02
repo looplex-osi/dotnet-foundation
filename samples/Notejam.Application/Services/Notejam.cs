@@ -1,6 +1,5 @@
 using System.Security.Claims;
 
-using Looplex.Foundation;
 using Looplex.Foundation.Entities;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
@@ -12,7 +11,7 @@ using Looplex.OpenForExtension.Abstractions.Plugins;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Looplex.Samples.Entities;
+namespace Looplex.Samples.Application.Services;
 
 public class Notejam : Service
 {

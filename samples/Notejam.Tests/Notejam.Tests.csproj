@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Notejam\Notejam.csproj"/>
+    <ProjectReference Include="..\Notejam.Domain\Notejam.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

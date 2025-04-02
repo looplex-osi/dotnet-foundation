@@ -4,7 +4,6 @@ using System.Data.Common;
 using System.Reflection;
 using System.Security.Claims;
 
-using Looplex.Foundation;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
@@ -12,18 +11,22 @@ using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
 using Looplex.OpenForExtension.Abstractions.Plugins;
+using Looplex.Samples.Domain.Entities;
+
+using MediatR;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Looplex.Samples.Entities;
+namespace Looplex.Samples.Application.Services;
 
 public class Notes : SCIMv2<Note>
 {
-  private readonly DbConnection? _dbCommand;
-  private readonly DbConnection? _dbQuery;
   private readonly IRbacService? _rbacService;
   private readonly ClaimsPrincipal? _user;
+  private readonly DbConnection? _dbCommand;
+  private readonly DbConnection? _dbQuery;
+  private readonly IMediator? _mediator;
 
   #region Reflectivity
 
@@ -36,12 +39,13 @@ public class Notes : SCIMv2<Note>
 
   [ActivatorUtilitiesConstructor]
   public Notes(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
-    DbConnection dbCommand, DbConnection dbQuery) : base(plugins)
+    DbConnection dbCommand, DbConnection dbQuery, IMediator mediator) : base(plugins)
   {
     _dbCommand = dbCommand;
     _dbQuery = dbQuery;
     _rbacService = rbacService;
     _user = httpContextAccessor.HttpContext.User;
+    _mediator = mediator;
   }
 
   #region Query
@@ -64,9 +68,7 @@ public class Notes : SCIMv2<Note>
     }
 
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    string resourceName = nameof(Note).ToLower();
-    ctx.Roles["ProcName"] = $"USP_{resourceName}_pquery";
+    
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -75,8 +77,8 @@ public class Notes : SCIMv2<Note>
     if (!ctx.SkipDefaultAction)
     {
       List<Note> list = new();
-
-      string procName = ctx.Roles["ProcName"];
+      string resourceName = nameof(Note).ToLower();
+      string procName = $"USP_{resourceName}_pquery";
 
       await _dbQuery!.OpenAsync(cancellationToken);
       using DbCommand command = _dbQuery.CreateCommand();
