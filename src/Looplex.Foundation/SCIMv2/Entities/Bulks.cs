@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
+using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;

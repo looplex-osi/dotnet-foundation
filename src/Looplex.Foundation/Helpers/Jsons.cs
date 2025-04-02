@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 using Newtonsoft.Json.Linq;
 
-namespace Looplex.Foundation;
+namespace Looplex.Foundation.Helpers;
 
 public static class JsonHelper
 {

@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
+using Looplex.Foundation.Helpers;
 using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;

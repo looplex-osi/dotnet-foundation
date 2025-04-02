@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Text;
 
-namespace Looplex.Foundation;
+namespace Looplex.Foundation.Helpers;
 
-public static class StringHelper
+public static class Strings
 {
   public static string Base64Decode(string base64EncodedData)
   {
