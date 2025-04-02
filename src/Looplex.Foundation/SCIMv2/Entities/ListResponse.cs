@@ -30,10 +30,11 @@ public class ListResponse<T> : Actor
   public long ItemsPerPage { get; set; }
 }
 
-public partial class ListResponseContinuous<T> : Actor
+public class ListResponseContinuous<T> : Actor
 {
   public long StartIndex { get; set; }
   public long ItemsPerPage { get; set; }
   public bool? HasNext { get; set; } = null;
+  [JsonProperty("Resources")]
   public List<T> Resources { get; set; } = [];
 }

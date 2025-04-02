@@ -20,7 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Looplex.Foundation.WebApp\Looplex.Foundation.WebApp.csproj"/>
     <ProjectReference Include="..\..\src\Looplex.Foundation\Looplex.Foundation.csproj"/>
-    <ProjectReference Include="..\Notejam\Notejam.csproj" />
+    <ProjectReference Include="..\Notejam.Domain\Notejam.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
