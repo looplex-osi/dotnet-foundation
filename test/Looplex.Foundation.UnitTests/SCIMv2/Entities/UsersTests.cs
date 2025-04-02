@@ -45,7 +45,7 @@ public class SCIMv2Tests
     _mockDbCommand.ExecuteNonQueryAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(1));
 
     _cancellationToken = CancellationToken.None;
-    _users = new Users(new List<IPlugin>(), _mockRbacService, mockHttpAccessor, _mockDbConnection);
+    _users = new Users(new List<IPlugin>(), _mockRbacService, mockHttpAccessor, _mockDbConnection, _mockDbConnection);
   }
 
   #region QueryAsync Tests

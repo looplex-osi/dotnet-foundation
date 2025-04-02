@@ -8,9 +8,9 @@ using Newtonsoft.Json.Linq;
 
 namespace Looplex.Foundation.SCIMv2.Entities;
 
-public class AttributesProcessor
+public static class AttributesProcessor
 {
-  public IList<JObject> ProcessAttributes(HttpContext context, List<JObject> records)
+  public static IEnumerable<JObject> ProcessAttributes(this IEnumerable<JObject> records, HttpContext context)
   {
     var query = context.Request.Query;
 
