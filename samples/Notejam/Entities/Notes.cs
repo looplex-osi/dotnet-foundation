@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Security.Claims;
 
 using Looplex.Foundation;
+using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.OpenForExtension.Abstractions.Commands;

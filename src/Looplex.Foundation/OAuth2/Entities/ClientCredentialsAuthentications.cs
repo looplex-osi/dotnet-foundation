@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
+using Looplex.Foundation.Helpers;
 using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.Serialization.Json;
@@ -119,7 +120,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
 
   private static (Guid, string) DecodeCredentials(string credentials)
   {
-    string[] parts = StringHelper.Base64Decode(credentials).Split(':');
+    string[] parts = Strings.Base64Decode(credentials).Split(':');
 
     if (parts.Length != 2)
     {
@@ -178,7 +179,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     string issuer = _configuration["Issuer"]!;
     var tokenExpirationTimeInMinutes = int.Parse(_configuration["TokenExpirationTimeInMinutes"]!);
 
-    string privateKey = StringHelper.Base64Decode(_configuration["PrivateKey"]!);
+    string privateKey = Strings.Base64Decode(_configuration["PrivateKey"]!);
 
     string accessToken = _jwtService!.GenerateToken(privateKey, issuer, audience, claims,
       TimeSpan.FromMinutes(tokenExpirationTimeInMinutes));

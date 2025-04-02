@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using System.Security.Cryptography;
 
+using Looplex.Foundation.Helpers;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.WebApp.Adapters;
@@ -106,7 +107,7 @@ public static class OAuth2
     string issuer = configuration["Issuer"]!;
     string audience = configuration["Audience"]!;
     string publicKeyBase64 = configuration["PublicKey"]!;
-    string publicKey = StringHelper.Base64Decode(publicKeyBase64);
+    string publicKey = Strings.Base64Decode(publicKeyBase64);
 
     RSA rsa = RSA.Create();
     rsa.ImportFromPem(publicKey);
