@@ -8,6 +8,10 @@ using Looplex.Foundation.Ports;
 using Looplex.Foundation.WebApp.Middlewares;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
+using Looplex.Samples.Application.Services;
+using Looplex.Samples.Infra.CommandHandlers;
+
+using MediatR;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Data.SqlClient;
@@ -68,8 +72,12 @@ public static class Program
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-      return new Notes(plugins, rbacService, httpContextAccessor, DbCommand(), DbQuery());
+      var mediator = sp.GetRequiredService<IMediator>();
+      return new Notes(plugins, rbacService, httpContextAccessor, DbCommand(), DbQuery(), mediator);
     });
+    
+    builder.Services.AddMediatR(cfg =>
+      cfg.RegisterServicesFromAssembly(typeof(UpdateNoteCommandHandler).Assembly));
     
     WebApplication app = builder.Build();
 

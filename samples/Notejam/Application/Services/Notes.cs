@@ -11,7 +11,9 @@ using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
 using Looplex.OpenForExtension.Abstractions.Plugins;
+using Looplex.Samples.Domain.Commands;
 using Looplex.Samples.Domain.Entities;
+using Looplex.Samples.Domain.Queries;
 
 using MediatR;
 
@@ -76,35 +78,13 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      List<Note> list = new();
-      string resourceName = nameof(Note).ToLower();
-      string procName = $"USP_{resourceName}_pquery";
-
-      await _dbQuery!.OpenAsync(cancellationToken);
-      using DbCommand command = _dbQuery.CreateCommand();
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = procName;
-
-      // Add expected parameters.
-      command.Parameters.Add(CreateParameter(command, "@do_count", 0, DbType.Boolean));
-      command.Parameters.Add(CreateParameter(command, "@page", page, DbType.Int32));
-      command.Parameters.Add(CreateParameter(command, "@page_size", count, DbType.Int32));
-      command.Parameters.Add(CreateParameter(command, "@filter_active", 1, DbType.Boolean));
-      command.Parameters.Add(CreateParameter(command, "@filter_name", filter ?? (object)DBNull.Value, DbType.String));
-      command.Parameters.Add(CreateParameter(command, "@filter_email", DBNull.Value, DbType.String));
-      command.Parameters.Add(CreateParameter(command, "@order_by", DBNull.Value, DbType.String));
-
-      using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
-      while (await reader.ReadAsync(cancellationToken))
-      {
-        Note obj = new();
-        MapDataRecordToResource(reader, obj);
-        list.Add(obj);
-      }
-
+      var query = new QueryNoteQuery(_dbQuery, page, count, filter, sortBy, sortOrder);
+      
+      var (result, totalResults) = await _mediator!.Send(query, cancellationToken);
+      
       ctx.Result = new ListResponse<Note>
       {
-        StartIndex = startIndex, ItemsPerPage = count, Resources = list, TotalResults = 0 // TODO
+        StartIndex = startIndex, ItemsPerPage = count, Resources = result, TotalResults = totalResults
       };
     }
 
@@ -129,8 +109,7 @@ public class Notes : SCIMv2<Note>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    string resourceName = nameof(Note).ToLower();
-    ctx.Roles["ProcName"] = $"USP_{resourceName}_create";
+    ctx.Roles["Note"] = resource;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -138,27 +117,11 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _dbCommand!.OpenAsync(cancellationToken);
-      using DbCommand command = _dbCommand.CreateCommand();
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = ctx.Roles["ProcName"];
+      var command = new CreateNoteCommand(_dbCommand, ctx.Roles["Note"]);
 
-      // For example, for a User resource we assume:
-      // - Property "UserName" maps to @name.
-      // - Property "Emails" (a collection) provides the first email's Value for @email.
-      // You can customize this mapping as needed.
-      string nameValue = GetPropertyValue<string>(resource, "UserName")
-                         ?? throw new Exception("UserName is required.");
-      string emailValue = GetFirstEmailValue(resource)
-                          ?? throw new Exception("At least one email is required.");
-
-      command.Parameters.Add(CreateParameter(command, "@name", nameValue, DbType.String));
-      command.Parameters.Add(CreateParameter(command, "@email", emailValue, DbType.String));
-      // Rely on defaults for @active, @status, and @custom_fields.
-
-      // Execute and return the new resource's GUID.
-      object result = await command.ExecuteScalarAsync(cancellationToken);
-      ctx.Result = (Guid)result;
+      var result = await _mediator!.Send(command, cancellationToken);
+      
+      ctx.Result = result;
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
@@ -180,8 +143,7 @@ public class Notes : SCIMv2<Note>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    string resourceName = nameof(Note).ToLower();
-    ctx.Roles["ProcName"] = $"USP_{resourceName}_retrieve";
+    ctx.Roles["Id"] = id;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -189,22 +151,11 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _dbQuery!.OpenAsync(cancellationToken);
-      using DbCommand command = _dbQuery.CreateCommand();
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = ctx.Roles["ProcName"];
+      var query = new RetrieveNoteQuery(_dbQuery, ctx.Roles["Id"]);
 
-      command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
+      var note = await _mediator!.Send(query, cancellationToken);
 
-      Note? obj = null;
-      using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
-      if (await reader.ReadAsync(cancellationToken))
-      {
-        obj = new Note();
-        MapDataRecordToResource(reader, obj);
-      }
-
-      ctx.Result = obj;
+      ctx.Result = note;
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
@@ -227,7 +178,8 @@ public class Notes : SCIMv2<Note>
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
     string resourceName = nameof(Note).ToLower();
-    ctx.Roles["ProcName"] = $"USP_{resourceName}_update";
+    ctx.Roles["Id"] = id;
+    ctx.Roles["Note"] = resource;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -235,29 +187,9 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _dbCommand!.OpenAsync(cancellationToken);
-      using DbCommand command = _dbCommand.CreateCommand();
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = ctx.Roles["ProcName"];
+      var command = new UpdateNoteCommand(_dbCommand, ctx.Roles["Id"], ctx.Roles["Note"]);
 
-      command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
-
-      // Update mapping: if the resource contains a non-null UserName, update @name.
-      string? nameValue = GetPropertyValue<string>(resource, "UserName");
-      if (!string.IsNullOrWhiteSpace(nameValue))
-      {
-        command.Parameters.Add(CreateParameter(command, "@name", nameValue!, DbType.String));
-      }
-
-      // Similarly, update email if available.
-      string? emailValue = GetFirstEmailValue(resource);
-      if (!string.IsNullOrWhiteSpace(emailValue))
-      {
-        command.Parameters.Add(CreateParameter(command, "@email", emailValue!, DbType.String));
-      }
-      // Additional parameters (active, status, custom_fields) can be mapped as needed.
-
-      int rows = await command.ExecuteNonQueryAsync(cancellationToken);
+      var rows = await _mediator!.Send(command, cancellationToken);
 
       ctx.Result = rows > 0;
     }
@@ -295,7 +227,7 @@ public class Notes : SCIMv2<Note>
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
-      command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@uuid", id, DbType.Guid));
 
       // If your stored procedure supported a parameter for hard deletion,
       // you could add it here. For now, we assume the same proc handles deletion.

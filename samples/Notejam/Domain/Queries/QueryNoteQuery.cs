@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Threading;
 
 using Looplex.Samples.Domain.Entities;
 
@@ -16,11 +15,9 @@ namespace Looplex.Samples.Domain.Queries
     public string Filter { get; }
     public string SortBy { get; }
     public string SortOrder { get; }
-    public CancellationToken CancellationToken { get; }
 
     public QueryNoteQuery(DbConnection dbQuery, int page, int pageSize,
-      string filter, string sortBy, string sortOrder,
-      CancellationToken cancellationToken)
+      string filter, string sortBy, string sortOrder)
     {
       DbQuery = dbQuery;
       Page = page;
@@ -28,7 +25,6 @@ namespace Looplex.Samples.Domain.Queries
       Filter = filter;
       SortBy = sortBy;
       SortOrder = sortOrder;
-      CancellationToken = cancellationToken;
     }
   }
 }

@@ -4,6 +4,8 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Looplex.Foundation.SCIMv2.Entities;
 
@@ -242,27 +244,37 @@ public static class Dbs
   /// <summary>
   ///  Obtém a resposta de uma procedure
   /// </summary>
-  /// <param name="adapter"></param>
+  /// <param name="command"></param>
   /// <param name="resultSetNames">Os nomes dos ResultSets</param>
-  public static IEnumerable<SqlResultSet> Query(this DbDataAdapter adapter, string[] resultSetNames)
+  /// <param name="cancellationToken"></param>
+  public static async Task<IEnumerable<SqlResultSet>> QueryAsync(this DbCommand command, string[] resultSetNames, CancellationToken cancellationToken)
   {
-    List<SqlResultSet> arrTables = [];
+    List<SqlResultSet> resultSets = new();
 
-    DataSet data = new();
+    command.CommandTimeout = 3600;
 
-    adapter.SelectCommand.CommandTimeout = 3600;
-    adapter.Fill(data); // TODO com problema
+    using var reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken);
 
-    for (int i = 0; i < data.Tables.Count; i++)
+    int resultSetIndex = 0;
+
+    do
     {
-      data.Tables[i].TableName = resultSetNames[i];
+      var dataTable = new DataTable();
 
-      SqlResultSet table = new(data.Tables[i]);
+      dataTable.Load(reader); // Synchronous, but already buffered
 
-      arrTables.Add(table);
-    }
+      if (resultSetIndex < resultSetNames.Length)
+      {
+        dataTable.TableName = resultSetNames[resultSetIndex];
+      }
 
-    return arrTables;
+      resultSets.Add(new SqlResultSet(dataTable));
+
+      resultSetIndex++;
+
+    } while (await reader.NextResultAsync(cancellationToken));
+
+    return resultSets;
   }
 
   public static int GetTotalCount(this IEnumerable<SqlResultSet> data)
