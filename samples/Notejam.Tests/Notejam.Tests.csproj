@@ -26,10 +26,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Notejam.Domain\Notejam.Domain.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="rbac\model.ini">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -39,6 +35,10 @@
     <None Update="plugins\EPTracker.Plugin.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Notejam\Notejam\Notejam.csproj" />
   </ItemGroup>
 
 </Project>

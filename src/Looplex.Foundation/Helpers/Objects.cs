@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -26,5 +27,34 @@ public static class Objects
     }
 
     return default;
+  }
+  
+  public static string? GetFirstEmailValue(this object resource)
+  {
+    // Assume resource has a property named "Emails" that is an IEnumerable.
+    PropertyInfo? emailsProp = resource.GetType().GetProperty("Emails", BindingFlags.Public | BindingFlags.Instance);
+    if (emailsProp == null)
+    {
+      return null;
+    }
+
+    if (emailsProp.GetValue(resource) is IEnumerable emails)
+    {
+      foreach (object? item in emails)
+      {
+        // Assume each email item has a property "Value".
+        PropertyInfo? valueProp = item.GetType().GetProperty("Value", BindingFlags.Public | BindingFlags.Instance);
+        if (valueProp != null)
+        {
+          object? val = valueProp.GetValue(item);
+          if (val != null)
+          {
+            return val.ToString();
+          }
+        }
+      }
+    }
+
+    return null;
   }
 }

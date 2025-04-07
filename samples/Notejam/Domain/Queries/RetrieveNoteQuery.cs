@@ -1,6 +1,5 @@
 using System;
 using System.Data.Common;
-using System.Threading;
 
 using Looplex.Samples.Domain.Entities;
 
@@ -12,14 +11,11 @@ namespace Looplex.Samples.Domain.Queries
   {
     public DbConnection DbQuery { get; }
     public Guid Id { get; }
-    public CancellationToken CancellationToken { get; }
 
-    public RetrieveNoteQuery(DbConnection dbQuery, Guid id,
-      CancellationToken cancellationToken)
+    public RetrieveNoteQuery(DbConnection dbQuery, Guid id)
     {
       DbQuery = dbQuery;
       Id = id;
-      CancellationToken = cancellationToken;
     }
   }
 }
