@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Data.Common;
 
 using Looplex.Samples.Domain.Entities;
@@ -12,12 +11,12 @@ namespace Looplex.Samples.Domain.Queries
     public DbConnection DbQuery { get; }
     public int Page { get; }
     public int PageSize { get; }
-    public string Filter { get; }
-    public string SortBy { get; }
-    public string SortOrder { get; }
+    public string? Filter { get; }
+    public string? SortBy { get; }
+    public string? SortOrder { get; }
 
     public QueryNoteQuery(DbConnection dbQuery, int page, int pageSize,
-      string filter, string sortBy, string sortOrder)
+      string? filter, string? sortBy, string? sortOrder)
     {
       DbQuery = dbQuery;
       Page = page;

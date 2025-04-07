@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 using Looplex.Foundation.SCIMv2.Entities;
 
 using PropertyChanged;

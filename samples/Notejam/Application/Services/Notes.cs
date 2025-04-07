@@ -1,7 +1,4 @@
-using System.Collections;
-using System.Data;
 using System.Data.Common;
-using System.Reflection;
 using System.Security.Claims;
 
 using Looplex.Foundation.Helpers;
@@ -78,7 +75,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var query = new QueryNoteQuery(_dbQuery, page, count, filter, sortBy, sortOrder);
+      var query = new QueryNoteQuery(_dbQuery!, page, count, filter, sortBy, sortOrder);
       
       var (result, totalResults) = await _mediator!.Send(query, cancellationToken);
       
@@ -213,8 +210,7 @@ public class Notes : SCIMv2<Note>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    string resourceName = nameof(Note).ToLower();
-    ctx.Roles["ProcName"] = $"USP_{resourceName}_delete";
+    ctx.Roles["Id"] = id;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -222,16 +218,9 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _dbCommand!.OpenAsync(cancellationToken);
-      using DbCommand command = _dbCommand.CreateCommand();
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = ctx.Roles["ProcName"];
+      var command = new DeleteNoteCommand(_dbCommand, ctx.Roles["Id"]);
 
-      command.Parameters.Add(Dbs.CreateParameter(command, "@uuid", id, DbType.Guid));
-
-      // If your stored procedure supported a parameter for hard deletion,
-      // you could add it here. For now, we assume the same proc handles deletion.
-      int rows = await command.ExecuteNonQueryAsync(cancellationToken);
+      var rows = await _mediator!.Send(command, cancellationToken);
 
       ctx.Result = rows > 0;
     }
@@ -240,39 +229,6 @@ public class Notes : SCIMv2<Note>
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
     return (bool)ctx.Result;
-  }
-
-  #endregion
-
-  #region Helper Methods
-
-  private static string? GetFirstEmailValue(object resource)
-  {
-    // Assume resource has a property named "Emails" that is an IEnumerable.
-    PropertyInfo? emailsProp = resource.GetType().GetProperty("Emails", BindingFlags.Public | BindingFlags.Instance);
-    if (emailsProp == null)
-    {
-      return null;
-    }
-
-    if (emailsProp.GetValue(resource) is IEnumerable emails)
-    {
-      foreach (object? item in emails)
-      {
-        // Assume each email item has a property "Value".
-        PropertyInfo? valueProp = item.GetType().GetProperty("Value", BindingFlags.Public | BindingFlags.Instance);
-        if (valueProp != null)
-        {
-          object? val = valueProp.GetValue(item);
-          if (val != null)
-          {
-            return val.ToString();
-          }
-        }
-      }
-    }
-
-    return null;
   }
 
   #endregion
