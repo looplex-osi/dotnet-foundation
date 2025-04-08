@@ -38,7 +38,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Notejam\Notejam\Notejam.csproj" />
+    <ProjectReference Include="..\Notejam\Notejam.csproj" />
   </ItemGroup>
 
 </Project>

@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Domain", "Domain\Domain.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infra", "Infra\Infra.csproj", "{07BE59F7-8844-4C62-AAAD-471D5B02834A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notejam.Tests", "Notejam.Tests\Notejam.Tests.csproj", "{9E67E572-9462-411F-A4A2-1685F6AE1358}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,5 +44,9 @@ Global
 		{07BE59F7-8844-4C62-AAAD-471D5B02834A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{07BE59F7-8844-4C62-AAAD-471D5B02834A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{07BE59F7-8844-4C62-AAAD-471D5B02834A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9E67E572-9462-411F-A4A2-1685F6AE1358}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E67E572-9462-411F-A4A2-1685F6AE1358}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E67E572-9462-411F-A4A2-1685F6AE1358}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E67E572-9462-411F-A4A2-1685F6AE1358}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
