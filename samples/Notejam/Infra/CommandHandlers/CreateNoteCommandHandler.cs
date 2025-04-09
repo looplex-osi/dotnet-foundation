@@ -1,6 +1,7 @@
 using System.Data;
 
 using Looplex.Foundation.Helpers;
+using Looplex.Foundation.Ports;
 using Looplex.Samples.Domain.Commands;
 using Looplex.Samples.Domain.Entities;
 
@@ -8,7 +9,7 @@ using MediatR;
 
 namespace Looplex.Samples.Infra.CommandHandlers
 {
-  public class CreateNoteCommandHandler : IRequestHandler<CreateNoteCommand, Guid>
+  public class CreateNoteCommandHandler(IDbConnections connections) : IRequestHandler<CreateNoteCommand, Guid>
   {
     public async Task<Guid> Handle(CreateNoteCommand request, CancellationToken cancellationToken)
     {
@@ -17,8 +18,9 @@ namespace Looplex.Samples.Infra.CommandHandlers
       string resourceName = nameof(Note).ToLower();
       string procName = $"USP_{resourceName}_create";
       
-      await request.DbCommand.OpenAsync(cancellationToken);
-      await using var command = request.DbCommand.CreateCommand();
+      var dbCommand = await connections.CommandConnection();
+      await dbCommand.OpenAsync(cancellationToken);
+      await using var command = dbCommand.CreateCommand();
       
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = procName;

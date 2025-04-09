@@ -1,10 +1,15 @@
-using System.Data.Common;
 using System.Reflection;
+
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 
 using Casbin;
 
+using Looplex.Foundation.Adapters;
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
+using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
+using Looplex.Foundation.WebApp.Adapters;
 using Looplex.Foundation.WebApp.Middlewares;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
@@ -14,7 +19,6 @@ using Looplex.Samples.Infra.CommandHandlers;
 using MediatR;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Data.SqlClient;
 
 using Newtonsoft.Json;
 
@@ -33,12 +37,19 @@ public static class Program
       .AddPolicyHandler(GetRetryPolicy());
 
     builder.Services.AddTransient(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Default"));
-    DbConnection DbCommand() => new SqlConnection("");
-    DbConnection DbQuery() => new SqlConnection("");
 
     builder.Services.AddHealthChecks()
       .AddCheck<HealthCheck>("Default");
 
+    // config file should have
+    // AZURE_TENANT_ID
+    // AZURE_CLIENT_ID
+    // AZURE_CLIENT_SECRET
+    foreach (var item in Files.LoadEnv("config.env"))
+    {
+      Environment.SetEnvironmentVariable(item.Key, item.Value);
+    }
+    
     Dictionary<string, string?> inMemorySettings = new()
     {
       { "Audience", "saas.looplex.com.br" },
@@ -61,8 +72,19 @@ public static class Program
     };
     builder.Configuration.AddInMemoryCollection(inMemorySettings);
     builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
+    builder.Services.AddSingleton<ISecretsService>(sp =>
+    {
+      var keyVaultUrl = new Uri(builder.Configuration ["KeyVaultUrl"]!);
+      var retryPolicy = Policy.NoOpAsync<string>();
+      // get credentials from ENV
+      var secretClient = new SecretClient(keyVaultUrl, new DefaultAzureCredential());
+      var logger = sp.GetRequiredService<ILogger<AzureSecretsService>>();
+      
+      return new AzureSecretsService(secretClient, retryPolicy, logger);
+    });
+    builder.Services.AddSingleton<IDbConnections, DbConnections>();
     builder.Services.AddOAuth2(builder.Configuration);
-    builder.Services.AddSCIMv2(DbCommand, DbQuery);
+    builder.Services.AddSCIMv2();
     builder.Services.AddAuthZ(InitRbacEnforcer());
     
     builder.Services.AddScoped<Notes>(sp =>
@@ -73,7 +95,7 @@ public static class Program
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
       var mediator = sp.GetRequiredService<IMediator>();
-      return new Notes(plugins, rbacService, httpContextAccessor, DbCommand(), DbQuery(), mediator);
+      return new Notes(plugins, rbacService, httpContextAccessor, mediator);
     });
     
     builder.Services.AddMediatR(cfg =>

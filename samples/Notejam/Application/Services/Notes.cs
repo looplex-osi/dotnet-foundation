@@ -1,4 +1,3 @@
-using System.Data.Common;
 using System.Security.Claims;
 
 using Looplex.Foundation.Helpers;
@@ -23,8 +22,6 @@ public class Notes : SCIMv2<Note>
 {
   private readonly IRbacService? _rbacService;
   private readonly ClaimsPrincipal? _user;
-  private readonly DbConnection? _dbCommand;
-  private readonly DbConnection? _dbQuery;
   private readonly IMediator? _mediator;
 
   #region Reflectivity
@@ -38,10 +35,8 @@ public class Notes : SCIMv2<Note>
 
   [ActivatorUtilitiesConstructor]
   public Notes(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
-    DbConnection dbCommand, DbConnection dbQuery, IMediator mediator) : base(plugins)
+    IMediator mediator) : base(plugins)
   {
-    _dbCommand = dbCommand;
-    _dbQuery = dbQuery;
     _rbacService = rbacService;
     _user = httpContextAccessor.HttpContext.User;
     _mediator = mediator;
@@ -67,7 +62,7 @@ public class Notes : SCIMv2<Note>
     }
 
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-    
+
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -75,10 +70,10 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var query = new QueryNoteQuery(_dbQuery!, page, count, filter, sortBy, sortOrder);
-      
+      var query = new QueryNoteQuery(page, count, filter, sortBy, sortOrder);
+
       var (result, totalResults) = await _mediator!.Send(query, cancellationToken);
-      
+
       ctx.Result = new ListResponse<Note>
       {
         StartIndex = startIndex, ItemsPerPage = count, Resources = result, TotalResults = totalResults
@@ -114,10 +109,10 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new CreateNoteCommand(_dbCommand, ctx.Roles["Note"]);
+      var command = new CreateNoteCommand(ctx.Roles["Note"]);
 
       var result = await _mediator!.Send(command, cancellationToken);
-      
+
       ctx.Result = result;
     }
 
@@ -148,7 +143,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var query = new RetrieveNoteQuery(_dbQuery, ctx.Roles["Id"]);
+      var query = new RetrieveNoteQuery(ctx.Roles["Id"]);
 
       var note = await _mediator!.Send(query, cancellationToken);
 
@@ -184,7 +179,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new UpdateNoteCommand(_dbCommand, ctx.Roles["Id"], ctx.Roles["Note"]);
+      var command = new UpdateNoteCommand(ctx.Roles["Id"], ctx.Roles["Note"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 
@@ -218,7 +213,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new DeleteNoteCommand(_dbCommand, ctx.Roles["Id"]);
+      var command = new DeleteNoteCommand(ctx.Roles["Id"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 

@@ -19,6 +19,7 @@ public class SCIMv2Tests
   private Users _users = null!;
   private IRbacService _mockRbacService = null!;
   private ClaimsPrincipal _mockUser = null!;
+  private IDbConnections _mockDbConnections = null!;
   private DbConnection _mockDbConnection = null!;
   private DbCommand _mockDbCommand = null!;
   private DbDataReader _mockDbDataReader = null!;
@@ -33,7 +34,10 @@ public class SCIMv2Tests
     var mockHttpAccessor = Substitute.For<IHttpContextAccessor>();
     var httpContext = new DefaultHttpContext() { User = _mockUser };
     mockHttpAccessor.HttpContext.Returns(httpContext);
+    _mockDbConnections = Substitute.For<IDbConnections>();
     _mockDbConnection = Substitute.For<DbConnection>();
+    _mockDbConnections.CommandConnection().Returns(_mockDbConnection);
+    _mockDbConnections.QueryConnection().Returns(_mockDbConnection);
     _mockDbCommand = Substitute.For<DbCommand>();
     _mockDbDataReader = Substitute.For<DbDataReader>();
     _mockContext = Substitute.For<IContext>();
@@ -45,7 +49,7 @@ public class SCIMv2Tests
     _mockDbCommand.ExecuteNonQueryAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(1));
 
     _cancellationToken = CancellationToken.None;
-    _users = new Users(new List<IPlugin>(), _mockRbacService, mockHttpAccessor, _mockDbConnection, _mockDbConnection);
+    _users = new Users(new List<IPlugin>(), _mockRbacService, mockHttpAccessor, _mockDbConnections);
   }
 
   #region QueryAsync Tests
