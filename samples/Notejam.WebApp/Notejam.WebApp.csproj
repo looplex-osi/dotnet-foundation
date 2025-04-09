@@ -31,6 +31,9 @@
     <None Update="rbac\policy.csv">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="config.sample.env">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="config.env">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
