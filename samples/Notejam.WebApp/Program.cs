@@ -41,10 +41,6 @@ public static class Program
     builder.Services.AddHealthChecks()
       .AddCheck<HealthCheck>("Default");
 
-    // config file should have
-    // AZURE_TENANT_ID
-    // AZURE_CLIENT_ID
-    // AZURE_CLIENT_SECRET
     foreach (var item in Files.LoadEnv("config.env"))
     {
       Environment.SetEnvironmentVariable(item.Key, item.Value);
