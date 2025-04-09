@@ -4,13 +4,8 @@ using MediatR;
 
 namespace Looplex.Samples.Domain.Commands
 {
-  public class CreateNoteCommand : IRequest<Guid>
+  public class CreateNoteCommand(Note note) : IRequest<Guid>
   {
-    public Note Note { get; }
-
-    public CreateNoteCommand(Note note)
-    {
-      Note = note;
-    }
+    public Note Note { get; } = note ?? throw new ArgumentNullException(nameof(note));
   }
 }
