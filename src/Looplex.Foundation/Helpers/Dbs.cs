@@ -247,7 +247,8 @@ public static class Dbs
   /// <param name="command"></param>
   /// <param name="resultSetNames">Os nomes dos ResultSets</param>
   /// <param name="cancellationToken"></param>
-  public static async Task<IEnumerable<SqlResultSet>> QueryAsync(this DbCommand command, string[] resultSetNames, CancellationToken cancellationToken)
+  public static async Task<IEnumerable<SqlResultSet>> QueryAsync(this DbCommand command, string[] resultSetNames,
+    CancellationToken cancellationToken)
   {
     List<SqlResultSet> resultSets = new();
 
@@ -271,7 +272,6 @@ public static class Dbs
       resultSets.Add(new SqlResultSet(dataTable));
 
       resultSetIndex++;
-
     } while (await reader.NextResultAsync(cancellationToken));
 
     return resultSets;
@@ -281,7 +281,12 @@ public static class Dbs
   {
     SqlResultSet? resultSet = data.GetResultSet(TotalCount).FirstOrDefault();
 
-    string value = resultSet?.Result?.Rows[0].GetColumnValue("total").value?.ToString() ?? "0";
+    if (resultSet?.Result == null || resultSet.Result.Rows.Count < 1)
+    {
+      return 0;
+    }
+
+    string value = resultSet.Result.Rows[0].GetColumnValue("total").value?.ToString() ?? "0";
 
     return int.TryParse(value, out int totalCount) ? totalCount : 0;
   }
