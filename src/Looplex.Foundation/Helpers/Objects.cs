@@ -9,11 +9,15 @@ public static class Objects
 {
   public static string GetCallerName(this object input, [CallerMemberName] string memberName = "")
   {
-    return memberName; 
+    return memberName;
   }
 
   public static TProp? GetPropertyValue<TProp>(this object resource, string propertyName)
   {
+    if (resource == null) throw new ArgumentNullException(nameof(resource));
+    if (string.IsNullOrEmpty(propertyName))
+      throw new ArgumentException("Property name cannot be null or empty", nameof(propertyName));
+
     PropertyInfo? prop = resource.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
     if (prop != null)
     {
@@ -23,12 +27,30 @@ public static class Objects
         return castVal;
       }
 
-      return (TProp)Convert.ChangeType(val, typeof(TProp));
+      if (val == null)
+      {
+        return default;
+      }
+
+      try
+      {
+        return (TProp)Convert.ChangeType(val, typeof(TProp));
+      }
+      catch (InvalidCastException ex)
+      {
+        throw new InvalidOperationException(
+          $"Cannot convert property '{propertyName}' from {val.GetType()} to {typeof(TProp)}", ex);
+      }
+      catch (FormatException ex)
+      {
+        throw new InvalidOperationException(
+          $"Cannot convert property '{propertyName}' value '{val}' to {typeof(TProp)}", ex);
+      }
     }
 
     return default;
   }
-  
+
   public static string? GetFirstEmailValue(this object resource)
   {
     // Assume resource has a property named "Emails" that is an IEnumerable.

@@ -44,7 +44,7 @@ public class DbConnections(
   {
     var database = ConnectionStringsCache.TryGetValue(tenant, out var value)
       ? value
-      : await GetDatabaseUsingRoutingDatabaseAsync(tenant, "read");
+      : await GetDatabaseUsingRoutingDatabaseAsync(tenant, "write");
 
     var databaseName = database.Name!;
     var connection = new SqlConnection(database.ConnectionString);
@@ -99,17 +99,16 @@ public class DbConnections(
     {
       var builder = new SqlConnectionStringBuilder(connectionString);
 
-      if (!hostEnvironment.IsDevelopment())
-        builder.Password = "****";
-
       // sets read or write user
       builder.UserID = user;
-
+      database.ConnectionString = builder.ConnectionString;
+      
+      // logs connction string without password
+      if (!hostEnvironment.IsDevelopment())
+        builder.Password = "****";
       logger.LogInformation(
         "Database: Getting connection string for tenant {Tenant}. Result: {ConnectionString}",
         domain, builder.ToString());
-      
-      database.ConnectionString = builder.ConnectionString;
     }
     catch (Exception e)
     {
@@ -127,7 +126,7 @@ public class DbConnections(
   {
     var database = ConnectionStringsCache.TryGetValue(tenant, out var value)
       ? value
-      : await GetDatabaseUsingRoutingDatabaseAsync(tenant, "write");
+      : await GetDatabaseUsingRoutingDatabaseAsync(tenant, "read");
 
     var databaseName = database.Name!;
     var connection = new SqlConnection(database.ConnectionString);
