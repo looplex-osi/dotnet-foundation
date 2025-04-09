@@ -8,6 +8,7 @@ namespace Looplex.Samples.Domain.Commands
 
     public DeleteNoteCommand(Guid id)
     {
+      if (id == Guid.Empty) throw new ArgumentException("Id cannot be empty", nameof(id));
       Id = id;
     }
   }

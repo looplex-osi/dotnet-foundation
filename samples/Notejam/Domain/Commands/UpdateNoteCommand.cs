@@ -11,8 +11,9 @@ namespace Looplex.Samples.Domain.Commands
 
     public UpdateNoteCommand(Guid id, Note note)
     {
+      if (id == Guid.Empty) throw new ArgumentException("Id cannot be empty", nameof(id));
       Id = id;
-      Note = note;
+      Note = note ?? throw new ArgumentNullException(nameof(note));
     }
   }
 }
