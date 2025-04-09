@@ -1,6 +1,7 @@
 using System.Data;
 
 using Looplex.Foundation.Helpers;
+using Looplex.Foundation.Ports;
 using Looplex.Samples.Domain.Entities;
 using Looplex.Samples.Domain.Queries;
 
@@ -8,7 +9,7 @@ using MediatR;
 
 namespace Looplex.Samples.Infra.QueryHandlers
 {
-  public class QueryNoteQueryHandler : IRequestHandler<QueryNoteQuery, (IList<Note>, int)>
+  public class QueryNoteQueryHandler(IDbConnections connections) : IRequestHandler<QueryNoteQuery, (IList<Note>, int)>
   {
     internal static readonly string[] ResultSets = [];
 
@@ -19,8 +20,9 @@ namespace Looplex.Samples.Infra.QueryHandlers
       string resourceName = nameof(Note).ToLower();
       string procName = $"USP_{resourceName}_pquery";
 
-      await request.DbQuery.OpenAsync(cancellationToken);
-      await using var command = request.DbQuery.CreateCommand();
+      var dbQuery = await connections.QueryConnection();
+      await dbQuery.OpenAsync(cancellationToken);
+      await using var command = dbQuery.CreateCommand();
       
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = procName;
