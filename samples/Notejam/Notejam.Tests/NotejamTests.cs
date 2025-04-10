@@ -9,7 +9,7 @@ using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
-using Looplex.Samples.Entities;
+using Looplex.Samples.Application.Services;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
