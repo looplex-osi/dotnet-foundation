@@ -17,7 +17,7 @@ public class ListResponse<T> : Actor
   /// A list of complex objects containing the requested resources. REQUIRED if 'totalResults' is non-zero.
   /// </summary>
   [JsonProperty("Resources")]
-  public List<T> Resources { get; set; } = [];
+  public IList<T> Resources { get; set; } = [];
         
   /// <summary>
   /// The 1-based index of the first result in the current set of list results. REQUIRED when partial results are returned due to pagination.
@@ -30,10 +30,11 @@ public class ListResponse<T> : Actor
   public long ItemsPerPage { get; set; }
 }
 
-public partial class ListResponseContinuous<T> : Actor
+public class ListResponseContinuous<T> : Actor
 {
   public long StartIndex { get; set; }
   public long ItemsPerPage { get; set; }
   public bool? HasNext { get; set; } = null;
+  [JsonProperty("Resources")]
   public List<T> Resources { get; set; } = [];
 }

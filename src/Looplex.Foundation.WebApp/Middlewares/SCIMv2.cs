@@ -1,4 +1,3 @@
-using System.Data.Common;
 using System.Net;
 
 using Looplex.Foundation.Ports;
@@ -20,8 +19,7 @@ public static class SCIMv2
 {
   private static readonly ServiceProviderConfiguration ServiceProviderConfiguration = new();
 
-  public static IServiceCollection AddSCIMv2(this IServiceCollection services, Func<DbConnection> dbCommandFunc,
-    Func<DbConnection> dbQueryFunc)
+  public static IServiceCollection AddSCIMv2(this IServiceCollection services)
   {
     services.AddHttpContextAccessor();
     services.AddSingleton(ServiceProviderConfiguration);
@@ -41,8 +39,8 @@ public static class SCIMv2
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-      var dbConnection = sp.GetRequiredService<DbConnection>();
-      return new Users(plugins, rbacService, httpContextAccessor, dbCommandFunc(), dbQueryFunc());
+      var dbConnections = sp.GetRequiredService<IDbConnections>();
+      return new Users(plugins, rbacService, httpContextAccessor, dbConnections);
     });
     services.AddScoped<Groups>(sp =>
     {
@@ -51,8 +49,8 @@ public static class SCIMv2
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-      var dbConnection = sp.GetRequiredService<DbConnection>();
-      return new Groups(plugins, rbacService, httpContextAccessor, dbCommandFunc(), dbQueryFunc());
+      var dbConnections = sp.GetRequiredService<IDbConnections>();
+      return new Groups(plugins, rbacService, httpContextAccessor, dbConnections);
     });
 
     return services;

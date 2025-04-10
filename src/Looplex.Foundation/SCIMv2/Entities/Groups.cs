@@ -20,8 +20,7 @@ namespace Looplex.Foundation.SCIMv2.Entities;
 
 public class Groups : SCIMv2<Group>
 {
-  private readonly DbConnection? _dbCommand;
-  private readonly DbConnection? _dbQuery;
+  private readonly IDbConnections? _connections;
   private readonly IRbacService? _rbacService;
   private readonly ClaimsPrincipal? _user;
 
@@ -36,10 +35,9 @@ public class Groups : SCIMv2<Group>
 
   [ActivatorUtilitiesConstructor]
   public Groups(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
-    DbConnection dbCommand, DbConnection dbQuery) : base(plugins)
+    IDbConnections connections) : base(plugins)
   {
-    _dbCommand = dbCommand;
-    _dbQuery = dbQuery;
+    _connections = connections;
     _rbacService = rbacService;
     _user = httpContextAccessor.HttpContext.User;
   }
@@ -80,25 +78,26 @@ public class Groups : SCIMv2<Group>
 
       string procName = ctx.Roles["ProcName"];
 
-      await _dbQuery!.OpenAsync(cancellationToken);
-      using DbCommand command = _dbQuery.CreateCommand();
+      var dbQuery = await _connections!.QueryConnection();
+      await dbQuery!.OpenAsync(cancellationToken);
+      using DbCommand command = dbQuery.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = procName;
 
       // Add expected parameters.
-      command.Parameters.Add(CreateParameter(command, "@do_count", 0, DbType.Boolean));
-      command.Parameters.Add(CreateParameter(command, "@page", page, DbType.Int32));
-      command.Parameters.Add(CreateParameter(command, "@page_size", count, DbType.Int32));
-      command.Parameters.Add(CreateParameter(command, "@filter_active", 1, DbType.Boolean));
-      command.Parameters.Add(CreateParameter(command, "@filter_name", filter ?? (object)DBNull.Value, DbType.String));
-      command.Parameters.Add(CreateParameter(command, "@filter_email", DBNull.Value, DbType.String));
-      command.Parameters.Add(CreateParameter(command, "@order_by", DBNull.Value, DbType.String));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@do_count", 0, DbType.Boolean));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@page", page, DbType.Int32));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@page_size", count, DbType.Int32));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@filter_active", 1, DbType.Boolean));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@filter_name", filter ?? (object)DBNull.Value, DbType.String));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@filter_email", DBNull.Value, DbType.String));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", DBNull.Value, DbType.String));
 
       using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
       while (await reader.ReadAsync(cancellationToken))
       {
         Group obj = new();
-        MapDataRecordToResource(reader, obj);
+        Dbs.MapDataRecordToResource(reader, obj);
         list.Add(obj);
       }
 
@@ -140,18 +139,19 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _dbCommand!.OpenAsync(cancellationToken);
-      using DbCommand command = _dbCommand.CreateCommand();
+      var dbCommand = await _connections!.CommandConnection();
+      await dbCommand!.OpenAsync(cancellationToken);
+      using DbCommand command = dbCommand.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
       // For example, for a Group resource we assume:
       // - Property "GroupName" maps to @name.
       // You can customize this mapping as needed.
-      string nameValue = GetPropertyValue<string>(resource, "GroupName")
+      string nameValue = resource.GetPropertyValue<string>("GroupName")
                          ?? throw new Exception("GroupName is required.");
 
-      command.Parameters.Add(CreateParameter(command, "@name", nameValue, DbType.String));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@name", nameValue, DbType.String));
       // Rely on defaults for @active, @status, and @custom_fields.
 
       // Execute and return the new resource's GUID.
@@ -187,19 +187,20 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _dbQuery!.OpenAsync(cancellationToken);
-      using DbCommand command = _dbQuery.CreateCommand();
+      var dbQuery = await _connections!.QueryConnection();
+      await dbQuery!.OpenAsync(cancellationToken);
+      using DbCommand command = dbQuery.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
-      command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@uuid", id, DbType.Guid));
 
       Group? obj = null;
       using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
       if (await reader.ReadAsync(cancellationToken))
       {
         obj = new Group();
-        MapDataRecordToResource(reader, obj);
+        Dbs.MapDataRecordToResource(reader, obj);
       }
 
       ctx.Result = obj;
@@ -233,18 +234,19 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _dbCommand!.OpenAsync(cancellationToken);
-      using DbCommand command = _dbCommand.CreateCommand();
+      var dbCommand = await _connections!.CommandConnection();
+      await dbCommand!.OpenAsync(cancellationToken);
+      using DbCommand command = dbCommand.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
-      command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@uuid", id, DbType.Guid));
 
       // Update mapping: if the resource contains a non-null GroupName, update @name.
-      string? nameValue = GetPropertyValue<string>(resource, "GroupName");
+      string? nameValue = resource.GetPropertyValue<string>("GroupName");
       if (!string.IsNullOrWhiteSpace(nameValue))
       {
-        command.Parameters.Add(CreateParameter(command, "@name", nameValue!, DbType.String));
+        command.Parameters.Add(Dbs.CreateParameter(command, "@name", nameValue!, DbType.String));
       }
 
       // Additional parameters (active, status, custom_fields) can be mapped as needed.
@@ -282,12 +284,13 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      await _dbCommand!.OpenAsync(cancellationToken);
-      using DbCommand command = _dbCommand.CreateCommand();
+      var dbCommand = await _connections!.CommandConnection();
+      await dbCommand!.OpenAsync(cancellationToken);
+      using DbCommand command = dbCommand.CreateCommand();
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = ctx.Roles["ProcName"];
 
-      command.Parameters.Add(CreateParameter(command, "@uuid", id, DbType.Guid));
+      command.Parameters.Add(Dbs.CreateParameter(command, "@uuid", id, DbType.Guid));
 
       // If your stored procedure supported a parameter for hard deletion,
       // you could add it here. For now, we assume the same proc handles deletion.
