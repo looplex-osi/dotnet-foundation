@@ -86,8 +86,9 @@ public static class Program
     builder.Services.AddScoped<Notes>(sp =>
     {
       PluginLoader loader = new();
-      IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
-      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+      IEnumerable<string> dlls =  Directory.Exists("plugins")
+        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+        : [];      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
       var mediator = sp.GetRequiredService<IMediator>();

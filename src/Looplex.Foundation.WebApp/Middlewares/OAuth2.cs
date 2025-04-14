@@ -40,7 +40,9 @@ public static class OAuth2
     services.AddScoped<ClientCredentialsAuthentications>(sp =>
     {
       PluginLoader loader = new();
-      IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
+      IEnumerable<string> dlls =  Directory.Exists("plugins")
+        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+        : [];
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
       var clientCredentials = sp.GetRequiredService<IClientCredentials>();
       var jwtService = sp.GetRequiredService<IJwtService>();
@@ -49,7 +51,9 @@ public static class OAuth2
     services.AddScoped<TokenExchangeAuthentications>(sp =>
     {
       PluginLoader loader = new();
-      IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
+      IEnumerable<string> dlls =  Directory.Exists("plugins")
+        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+        : [];
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
       var jwtService = sp.GetRequiredService<IJwtService>();
       var httpClient = sp.GetRequiredService<HttpClient>();
