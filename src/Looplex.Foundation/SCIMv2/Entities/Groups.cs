@@ -51,7 +51,7 @@ public class Groups : SCIMv2<Group>
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-    
+
     int page = Page(startIndex, count);
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
@@ -89,7 +89,8 @@ public class Groups : SCIMv2<Group>
       command.Parameters.Add(Dbs.CreateParameter(command, "@page", page, DbType.Int32));
       command.Parameters.Add(Dbs.CreateParameter(command, "@page_size", count, DbType.Int32));
       command.Parameters.Add(Dbs.CreateParameter(command, "@filter_active", 1, DbType.Boolean));
-      command.Parameters.Add(Dbs.CreateParameter(command, "@filter_name", filter ?? (object)DBNull.Value, DbType.String));
+      command.Parameters.Add(
+        Dbs.CreateParameter(command, "@filter_name", filter ?? (object)DBNull.Value, DbType.String));
       command.Parameters.Add(Dbs.CreateParameter(command, "@filter_email", DBNull.Value, DbType.String));
       command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", DBNull.Value, DbType.String));
 

@@ -25,21 +25,18 @@ public static class ActorJsonSerializer
 
   public static T? Deserialize<T>(this string json) where T : Actor
   {
-    return (T?) Deserialize(json, typeof(T));
+    return (T?)Deserialize(json, typeof(T));
   }
-  
+
   public static object? Deserialize(this string json, Type type)
   {
     if (!typeof(Actor).IsAssignableFrom(type)) // Must inherit from Actor
       throw new Exception($"Type {type.Name} must inherit from {nameof(Actor)}.");
-    
+
     if (string.IsNullOrWhiteSpace(json))
       throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
 
-    JsonSerializerSettings settings = new()
-    {
-      ContractResolver = new CamelCasePropertyNamesContractResolver()
-    };
+    JsonSerializerSettings settings = new() { ContractResolver = new CamelCasePropertyNamesContractResolver() };
     return JsonConvert.DeserializeObject(json, type, settings);
   }
 }

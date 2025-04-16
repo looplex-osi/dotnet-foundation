@@ -102,7 +102,7 @@ public class DbConnections(
       // sets read or write user
       builder.UserID = user;
       database.ConnectionString = builder.ConnectionString;
-      
+
       // logs connction string without password
       if (!hostEnvironment.IsDevelopment())
         builder.Password = "****";

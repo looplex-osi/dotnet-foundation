@@ -76,7 +76,7 @@ public class Bulks : Service
           ValidateOperation(operation);
 
           var (resourceMap, resourceUniqueId) = GetResourceMap(operation, _serviceProviderConfiguration!);
-          
+
           var service = _serviceProvider!.GetRequiredService(resourceMap.Type);
 
           if (operation.Data != null)
@@ -124,7 +124,7 @@ public class Bulks : Service
             error = new Error(
               e.Message,
               (int)HttpStatusCode.InternalServerError);
-          
+
           errorCount++;
           if (errorCount > request.FailOnErrors)
             break;
@@ -173,7 +173,7 @@ public class Bulks : Service
     ResourceMap resourceMap, CancellationToken cancellationToken)
   {
     var resource = operation.Data!.ToObject(resourceMap.Type);
-    
+
     var createMethod = service.GetType().GetMethod("Create", [resourceMap.GetType(), typeof(CancellationToken)]);
     if (createMethod is null)
       throw new InvalidOperationException("Create method not found.");
@@ -182,7 +182,7 @@ public class Bulks : Service
     var createTask = (Task<Guid>)createTaskObj;
     Guid createdId = await createTask;
     var id = createdId.ToString();
-    
+
     bulkResponse.Operations.Add(new()
     {
       Method = operation.Method,
@@ -199,11 +199,11 @@ public class Bulks : Service
     ResourceMap resourceMap, Guid resourceUniqueId, CancellationToken cancellationToken)
   {
     var resource = operation.Data!.ToObject(resourceMap.Type);
-    
+
     var updateMethod = service.GetType().GetMethod("Update", [
-      typeof(Guid), 
-      resourceMap.Type, 
-      typeof(string), 
+      typeof(Guid),
+      resourceMap.Type,
+      typeof(string),
       typeof(CancellationToken)
     ]);
     if (updateMethod is null)
@@ -213,10 +213,10 @@ public class Bulks : Service
     var updateTask = (Task<bool>)updateTaskObj;
     bool updateSuccess = await updateTask;
     var id = resourceUniqueId.ToString();
-    
+
     if (!updateSuccess)
       throw new SCIMv2Exception($"Resource with id {id} was not patched.", (int)HttpStatusCode.ExpectationFailed);
-    
+
     bulkResponse.Operations.Add(new()
     {
       Method = operation.Method,
@@ -238,7 +238,7 @@ public class Bulks : Service
     var deleteTask = (Task<bool>)deleteTaskObj;
     bool deleteSuccess = await deleteTask;
     var id = resourceUniqueId.ToString();
-    
+
     if (!deleteSuccess)
       throw new SCIMv2Exception($"Resource with id {id} was not deleted.", (int)HttpStatusCode.ExpectationFailed);
   }

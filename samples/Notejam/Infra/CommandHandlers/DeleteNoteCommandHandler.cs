@@ -14,14 +14,14 @@ namespace Looplex.Samples.Infra.CommandHandlers
     public async Task<int> Handle(DeleteResource<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
-      
+
       string resourceName = nameof(Note).ToLower();
       string procName = $"USP_{resourceName}_delete";
-      
+
       var dbCommand = await connections.CommandConnection();
       await dbCommand.OpenAsync(cancellationToken);
       await using var command = dbCommand.CreateCommand();
-      
+
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = procName;
 
@@ -30,7 +30,7 @@ namespace Looplex.Samples.Infra.CommandHandlers
       // If your stored procedure supported a parameter for hard deletion,
       // you could add it here. For now, we assume the same proc handles deletion.
       int rows = await command.ExecuteNonQueryAsync(cancellationToken);
-      
+
       return rows;
     }
   }

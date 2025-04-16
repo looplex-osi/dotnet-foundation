@@ -45,11 +45,7 @@ public class RbacServiceTests
   public void ThrowIfUnauthorized_UserEmailIsEmpty_ExceptionIsThrown()
   {
     // Arrange
-    _user.Claims.Returns(new[]
-    {
-      new Claim(ClaimTypes.Email, ""),
-      new Claim("tenant", "tenant")
-    });
+    _user.Claims.Returns(new[] { new Claim(ClaimTypes.Email, ""), new Claim("tenant", "tenant") });
 
     // Act & Assert
     ArgumentNullException ex =
@@ -62,10 +58,7 @@ public class RbacServiceTests
   public void ThrowIfUnauthorized_TenantIsNull_ExceptionIsThrown()
   {
     // Arrange
-    _user.Claims.Returns(new[]
-    {
-      new Claim(ClaimTypes.Email, "user@email.com")
-    });
+    _user.Claims.Returns(new[] { new Claim(ClaimTypes.Email, "user@email.com") });
 
     // Act & Assert
     ArgumentNullException ex =
@@ -78,11 +71,7 @@ public class RbacServiceTests
   public void ThrowIfUnauthorized_TenantIsEmpty_ExceptionIsThrown()
   {
     // Arrange
-    _user.Claims.Returns(new[]
-    {
-      new Claim(ClaimTypes.Email, "user@email.com"),
-      new Claim("tenant", "")
-    });
+    _user.Claims.Returns(new[] { new Claim(ClaimTypes.Email, "user@email.com"), new Claim("tenant", "") });
 
     // Act & Assert
     ArgumentNullException ex =
@@ -98,11 +87,7 @@ public class RbacServiceTests
   public void ThrowIfUnauthorized_UserHasPermission_NoExceptionThrown(string action)
   {
     // Arrange
-    _user.Claims.Returns(new[]
-    {
-      new Claim(ClaimTypes.Email, "bob.rivest@email.com"),
-      new Claim("tenant", "looplex")
-    });
+    _user.Claims.Returns(new[] { new Claim(ClaimTypes.Email, "bob.rivest@email.com"), new Claim("tenant", "looplex") });
 
     // Act & Assert (No exception should be thrown)
     _rbacService.ThrowIfUnauthorized(_user, "resource", action);
@@ -113,12 +98,8 @@ public class RbacServiceTests
   public void ThrowIfUnauthorized_UserDoesNotHavePermission_ExceptionIsThrown(string action)
   {
     // Arrange
-    _user.Claims.Returns(new[]
-    {
-      new Claim(ClaimTypes.Email, "bob.rivest@email.com"),
-      new Claim("tenant", "looplex")
-    });
-    
+    _user.Claims.Returns(new[] { new Claim(ClaimTypes.Email, "bob.rivest@email.com"), new Claim("tenant", "looplex") });
+
     // Act & Assert
     UnauthorizedAccessException ex =
       Assert.ThrowsException<UnauthorizedAccessException>(() =>

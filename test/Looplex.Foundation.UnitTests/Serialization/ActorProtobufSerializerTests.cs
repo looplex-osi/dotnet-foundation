@@ -15,7 +15,7 @@ public class ActorProtobufSerializerTests
   {
     _actor = new TestActor { Name = "Test Name" };
   }
-  
+
   // Protobuf Serialization Tests
   [TestMethod]
   public void ProtobufSerialize_ShouldConvertActorToBinary()

@@ -90,7 +90,8 @@ public class Users : SCIMv2<User>
       command.Parameters.Add(Dbs.CreateParameter(command, "@page", page, DbType.Int32));
       command.Parameters.Add(Dbs.CreateParameter(command, "@page_size", count, DbType.Int32));
       command.Parameters.Add(Dbs.CreateParameter(command, "@filter_active", 1, DbType.Boolean));
-      command.Parameters.Add(Dbs.CreateParameter(command, "@filter_name", filter ?? (object)DBNull.Value, DbType.String));
+      command.Parameters.Add(
+        Dbs.CreateParameter(command, "@filter_name", filter ?? (object)DBNull.Value, DbType.String));
       command.Parameters.Add(Dbs.CreateParameter(command, "@filter_email", DBNull.Value, DbType.String));
       command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", DBNull.Value, DbType.String));
 

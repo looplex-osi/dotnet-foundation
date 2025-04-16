@@ -13,8 +13,10 @@ namespace Looplex.Foundation.SCIMv2.Entities;
 public class User : Resource
 {
   #region Reflectivity
+
   // ReSharper disable once EmptyConstructor
   public User() : base() { }
+
   #endregion
 
   [JsonIgnore] public int? UserId { get; set; }

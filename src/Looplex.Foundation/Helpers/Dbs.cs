@@ -299,7 +299,8 @@ public static class Dbs
   /// <param name="defaultValue">O valor default de retorno caso value seja null</param>
   /// <param name="complementBefore">O complemento a ser adicionado na string caso não seja nula (não adicionada no defaultValue)</param>
   /// <param name="complementAfter"></param>
-  public static string? AsString(this object? value, string? defaultValue = null, string? complementBefore = null, string? complementAfter = null)
+  public static string? AsString(this object? value, string? defaultValue = null, string? complementBefore = null,
+    string? complementAfter = null)
   {
     StringBuilder returnValue = new();
 
@@ -322,7 +323,7 @@ public static class Dbs
 
     return returnValue.ToString();
   }
-  
+
   public static int AsInteger(this object? value, int defaultValue = int.MinValue)
   {
     if (value == DBNull.Value || value == null)
@@ -338,7 +339,7 @@ public static class Dbs
 
     return (int)Convert.ChangeType(value, typeof(int));
   }
-  
+
   public static Guid AsGuid(this object? value, Guid defaultValue = new Guid())
   {
     if (value == DBNull.Value || value == null)
@@ -354,7 +355,7 @@ public static class Dbs
 
     return (Guid)Convert.ChangeType(value, typeof(Guid));
   }
-  
+
   public static decimal AsDecimal(this object? value, decimal defaultValue = decimal.MinValue)
   {
     if (value == DBNull.Value || value == null)
@@ -370,7 +371,7 @@ public static class Dbs
 
     return (decimal)Convert.ChangeType(value, typeof(decimal));
   }
-  
+
   public static DateTime AsDateTimeLocal(this object? value, DateTime defaultValue = new DateTime())
   {
     if (value == DBNull.Value || value == null)
@@ -402,7 +403,7 @@ public static class Dbs
 
     return ((DateTime)Convert.ChangeType(value, typeof(DateTime))).ToUniversalTime();
   }
-  
+
   public static bool AsBoolean(this object? value, bool defaultValue = false)
   {
     if (value == DBNull.Value || value == null)

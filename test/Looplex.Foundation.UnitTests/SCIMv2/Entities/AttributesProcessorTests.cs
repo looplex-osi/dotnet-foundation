@@ -25,14 +25,14 @@ public class AttributeProcessorTests
   public void SimpleJson_AttributesOnly()
   {
     var context = CreateHttpContext("name");
-      
+
     var records = new List<JObject>
     {
       new JObject { ["name"] = "John", ["age"] = 30, ["email"] = "john@example.com" },
       new JObject { ["name"] = "Jane", ["age"] = 25, ["email"] = "jane@example.com" }
     };
 
-    var result =  records.ProcessAttributes(context);
+    var result = records.ProcessAttributes(context);
 
     foreach (var r in result)
     {
@@ -46,14 +46,14 @@ public class AttributeProcessorTests
   public void SimpleJson_ExcludedAttributesOnly()
   {
     var context = CreateHttpContext(null, "email");
-      
+
     var records = new List<JObject>
     {
       new JObject { ["name"] = "John", ["age"] = 30, ["email"] = "john@example.com" },
       new JObject { ["name"] = "Jane", ["age"] = 25, ["email"] = "jane@example.com" }
     };
 
-    var result =  records.ProcessAttributes(context);
+    var result = records.ProcessAttributes(context);
 
     foreach (var r in result)
     {
@@ -67,7 +67,7 @@ public class AttributeProcessorTests
   public void SimpleJson_BothAttributesAndExcluded()
   {
     var context = CreateHttpContext("name,email", "email");
-      
+
     var records = new List<JObject>
     {
       new JObject { ["name"] = "John", ["age"] = 30, ["email"] = "john@example.com" },
@@ -99,7 +99,7 @@ public class AttributeProcessorTests
                 }")
     };
 
-    var result =  records.ProcessAttributes(context);
+    var result = records.ProcessAttributes(context);
     var first = result.First();
 
     Assert.AreEqual("John", first["profile"]?["name"]);
@@ -122,7 +122,7 @@ public class AttributeProcessorTests
                 }")
     };
 
-    var result =  records.ProcessAttributes(context);
+    var result = records.ProcessAttributes(context);
     var array = (JArray)result.First()["items"]!;
 
     foreach (var item in array)
@@ -147,7 +147,7 @@ public class AttributeProcessorTests
                 }")
     };
 
-    var result =  records.ProcessAttributes(context);
+    var result = records.ProcessAttributes(context);
     var array = (JArray)result.First()["items"]!;
 
     foreach (var item in array)
