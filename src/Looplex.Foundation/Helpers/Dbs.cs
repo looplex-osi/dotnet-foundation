@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -247,7 +248,7 @@ public static class Dbs
   /// <param name="command"></param>
   /// <param name="resultSetNames">Os nomes dos ResultSets</param>
   /// <param name="cancellationToken"></param>
-  public static async Task<IEnumerable<SqlResultSet>> QueryAsync(this DbCommand command, string[] resultSetNames,
+  public static async Task<List<SqlResultSet>> QueryAsync(this DbCommand command, string[] resultSetNames,
     CancellationToken cancellationToken)
   {
     List<SqlResultSet> resultSets = new();
@@ -289,6 +290,133 @@ public static class Dbs
     string value = resultSet.Result.Rows[0].GetColumnValue("total").value?.ToString() ?? "0";
 
     return int.TryParse(value, out int totalCount) ? totalCount : 0;
+  }
+
+  /// <summary>
+  /// Retorna o valor como string
+  /// </summary>
+  /// <param name="value">O valor a ser convertido</param>
+  /// <param name="defaultValue">O valor default de retorno caso value seja null</param>
+  /// <param name="complementBefore">O complemento a ser adicionado na string caso não seja nula (não adicionada no defaultValue)</param>
+  /// <param name="complementAfter"></param>
+  public static string? AsString(this object? value, string? defaultValue = null, string? complementBefore = null, string? complementAfter = null)
+  {
+    StringBuilder returnValue = new();
+
+    value = value?.ToString()?.Trim();
+
+    if (value == DBNull.Value || string.IsNullOrEmpty(value?.ToString()))
+    {
+      return defaultValue;
+    }
+    else
+    {
+      if (!string.IsNullOrEmpty(complementBefore))
+        returnValue.Append(complementBefore);
+
+      returnValue.Append(((string)Convert.ChangeType(value, typeof(string))).Trim());
+
+      if (!string.IsNullOrEmpty(complementAfter))
+        returnValue.Append(complementAfter);
+    }
+
+    return returnValue.ToString();
+  }
+  
+  public static int AsInteger(this object? value, int defaultValue = int.MinValue)
+  {
+    if (value == DBNull.Value || value == null)
+      return defaultValue;
+
+    return (int)Convert.ChangeType(value, typeof(int));
+  }
+
+  public static int? AsIntegerNullable(this object? value, int? defaultValue = null)
+  {
+    if (value == DBNull.Value || value == null || ((int)value) == int.MinValue)
+      return defaultValue;
+
+    return (int)Convert.ChangeType(value, typeof(int));
+  }
+  
+  public static Guid AsGuid(this object? value, Guid defaultValue = new Guid())
+  {
+    if (value == DBNull.Value || value == null)
+      return defaultValue;
+
+    return (Guid)Convert.ChangeType(value, typeof(Guid));
+  }
+
+  public static Guid? AsGuidNullable(this object? value, Guid? defaultValue = null)
+  {
+    if (value == DBNull.Value || value == null)
+      return defaultValue;
+
+    return (Guid)Convert.ChangeType(value, typeof(Guid));
+  }
+  
+  public static decimal AsDecimal(this object? value, decimal defaultValue = decimal.MinValue)
+  {
+    if (value == DBNull.Value || value == null)
+      return defaultValue;
+
+    return (decimal)Convert.ChangeType(value, typeof(decimal));
+  }
+
+  public static decimal? AsDecimalNullable(this object? value, decimal? defaultValue = null)
+  {
+    if (value == DBNull.Value || value == null || ((decimal)value) == decimal.MinValue)
+      return defaultValue;
+
+    return (decimal)Convert.ChangeType(value, typeof(decimal));
+  }
+  
+  public static DateTime AsDateTimeLocal(this object? value, DateTime defaultValue = new DateTime())
+  {
+    if (value == DBNull.Value || value == null)
+      return defaultValue;
+
+    return ((DateTime)Convert.ChangeType(value, typeof(DateTime))).ToLocalTime();
+  }
+
+  public static DateTime AsDateTimeUniversal(this object? value, DateTime defaultValue = new DateTime())
+  {
+    if (value == DBNull.Value || value == null)
+      return defaultValue;
+
+    return ((DateTime)Convert.ChangeType(value, typeof(DateTime))).ToUniversalTime();
+  }
+
+  public static DateTime? AsDateTimeNullableLocal(this object? value, DateTime? defaultValue = null)
+  {
+    if (value == DBNull.Value || value == null || ((DateTime)value) == DateTime.MinValue)
+      return defaultValue;
+
+    return ((DateTime)Convert.ChangeType(value, typeof(DateTime))).ToLocalTime();
+  }
+
+  public static DateTime? AsDateTimeNullableUniversal(this object? value, DateTime? defaultValue = null)
+  {
+    if (value == DBNull.Value || value == null || ((DateTime)value) == DateTime.MinValue)
+      return defaultValue;
+
+    return ((DateTime)Convert.ChangeType(value, typeof(DateTime))).ToUniversalTime();
+  }
+  
+  public static bool AsBoolean(this object? value, bool defaultValue = false)
+  {
+    if (value == DBNull.Value || value == null)
+      return defaultValue;
+
+    return (bool)Convert.ChangeType(value, typeof(bool));
+  }
+
+  public static bool? AsBooleanNullable(this object? value, bool? defaultValue = null)
+  {
+    if (value == DBNull.Value || value == null)
+      return defaultValue;
+
+    return (bool)Convert.ChangeType(value, typeof(bool));
   }
 }
 
