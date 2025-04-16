@@ -9,9 +9,9 @@ using MediatR;
 
 namespace Looplex.Samples.Infra.CommandHandlers
 {
-  public class DeleteNoteCommandHandler(IDbConnections connections) : IRequestHandler<DeleteResourceCommand<Note>, int>
+  public class DeleteNoteCommandHandler(IDbConnections connections) : IRequestHandler<DeleteResource<Note>, int>
   {
-    public async Task<int> Handle(DeleteResourceCommand<Note> request, CancellationToken cancellationToken)
+    public async Task<int> Handle(DeleteResource<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
       
