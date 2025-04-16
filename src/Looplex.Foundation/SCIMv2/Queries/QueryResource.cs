@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Looplex.Foundation.SCIMv2.Queries;
 
-public class QueryResourceQuery<T> : IRequest<(IList<T>, int)>
+public class QueryResource<T> : IRequest<(IList<T>, int)>
   where T : Resource
 {
   public int Page { get; }
@@ -16,7 +16,7 @@ public class QueryResourceQuery<T> : IRequest<(IList<T>, int)>
   public string? SortBy { get; }
   public string? SortOrder { get; }
 
-  public QueryResourceQuery(int page, int pageSize,
+  public QueryResource(int page, int pageSize,
     string? filter, string? sortBy, string? sortOrder)
   {
     if (page < 1) throw new ArgumentException("Page cannot be lower than 1", nameof(page));

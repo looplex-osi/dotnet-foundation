@@ -4,16 +4,18 @@ using Looplex.Foundation.SCIMv2.Entities;
 
 using MediatR;
 
-namespace Looplex.Foundation.SCIMv2.Queries;
+namespace Looplex.Foundation.SCIMv2.Commands;
 
-public class RetrieveResourceQuery<T> : IRequest<T>
+public class UpdateResource<T> : IRequest<int>
   where T : Resource
 {
   public Guid Id { get; }
+  public T Resource { get; }
 
-  public RetrieveResourceQuery(Guid id)
+  public UpdateResource(Guid id, T resource)
   {
     if (id == Guid.Empty) throw new ArgumentException("Id cannot be empty", nameof(id));
     Id = id;
+    Resource = resource ?? throw new ArgumentNullException(nameof(resource));
   }
 }
