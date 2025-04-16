@@ -55,12 +55,12 @@ public static class Dbs
     return value;
   }
 
-  public static IEnumerable<SqlResultSet> GetResultSet(this IEnumerable<SqlResultSet> allResultSets, string tableName)
+  public static SqlResultSet[] GetResultSet(this IEnumerable<SqlResultSet> allResultSets, string tableName)
   {
     IEnumerable<SqlResultSet> res =
       allResultSets.Where(resultSet => resultSet.Result?.TableName.Contains(tableName) ?? false);
 
-    return res;
+    return res.ToArray();
   }
 
   private static (object? value, Type? tipo) GetColumnValue(this DataRow row, string columnName)
