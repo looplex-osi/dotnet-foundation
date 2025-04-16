@@ -3,16 +3,16 @@ using System.Data.Common;
 
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
+using Looplex.Foundation.SCIMv2.Queries;
 using Looplex.Samples.Domain.Entities;
-using Looplex.Samples.Domain.Queries;
 
 using MediatR;
 
 namespace Looplex.Samples.Infra.QueryHandlers
 {
-  public class RetrieveNoteQueryHandler(IDbConnections connections) : IRequestHandler<RetrieveNoteQuery, Note?>
+  public class RetrieveNoteQueryHandler(IDbConnections connections) : IRequestHandler<RetrieveResourceQuery<Note>, Note?>
   {
-    public async Task<Note?> Handle(RetrieveNoteQuery request, CancellationToken cancellationToken)
+    public async Task<Note?> Handle(RetrieveResourceQuery<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
       

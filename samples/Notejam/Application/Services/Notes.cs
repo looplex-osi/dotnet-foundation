@@ -2,14 +2,14 @@ using System.Security.Claims;
 
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
+using Looplex.Foundation.SCIMv2.Commands;
 using Looplex.Foundation.SCIMv2.Entities;
+using Looplex.Foundation.SCIMv2.Queries;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
 using Looplex.OpenForExtension.Abstractions.Plugins;
-using Looplex.Samples.Domain.Commands;
 using Looplex.Samples.Domain.Entities;
-using Looplex.Samples.Domain.Queries;
 
 using MediatR;
 
@@ -70,7 +70,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var query = new QueryNoteQuery(page, count, filter, sortBy, sortOrder);
+      var query = new QueryResourceQuery<Note>(page, count, filter, sortBy, sortOrder);
 
       var (result, totalResults) = await _mediator!.Send(query, cancellationToken);
 
@@ -109,7 +109,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new CreateNoteCommand(ctx.Roles["Note"]);
+      var command = new CreateResourceCommand<Note>(ctx.Roles["Note"]);
 
       var result = await _mediator!.Send(command, cancellationToken);
 
@@ -143,7 +143,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var query = new RetrieveNoteQuery(ctx.Roles["Id"]);
+      var query = new RetrieveResourceQuery<Note>(ctx.Roles["Id"]);
 
       var note = await _mediator!.Send(query, cancellationToken);
 
@@ -179,7 +179,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new UpdateNoteCommand(ctx.Roles["Id"], ctx.Roles["Note"]);
+      var command = new UpdateResourceCommand<Note>(ctx.Roles["Id"], ctx.Roles["Note"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 
@@ -213,7 +213,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new DeleteNoteCommand(ctx.Roles["Id"]);
+      var command = new DeleteResourceCommand<Note>(ctx.Roles["Id"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 

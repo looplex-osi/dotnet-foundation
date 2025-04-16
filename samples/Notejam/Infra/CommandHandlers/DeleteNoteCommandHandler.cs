@@ -2,16 +2,16 @@ using System.Data;
 
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
-using Looplex.Samples.Domain.Commands;
+using Looplex.Foundation.SCIMv2.Commands;
 using Looplex.Samples.Domain.Entities;
 
 using MediatR;
 
 namespace Looplex.Samples.Infra.CommandHandlers
 {
-  public class DeleteNoteCommandHandler(IDbConnections connections) : IRequestHandler<DeleteNoteCommand, int>
+  public class DeleteNoteCommandHandler(IDbConnections connections) : IRequestHandler<DeleteResourceCommand<Note>, int>
   {
-    public async Task<int> Handle(DeleteNoteCommand request, CancellationToken cancellationToken)
+    public async Task<int> Handle(DeleteResourceCommand<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
       
