@@ -24,6 +24,7 @@
     <PackageReference Include="BouncyCastle.NetCore" Version="2.2.1"/>
     <PackageReference Include="Casbin.NET" Version="2.12.0"/>
     <PackageReference Include="Looplex.OpenForExtension" Version="1.1.8"/>
+    <PackageReference Include="MediatR.Contracts" Version="2.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.3.0"/>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
     <PackageReference Include="Polly" Version="8.5.2" />
