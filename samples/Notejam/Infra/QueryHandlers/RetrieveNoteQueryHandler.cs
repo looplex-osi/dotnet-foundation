@@ -10,9 +10,9 @@ using MediatR;
 
 namespace Looplex.Samples.Infra.QueryHandlers
 {
-  public class RetrieveNoteQueryHandler(IDbConnections connections) : IRequestHandler<RetrieveResourceQuery<Note>, Note?>
+  public class RetrieveNoteQueryHandler(IDbConnections connections) : IRequestHandler<RetrieveResource<Note>, Note?>
   {
-    public async Task<Note?> Handle(RetrieveResourceQuery<Note> request, CancellationToken cancellationToken)
+    public async Task<Note?> Handle(RetrieveResource<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
       

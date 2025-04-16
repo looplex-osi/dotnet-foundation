@@ -9,11 +9,11 @@ using MediatR;
 
 namespace Looplex.Samples.Infra.QueryHandlers
 {
-  public class QueryNoteQueryHandler(IDbConnections connections) : IRequestHandler<QueryResourceQuery<Note>, (IList<Note>, int)>
+  public class QueryNoteQueryHandler(IDbConnections connections) : IRequestHandler<QueryResource<Note>, (IList<Note>, int)>
   {
     internal static readonly string[] ResultSets = [];
 
-    public async Task<(IList<Note>, int)> Handle(QueryResourceQuery<Note> request, CancellationToken cancellationToken)
+    public async Task<(IList<Note>, int)> Handle(QueryResource<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
       
