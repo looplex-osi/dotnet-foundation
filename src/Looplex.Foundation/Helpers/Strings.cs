@@ -21,7 +21,7 @@ public static class Strings
   /// </summary>
   /// <param name="filters"></param>
   /// <returns></returns>
-  private static string? ToSqlPredicate(this string? filters)
+  public static string? ToSqlPredicate(this string? filters)
   {
     string? result = null;
 
