@@ -2,16 +2,16 @@ using System.Data;
 
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
-using Looplex.Samples.Domain.Commands;
+using Looplex.Foundation.SCIMv2.Commands;
 using Looplex.Samples.Domain.Entities;
 
 using MediatR;
 
 namespace Looplex.Samples.Infra.CommandHandlers
 {
-  public class CreateNoteCommandHandler(IDbConnections connections) : IRequestHandler<CreateNoteCommand, Guid>
+  public class CreateNoteCommandHandler(IDbConnections connections) : IRequestHandler<CreateResourceCommand<Note>, Guid>
   {
-    public async Task<Guid> Handle(CreateNoteCommand request, CancellationToken cancellationToken)
+    public async Task<Guid> Handle(CreateResourceCommand<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
       
@@ -29,9 +29,9 @@ namespace Looplex.Samples.Infra.CommandHandlers
       // - Property "UserName" maps to @name.
       // - Property "Emails" (a collection) provides the first email's Value for @email.
       // You can customize this mapping as needed.
-      string nameValue = request.Note.GetPropertyValue<string>("UserName")
+      string nameValue = request.Resource.GetPropertyValue<string>("UserName")
                          ?? throw new Exception("UserName is required.");
-      string emailValue = request.Note.GetFirstEmailValue()
+      string emailValue = request.Resource.GetFirstEmailValue()
                           ?? throw new Exception("At least one email is required.");
 
       command.Parameters.Add(Dbs.CreateParameter(command, "@name", nameValue, DbType.String));

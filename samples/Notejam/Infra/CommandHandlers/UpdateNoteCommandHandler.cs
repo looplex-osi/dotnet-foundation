@@ -2,16 +2,16 @@ using System.Data;
 
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
-using Looplex.Samples.Domain.Commands;
+using Looplex.Foundation.SCIMv2.Commands;
 using Looplex.Samples.Domain.Entities;
 
 using MediatR;
 
 namespace Looplex.Samples.Infra.CommandHandlers
 {
-  public class UpdateNoteCommandHandler(IDbConnections connections) : IRequestHandler<UpdateNoteCommand, int>
+  public class UpdateNoteCommandHandler(IDbConnections connections) : IRequestHandler<UpdateResourceCommand<Note>, int>
   {
-    public async Task<int> Handle(UpdateNoteCommand request, CancellationToken cancellationToken)
+    public async Task<int> Handle(UpdateResourceCommand<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
       
@@ -28,14 +28,14 @@ namespace Looplex.Samples.Infra.CommandHandlers
       command.Parameters.Add(Dbs.CreateParameter(command, "@uuid", request.Id, DbType.Guid));
 
       // Update mapping: if the resource contains a non-null UserName, update @name.
-      string? nameValue = request.Note.GetPropertyValue<string>("UserName");
+      string? nameValue = request.Resource.GetPropertyValue<string>("UserName");
       if (!string.IsNullOrWhiteSpace(nameValue))
       {
         command.Parameters.Add(Dbs.CreateParameter(command, "@name", nameValue!, DbType.String));
       }
 
       // Similarly, update email if available.
-      string? emailValue = request.Note.GetFirstEmailValue();
+      string? emailValue = request.Resource.GetFirstEmailValue();
       if (!string.IsNullOrWhiteSpace(emailValue))
       {
         command.Parameters.Add(Dbs.CreateParameter(command, "@email", emailValue!, DbType.String));

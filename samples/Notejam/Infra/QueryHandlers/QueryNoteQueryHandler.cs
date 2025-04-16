@@ -2,18 +2,18 @@ using System.Data;
 
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
+using Looplex.Foundation.SCIMv2.Queries;
 using Looplex.Samples.Domain.Entities;
-using Looplex.Samples.Domain.Queries;
 
 using MediatR;
 
 namespace Looplex.Samples.Infra.QueryHandlers
 {
-  public class QueryNoteQueryHandler(IDbConnections connections) : IRequestHandler<QueryNoteQuery, (IList<Note>, int)>
+  public class QueryNoteQueryHandler(IDbConnections connections) : IRequestHandler<QueryResourceQuery<Note>, (IList<Note>, int)>
   {
     internal static readonly string[] ResultSets = [];
 
-    public async Task<(IList<Note>, int)> Handle(QueryNoteQuery request, CancellationToken cancellationToken)
+    public async Task<(IList<Note>, int)> Handle(QueryResourceQuery<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
       
