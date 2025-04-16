@@ -60,8 +60,7 @@ public class ServiceProviderConfiguration : Actor
   /// </summary>
   public Sort? Sort { get; set; }
 
-  [JsonIgnore]
-  public virtual List<ResourceMap> Map { get; private set; } = new();
+  [JsonIgnore] public virtual List<ResourceMap> Map { get; private set; } = new();
 }
 
 public class AuthenticationScheme

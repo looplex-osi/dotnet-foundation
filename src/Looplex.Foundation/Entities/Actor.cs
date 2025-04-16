@@ -5,6 +5,7 @@ namespace Looplex.Foundation.Entities;
 public abstract class Actor
 {
   #region Reflectivity
+
   /* NOTE: Normally, since abstract classes can’t be instantiated directly,
   ReSharper might flag a public constructor as unnecessary or potentially
   indicative of a design flaw. However, there are cases—like using reflection
@@ -14,10 +15,13 @@ public abstract class Actor
   */
   // ReSharper disable once PublicConstructorInAbstractClass
   public Actor() { }
+
   #endregion
 
   #region Observability
+
   private event Action<string, object> ActorEvent;
+
   protected void FireEvent(string eventName, object? data = null)
   {
     Action<string, object> handler = ActorEvent; // Prevent potential race conditions on MTA environments
@@ -33,5 +37,6 @@ public abstract class Actor
   {
     ActorEvent -= handler ?? throw new ArgumentNullException(nameof(handler));
   }
+
   #endregion
 }

@@ -8,7 +8,9 @@ namespace Looplex.Samples.Domain.Entities
   public class Note : Resource
   {
     #region Reflectivity
+
     public Note() { }
+
     #endregion
 
     public string Name { get; set; }

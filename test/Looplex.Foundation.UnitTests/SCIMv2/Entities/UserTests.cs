@@ -34,7 +34,7 @@ public class UserTests
 <User xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
   <UserName>minimalXmlUser</UserName>
 </User>";
-    
+
     User user = ActorXmlSerializer.Deserialize<User>(minimalXml);
 
     Assert.IsNotNull(user, "Deserializing minimal user XML should not produce null.");
@@ -47,7 +47,7 @@ public class UserTests
   public void User_MinimalPayload_ShouldDeserializeProtobuf()
   {
     // Only userName is provided
-    byte[] minimalProtobuf  = ActorProtobufSerializer
+    byte[] minimalProtobuf = ActorProtobufSerializer
       .Serialize<User>(new User { UserName = "minimalUserProtobuf" });
 
     User user = minimalProtobuf.Deserialize<User>();

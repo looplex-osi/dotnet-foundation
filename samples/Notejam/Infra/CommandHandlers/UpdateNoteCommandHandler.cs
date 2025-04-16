@@ -14,14 +14,14 @@ namespace Looplex.Samples.Infra.CommandHandlers
     public async Task<int> Handle(UpdateResource<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
-      
+
       string resourceName = nameof(Note).ToLower();
       string procName = $"USP_{resourceName}_update";
-      
+
       var dbCommand = await connections.CommandConnection();
       await dbCommand.OpenAsync(cancellationToken);
       await using var command = dbCommand.CreateCommand();
-      
+
       command.CommandType = CommandType.StoredProcedure;
       command.CommandText = procName;
 

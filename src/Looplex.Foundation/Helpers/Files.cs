@@ -11,7 +11,7 @@ public class Files
     {
       throw new FileNotFoundException($"Environment file not found at path: {path}");
     }
-    
+
     string[] lines;
     try
     {

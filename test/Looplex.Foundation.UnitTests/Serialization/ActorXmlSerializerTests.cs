@@ -13,7 +13,7 @@ public class ActorXmlSerializerTests
   {
     _actor = new TestActor { Name = "Test Name" };
   }
-  
+
   // XML Serialization Tests
   [TestMethod]
   public void XmlSerialize_ShouldConvertActorToXmlString()
@@ -56,7 +56,7 @@ public class ActorXmlSerializerTests
     Actor? nullActor = null;
     nullActor.Serialize();
   }
-  
+
   public class TestActor : Actor
   {
     public required string Name { get; set; }

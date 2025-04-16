@@ -56,7 +56,9 @@ public class TokenExchangeAuthenticationsTests
     // Arrange
     string clientCredentials = JsonConvert.SerializeObject(new
     {
-      grant_type = "urn:ietf:params:oauth:grant-type:token-exchange", subject_token = "invalid", subject_token_type = "invalid"
+      grant_type = "urn:ietf:params:oauth:grant-type:token-exchange",
+      subject_token = "invalid",
+      subject_token_type = "invalid"
     });
 
     TokenExchangeAuthentications service = new(new List<IPlugin>(), _mockConfiguration, _mockJwtService, _httpClient);

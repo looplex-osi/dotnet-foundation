@@ -37,7 +37,6 @@ public class SCIMv2Tests
           services.AddRouting();
           services.AddSingleton(_users);
           services.AddSingleton<ServiceProviderConfiguration>();
-
         });
         webBuilder.Configure(app =>
         {
@@ -91,7 +90,8 @@ public class SCIMv2Tests
   public async Task QueryUsers_ValidRequest_ReturnsOk()
   {
     // Arrange
-    _users.Query(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(),Arg.Any<string?>(),Arg.Any<string?>(), Arg.Any<CancellationToken>())
+    _users.Query(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+        Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(new ListResponse<User>()));
 
     // Act

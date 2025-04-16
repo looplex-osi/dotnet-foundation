@@ -31,10 +31,7 @@ public class JwtServiceTests
   public void GenerateToken_ValidInputs_ReturnsJwtString()
   {
     // Arrange
-    ClaimsIdentity claimsIdentity = new(new[]
-    {
-      new Claim("email", "user@example.com"), new Claim("role", "admin")
-    });
+    ClaimsIdentity claimsIdentity = new(new[] { new Claim("email", "user@example.com"), new Claim("role", "admin") });
 
     TimeSpan expiration = TimeSpan.FromMinutes(30);
 

@@ -1,6 +1,7 @@
 # ScimPatch.Antlr
 
-This project is originally derived from the [Owin.Scim.Antlr](https://github.com/PowerDMS/Owin.Scim/tree/master/source/Owin.Scim.Antlr) project.
+This project is originally derived from
+the [Owin.Scim.Antlr](https://github.com/PowerDMS/Owin.Scim/tree/master/source/Owin.Scim.Antlr) project.
 
 ## Overview
 
@@ -9,7 +10,8 @@ The original project targeted .NET >= 4.5.1, and this project targets .NET Stand
 
 ## License
 
-The original project is licensed under the MIT License. See the original project's [LICENSE](https://github.com/PowerDMS/Owin.Scim/blob/master/LICENSE) file for more details.
+The original project is licensed under the MIT License. See the original
+project's [LICENSE](https://github.com/PowerDMS/Owin.Scim/blob/master/LICENSE) file for more details.
 
 ## Acknowledgments
 

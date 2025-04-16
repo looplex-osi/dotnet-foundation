@@ -8,7 +8,9 @@ namespace Looplex.Samples.Domain.Entities
   public class Pad : Resource
   {
     #region Reflectivity
+
     public Pad() { }
+
     #endregion
 
     public string Name { get; set; }

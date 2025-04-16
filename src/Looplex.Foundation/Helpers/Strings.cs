@@ -15,7 +15,7 @@ public static class Strings
     byte[] base64EncodedBytes = Convert.FromBase64String(base64EncodedData);
     return Encoding.UTF8.GetString(base64EncodedBytes);
   }
-  
+
   /// <summary>
   /// Converts a SCIMv2 defined filters query param into a SQL predicate 
   /// </summary>

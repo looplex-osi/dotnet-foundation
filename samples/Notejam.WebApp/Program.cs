@@ -45,7 +45,7 @@ public static class Program
     {
       Environment.SetEnvironmentVariable(item.Key, item.Value);
     }
-    
+
     Dictionary<string, string?> inMemorySettings = new()
     {
       { "Audience", "saas.looplex.com.br" },
@@ -70,56 +70,57 @@ public static class Program
     builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
     builder.Services.AddSingleton<ISecretsService>(sp =>
     {
-      var keyVaultUrl = new Uri(builder.Configuration ["KeyVaultUrl"]!);
+      var keyVaultUrl = new Uri(builder.Configuration["KeyVaultUrl"]!);
       var retryPolicy = Policy.NoOpAsync<string>();
       // get credentials from ENV
       var secretClient = new SecretClient(keyVaultUrl, new DefaultAzureCredential());
       var logger = sp.GetRequiredService<ILogger<AzureSecretsService>>();
-      
+
       return new AzureSecretsService(secretClient, retryPolicy, logger);
     });
     builder.Services.AddSingleton<IDbConnections, DbConnections>();
     builder.Services.AddOAuth2(builder.Configuration);
     builder.Services.AddSCIMv2();
     builder.Services.AddAuthZ(InitRbacEnforcer());
-    
+
     builder.Services.AddScoped<Notes>(sp =>
     {
       PluginLoader loader = new();
-      IEnumerable<string> dlls =  Directory.Exists("plugins")
+      IEnumerable<string> dlls = Directory.Exists("plugins")
         ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : [];      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+        : [];
+      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
       var mediator = sp.GetRequiredService<IMediator>();
       return new Notes(plugins, rbacService, httpContextAccessor, mediator);
     });
-    
+
     builder.Services.AddMediatR(cfg =>
       cfg.RegisterServicesFromAssembly(typeof(UpdateNoteCommandHandler).Assembly));
-    
+
     WebApplication app = builder.Build();
 
     app.MapHealthChecks("/health", new HealthCheckOptions
-    {
-      ResponseWriter = async (context, report) =>
       {
-        context.Response.ContentType = "application/json; charset=utf-8";
-        string result = JsonConvert.SerializeObject(new
+        ResponseWriter = async (context, report) =>
         {
-          status = report.Status.ToString(),
-          results = report.Entries.Select(e => new
+          context.Response.ContentType = "application/json; charset=utf-8";
+          string result = JsonConvert.SerializeObject(new
           {
-            key = e.Key,
-            status = e.Value.Status.ToString(),
-            description = e.Value.Description,
-            data = e.Value.Data,
-            exception = e.Value.Exception?.Message // Include exception details
-          })
-        });
-        await context.Response.WriteAsync(result);
-      }
-    })
+            status = report.Status.ToString(),
+            results = report.Entries.Select(e => new
+            {
+              key = e.Key,
+              status = e.Value.Status.ToString(),
+              description = e.Value.Description,
+              data = e.Value.Data,
+              exception = e.Value.Exception?.Message // Include exception details
+            })
+          });
+          await context.Response.WriteAsync(result);
+        }
+      })
       .AllowAnonymous();
 
     app.UseOAuth2();
@@ -136,7 +137,7 @@ public static class Program
         retryAttempt =>
           TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))); // Retry 3 times with exponential backoff
   }
-  
+
   private static IEnforcer InitRbacEnforcer()
   {
     string dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)

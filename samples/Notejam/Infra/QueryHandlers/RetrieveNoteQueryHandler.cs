@@ -15,7 +15,7 @@ namespace Looplex.Samples.Infra.QueryHandlers
     public async Task<Note?> Handle(RetrieveResource<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
-      
+
       string resourceName = nameof(Note).ToLower();
       string procName = $"USP_{resourceName}_retrieve";
 

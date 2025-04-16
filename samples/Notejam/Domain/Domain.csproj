@@ -12,16 +12,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Looplex.OpenForExtension.Loader" Version="1.1.8" />
-    <PackageReference Include="MediatR.Contracts" Version="2.0.1" />
+    <PackageReference Include="Looplex.OpenForExtension.Loader" Version="1.1.8"/>
+    <PackageReference Include="MediatR.Contracts" Version="2.0.1"/>
     <PackageReference Include="PropertyChanged.Fody" Version="4.1.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Commands\" />
-    <Folder Include="Queries\" />
+    <Folder Include="Commands\"/>
+    <Folder Include="Queries\"/>
   </ItemGroup>
 
 </Project>

@@ -44,10 +44,7 @@ public class NotejamTests
     // Arrange (setup)
     IRbacService? rbacSvc = Substitute.For<IRbacService>();
     var user = Substitute.For<ClaimsPrincipal>();
-    user.Claims.Returns(new[]
-    {
-      new Claim("tenant", "looplex.com.br")
-    });
+    user.Claims.Returns(new[] { new Claim("tenant", "looplex.com.br") });
     var mockHttpAccessor = Substitute.For<IHttpContextAccessor>();
     var httpContext = new DefaultHttpContext() { User = user };
     mockHttpAccessor.HttpContext.Returns(httpContext);
@@ -102,7 +99,7 @@ public class NotejamTests
   {
     // Arrange (setup)
     IRbacService? rbacSvc = Substitute.For<IRbacService>();
-    
+
     var user = Substitute.For<ClaimsPrincipal>();
     var mockHttpAccessor = Substitute.For<IHttpContextAccessor>();
     var httpContext = new DefaultHttpContext() { User = user };
@@ -130,8 +127,7 @@ public class NotejamTests
     var user = Substitute.For<ClaimsPrincipal>();
     user.Claims.Returns(new[]
     {
-      new Claim(ClaimTypes.Email, "fabio.nagao@looplex.com.br"),
-      new Claim("tenant", "looplex.com.br")
+      new Claim(ClaimTypes.Email, "fabio.nagao@looplex.com.br"), new Claim("tenant", "looplex.com.br")
     });
     var mockHttpAccessor = Substitute.For<IHttpContextAccessor>();
     var httpContext = new DefaultHttpContext() { User = user };
@@ -163,8 +159,7 @@ public class NotejamTests
     var user = Substitute.For<ClaimsPrincipal>();
     user.Claims.Returns(new[]
     {
-      new Claim(ClaimTypes.Email, "john.doe@looplex.com.br"),
-      new Claim("tenant", "looplex.com.br")
+      new Claim(ClaimTypes.Email, "john.doe@looplex.com.br"), new Claim("tenant", "looplex.com.br")
     });
     var mockHttpAccessor = Substitute.For<IHttpContextAccessor>();
     var httpContext = new DefaultHttpContext() { User = user };

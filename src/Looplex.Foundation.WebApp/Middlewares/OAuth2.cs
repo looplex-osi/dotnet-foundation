@@ -34,13 +34,13 @@ public static class OAuth2
       })
       .AddJwtBearer(options => JwtBearerMiddleware(options, configuration));
     services.AddAuthorization();
-    
+
     services.AddSingleton<IJwtService, JwtService>();
     services.AddScoped<AuthenticationsFactory>();
     services.AddScoped<ClientCredentialsAuthentications>(sp =>
     {
       PluginLoader loader = new();
-      IEnumerable<string> dlls =  Directory.Exists("plugins")
+      IEnumerable<string> dlls = Directory.Exists("plugins")
         ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
         : [];
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
@@ -51,7 +51,7 @@ public static class OAuth2
     services.AddScoped<TokenExchangeAuthentications>(sp =>
     {
       PluginLoader loader = new();
-      IEnumerable<string> dlls =  Directory.Exists("plugins")
+      IEnumerable<string> dlls = Directory.Exists("plugins")
         ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
         : [];
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
@@ -59,22 +59,22 @@ public static class OAuth2
       var httpClient = sp.GetRequiredService<HttpClient>();
       return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient);
     });
-    
+
     return services;
   }
-  
+
   public static WebApplication UseOAuth2(this WebApplication app, string prefix = "/token")
   {
     app.MapPost(
       prefix,
       TokenMiddleware);
-    
+
     app.UseAuthentication();
     app.UseAuthorization();
-    
+
     return app;
   }
-  
+
   public static readonly RequestDelegate TokenMiddleware = async context =>
   {
     var factory = context.RequestServices.GetRequiredService<AuthenticationsFactory>();

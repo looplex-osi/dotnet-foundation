@@ -19,11 +19,11 @@ public abstract class SCIMv2<T> : Service
   }
 
   #endregion
-  
+
   public SCIMv2(IList<IPlugin> plugins) : base(plugins)
   {
   }
-  
+
   public abstract Task<ListResponse<T>> Query(int startIndex, int count,
     string? filter, string? sortBy, string? sortOrder,
     CancellationToken cancellationToken);
