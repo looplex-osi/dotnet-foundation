@@ -70,7 +70,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var query = new QueryResourceQuery<Note>(page, count, filter, sortBy, sortOrder);
+      var query = new QueryResource<Note>(page, count, filter, sortBy, sortOrder);
 
       var (result, totalResults) = await _mediator!.Send(query, cancellationToken);
 
@@ -109,7 +109,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new CreateResourceCommand<Note>(ctx.Roles["Note"]);
+      var command = new CreateResource<Note>(ctx.Roles["Note"]);
 
       var result = await _mediator!.Send(command, cancellationToken);
 
@@ -143,7 +143,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var query = new RetrieveResourceQuery<Note>(ctx.Roles["Id"]);
+      var query = new RetrieveResource<Note>(ctx.Roles["Id"]);
 
       var note = await _mediator!.Send(query, cancellationToken);
 
@@ -179,7 +179,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new UpdateResourceCommand<Note>(ctx.Roles["Id"], ctx.Roles["Note"]);
+      var command = new UpdateResource<Note>(ctx.Roles["Id"], ctx.Roles["Note"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 
@@ -213,7 +213,7 @@ public class Notes : SCIMv2<Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new DeleteResourceCommand<Note>(ctx.Roles["Id"]);
+      var command = new DeleteResource<Note>(ctx.Roles["Id"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 
