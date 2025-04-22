@@ -15,7 +15,7 @@ namespace Looplex.Foundation.Helpers;
 public static class Dbs
 {
   public const string TotalCount = "TOTAL_COUNT";
-
+  
   public static IDbDataParameter CreateParameter(IDbCommand command, string name, object value, DbType dbType)
   {
     IDbDataParameter param = command.CreateParameter();
@@ -248,12 +248,13 @@ public static class Dbs
   /// <param name="command"></param>
   /// <param name="resultSetNames">Os nomes dos ResultSets</param>
   /// <param name="cancellationToken"></param>
+  /// <param name="timeout"></param>
   public static async Task<List<SqlResultSet>> QueryAsync(this DbCommand command, string[] resultSetNames,
-    CancellationToken cancellationToken)
+    CancellationToken cancellationToken, int timeout = 3600)
   {
     List<SqlResultSet> resultSets = new();
 
-    command.CommandTimeout = 3600;
+    command.CommandTimeout = timeout;
 
     using var reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken);
 
@@ -263,7 +264,22 @@ public static class Dbs
     {
       var dataTable = new DataTable();
 
-      dataTable.Load(reader); // Synchronous, but already buffered
+      // build schema
+      for (int i = 0; i < reader.FieldCount; i++)
+        dataTable.Columns.Add(reader.GetName(i),
+          reader.GetFieldType(i) ??
+          throw new InvalidOperationException($"Field type of {reader.GetName(i)} cannot be null."));
+
+      // load rows async
+      while (await reader.ReadAsync(cancellationToken))
+      {
+        var row = dataTable.NewRow();
+        for (int i = 0; i < reader.FieldCount; i++)
+          row[i] = await reader.IsDBNullAsync(i, cancellationToken)
+            ? DBNull.Value
+            : await reader.GetFieldValueAsync<object>(i, cancellationToken);
+        dataTable.Rows.Add(row);
+      }
 
       if (resultSetIndex < resultSetNames.Length)
       {
