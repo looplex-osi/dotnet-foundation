@@ -9,11 +9,12 @@ using Looplex.Foundation.Adapters;
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
-using Looplex.Foundation.WebApp.Adapters;
 using Looplex.Foundation.WebApp.Middlewares;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
+using Looplex.Samples.Application.Abstraction;
 using Looplex.Samples.Application.Services;
+using Looplex.Samples.Infra;
 using Looplex.Samples.Infra.CommandHandlers;
 
 using MediatR;

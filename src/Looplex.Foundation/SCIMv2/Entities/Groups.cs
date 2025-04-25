@@ -1,17 +1,19 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
+using Looplex.Foundation.SCIMv2.Commands;
+using Looplex.Foundation.SCIMv2.Queries;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
 using Looplex.OpenForExtension.Abstractions.Plugins;
+
+using MediatR;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,9 +22,9 @@ namespace Looplex.Foundation.SCIMv2.Entities;
 
 public class Groups : SCIMv2<Group>
 {
-  private readonly IDbConnections? _connections;
   private readonly IRbacService? _rbacService;
   private readonly ClaimsPrincipal? _user;
+  private readonly IMediator? _mediator;
 
   #region Reflectivity
 
@@ -35,11 +37,11 @@ public class Groups : SCIMv2<Group>
 
   [ActivatorUtilitiesConstructor]
   public Groups(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
-    IDbConnections connections) : base(plugins)
+    IMediator mediator) : base(plugins)
   {
-    _connections = connections;
     _rbacService = rbacService;
     _user = httpContextAccessor.HttpContext.User;
+    _mediator = mediator;
   }
 
   #region Query
@@ -53,6 +55,7 @@ public class Groups : SCIMv2<Group>
     _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     int page = Page(startIndex, count);
+
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
     if (filter == null)
@@ -62,11 +65,6 @@ public class Groups : SCIMv2<Group>
 
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    // Determine stored proc name.
-    // For queries, the convention is USP_{resourceCollection}_pquery.
-    // Example: for T == Group, resource name is "group", and collection is "groups".
-    string resourceName = nameof(Group).ToLower();
-    ctx.Roles["ProcName"] = $"USP_{resourceName}_pquery";
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -74,37 +72,13 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      List<Group> list = new();
+      var query = new QueryResource<Group>(page, count, filter, sortBy, sortOrder);
 
-      string procName = ctx.Roles["ProcName"];
-
-      var dbQuery = await _connections!.QueryConnection();
-      await dbQuery!.OpenAsync(cancellationToken);
-      using DbCommand command = dbQuery.CreateCommand();
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = procName;
-
-      // Add expected parameters.
-      command.Parameters.Add(Dbs.CreateParameter(command, "@do_count", 0, DbType.Boolean));
-      command.Parameters.Add(Dbs.CreateParameter(command, "@page", page, DbType.Int32));
-      command.Parameters.Add(Dbs.CreateParameter(command, "@page_size", count, DbType.Int32));
-      command.Parameters.Add(Dbs.CreateParameter(command, "@filter_active", 1, DbType.Boolean));
-      command.Parameters.Add(
-        Dbs.CreateParameter(command, "@filter_name", filter ?? (object)DBNull.Value, DbType.String));
-      command.Parameters.Add(Dbs.CreateParameter(command, "@filter_email", DBNull.Value, DbType.String));
-      command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", DBNull.Value, DbType.String));
-
-      using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
-      while (await reader.ReadAsync(cancellationToken))
-      {
-        Group obj = new();
-        Dbs.MapDataRecordToResource(reader, obj);
-        list.Add(obj);
-      }
+      var (result, totalResults) = await _mediator!.Send(query, cancellationToken);
 
       ctx.Result = new ListResponse<Group>
       {
-        StartIndex = startIndex, ItemsPerPage = count, Resources = list, TotalResults = 0 // TODO
+        StartIndex = startIndex, ItemsPerPage = count, Resources = result, TotalResults = totalResults
       };
     }
 
@@ -129,10 +103,7 @@ public class Groups : SCIMv2<Group>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    // Determine stored proc name.
-    // For creation, convention is USP_{resource}_create.
-    string resourceName = nameof(Group).ToLower();
-    ctx.Roles["ProcName"] = $"USP_{resourceName}_create";
+    ctx.Roles["Group"] = resource;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -140,24 +111,11 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      var dbCommand = await _connections!.CommandConnection();
-      await dbCommand!.OpenAsync(cancellationToken);
-      using DbCommand command = dbCommand.CreateCommand();
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = ctx.Roles["ProcName"];
+      var command = new CreateResource<Group>(ctx.Roles["Group"]);
 
-      // For example, for a Group resource we assume:
-      // - Property "GroupName" maps to @name.
-      // You can customize this mapping as needed.
-      string nameValue = resource.GetPropertyValue<string>("GroupName")
-                         ?? throw new Exception("GroupName is required.");
+      var result = await _mediator!.Send(command, cancellationToken);
 
-      command.Parameters.Add(Dbs.CreateParameter(command, "@name", nameValue, DbType.String));
-      // Rely on defaults for @active, @status, and @custom_fields.
-
-      // Execute and return the new resource's GUID.
-      object result = await command.ExecuteScalarAsync(cancellationToken);
-      ctx.Result = (Guid)result;
+      ctx.Result = result;
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
@@ -179,8 +137,7 @@ public class Groups : SCIMv2<Group>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    string resourceName = nameof(Group).ToLower();
-    ctx.Roles["ProcName"] = $"USP_{resourceName}_retrieve";
+    ctx.Roles["Id"] = id;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -188,23 +145,11 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      var dbQuery = await _connections!.QueryConnection();
-      await dbQuery!.OpenAsync(cancellationToken);
-      using DbCommand command = dbQuery.CreateCommand();
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = ctx.Roles["ProcName"];
+      var query = new RetrieveResource<Group>(ctx.Roles["Id"]);
 
-      command.Parameters.Add(Dbs.CreateParameter(command, "@uuid", id, DbType.Guid));
+      var group = await _mediator!.Send(query, cancellationToken);
 
-      Group? obj = null;
-      using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
-      if (await reader.ReadAsync(cancellationToken))
-      {
-        obj = new Group();
-        Dbs.MapDataRecordToResource(reader, obj);
-      }
-
-      ctx.Result = obj;
+      ctx.Result = group;
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
@@ -227,7 +172,8 @@ public class Groups : SCIMv2<Group>
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
     string resourceName = nameof(Group).ToLower();
-    ctx.Roles["ProcName"] = $"USP_{resourceName}_update";
+    ctx.Roles["Id"] = id;
+    ctx.Roles["Group"] = resource;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -235,24 +181,9 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      var dbCommand = await _connections!.CommandConnection();
-      await dbCommand!.OpenAsync(cancellationToken);
-      using DbCommand command = dbCommand.CreateCommand();
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = ctx.Roles["ProcName"];
+      var command = new UpdateResource<Group>(ctx.Roles["Id"], ctx.Roles["Group"]);
 
-      command.Parameters.Add(Dbs.CreateParameter(command, "@uuid", id, DbType.Guid));
-
-      // Update mapping: if the resource contains a non-null GroupName, update @name.
-      string? nameValue = resource.GetPropertyValue<string>("GroupName");
-      if (!string.IsNullOrWhiteSpace(nameValue))
-      {
-        command.Parameters.Add(Dbs.CreateParameter(command, "@name", nameValue!, DbType.String));
-      }
-
-      // Additional parameters (active, status, custom_fields) can be mapped as needed.
-
-      int rows = await command.ExecuteNonQueryAsync(cancellationToken);
+      var rows = await _mediator!.Send(command, cancellationToken);
 
       ctx.Result = rows > 0;
     }
@@ -276,8 +207,7 @@ public class Groups : SCIMv2<Group>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    string resourceName = nameof(Group).ToLower();
-    ctx.Roles["ProcName"] = $"USP_{resourceName}_delete";
+    ctx.Roles["Id"] = id;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -285,17 +215,9 @@ public class Groups : SCIMv2<Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      var dbCommand = await _connections!.CommandConnection();
-      await dbCommand!.OpenAsync(cancellationToken);
-      using DbCommand command = dbCommand.CreateCommand();
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = ctx.Roles["ProcName"];
+      var command = new DeleteResource<Group>(ctx.Roles["Id"]);
 
-      command.Parameters.Add(Dbs.CreateParameter(command, "@uuid", id, DbType.Guid));
-
-      // If your stored procedure supported a parameter for hard deletion,
-      // you could add it here. For now, we assume the same proc handles deletion.
-      int rows = await command.ExecuteNonQueryAsync(cancellationToken);
+      var rows = await _mediator!.Send(command, cancellationToken);
 
       ctx.Result = rows > 0;
     }
