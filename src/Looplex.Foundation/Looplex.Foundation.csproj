@@ -5,7 +5,6 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <IsPackable>true</IsPackable>
     <PackageId>Looplex.Foundation</PackageId>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseUrl>https://github.com/looplex-osi/dotnet-foundation/blob/master/LICENSE.md</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/looplex-osi/dotnet-foundation</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
