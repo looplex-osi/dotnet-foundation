@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 using Antlr4.Runtime;
@@ -20,8 +21,11 @@ public static class Strings
   /// Converts a SCIMv2 defined filters query param into a SQL predicate 
   /// </summary>
   /// <param name="filters"></param>
+  /// <param name="attrMap"></param>
+  /// <param name="allowedAttr"></param>
   /// <returns></returns>
-  public static string? ToSqlPredicate(this string? filters)
+  public static string? ToSqlPredicate(this string? filters, IDictionary<string, string>? attrMap = null,
+    HashSet<string>? allowedAttr = null)
   {
     string? result = null;
 
@@ -32,7 +36,7 @@ public static class Strings
       var tokens = new CommonTokenStream(lexer);
       var parser = new ScimFilterParser(tokens);
       var tree = parser.parse();
-      var visitor = new SCIMv2ToSQLVisitor();
+      var visitor = new SCIMv2ToSQLVisitor { AttributeMapper = attrMap, AllowedAttributes = allowedAttr};
       result = visitor.Visit(tree);
     }
 

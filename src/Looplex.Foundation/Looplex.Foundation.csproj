@@ -41,4 +41,8 @@
     <PackageReference Include="Antlr4.Runtime" Version="4.6.6"/>
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="SCIMv2\Antlr\ScimFilter.g4" />
+  </ItemGroup>
+
 </Project>

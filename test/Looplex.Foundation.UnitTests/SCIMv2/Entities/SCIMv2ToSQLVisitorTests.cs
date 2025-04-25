@@ -8,14 +8,15 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities;
 [TestClass]
 public class SCIMv2ToSQLVisitorTests
 {
-  private string ConvertToSql(string input)
+  private string ConvertToSql(string input, IDictionary<string, string>? attrMap = null,
+    HashSet<string>? allowedAttrs = null)
   {
     var inputStream = new AntlrInputStream(input);
     var speakLexer = new ScimFilterLexer(inputStream);
     var commonTokenStream = new CommonTokenStream(speakLexer);
     var parser = new ScimFilterParser(commonTokenStream);
     var tree = parser.parse();
-    var visitor = new SCIMv2ToSQLVisitor();
+    var visitor = new SCIMv2ToSQLVisitor() { AttributeMapper = attrMap, AllowedAttributes = allowedAttrs};
     return visitor.Visit(tree);
   }
 
@@ -24,6 +25,30 @@ public class SCIMv2ToSQLVisitorTests
   {
     var sql = ConvertToSql("userName eq \"john\"");
     Assert.AreEqual("userName = 'john'", sql);
+  }
+
+  [TestMethod]
+  public void TestEqOperatorWithMap()
+  {
+    var sql = ConvertToSql("userName eq \"john\"", new Dictionary<string, string>() { { "userName", "dsNome" } });
+    Assert.AreEqual("dsNome = 'john'", sql);
+  }
+
+  [TestMethod]
+  public void TestEqOperatorWithMapDoesNotHaveAttr()
+  {
+    var sql = ConvertToSql("userName eq \"john\"",
+      new Dictionary<string, string>() { { "userNameInvalid", "dsNome" } });
+    Assert.AreEqual("userName = 'john'", sql);
+  }
+
+  [TestMethod]
+  public void TestEqOperatorCannotFilter()
+  {
+    var action = () => ConvertToSql("userName eq \"john\"", allowedAttrs: new HashSet<string>());
+
+    var ex = Assert.ThrowsException<InvalidOperationException>(action);
+    Assert.AreEqual("Cannot filter by userName", ex.Message);
   }
 
   [TestMethod]
