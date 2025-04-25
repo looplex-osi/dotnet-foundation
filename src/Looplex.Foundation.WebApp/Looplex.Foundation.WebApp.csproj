@@ -3,6 +3,18 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
+    <PackageId>Looplex.Foundation.WebApp</PackageId>
+    <PackageLicenseUrl>https://github.com/looplex-osi/dotnet-foundation/blob/master/LICENSE.md</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/looplex-osi/dotnet-foundation</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <Authors>Guilherme Câmara</Authors>
+    <Company>Looplex</Company>
+    <PackageTags>Looplex;Foundation;Core;Backend;</PackageTags>
+    <Description>
+      Looplex package that contains foundation/core code for projects with Hexagonal/Micro-Kernel architectures.
+    </Description>
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
