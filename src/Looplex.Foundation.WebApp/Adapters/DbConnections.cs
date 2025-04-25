@@ -44,7 +44,7 @@ public class DbConnections(
   {
     var database = ConnectionStringsCache.TryGetValue(tenant, out var value)
       ? value
-      : await GetDatabaseUsingRoutingDatabaseAsync(tenant, "write");
+      : await GetDatabaseUsingRoutingDatabaseAsync(tenant, "sqlserver_command");
 
     var databaseName = database.Name!;
     var connection = new SqlConnection(database.ConnectionString);
@@ -126,7 +126,7 @@ public class DbConnections(
   {
     var database = ConnectionStringsCache.TryGetValue(tenant, out var value)
       ? value
-      : await GetDatabaseUsingRoutingDatabaseAsync(tenant, "read");
+      : await GetDatabaseUsingRoutingDatabaseAsync(tenant, "sqlserver_query");
 
     var databaseName = database.Name!;
     var connection = new SqlConnection(database.ConnectionString);
