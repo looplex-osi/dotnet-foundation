@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 using Looplex.Foundation.SCIMv2.Antlr;
 
@@ -6,6 +7,9 @@ namespace Looplex.Foundation.SCIMv2.Entities;
 
 public class SCIMv2ToSQLVisitor : ScimFilterBaseVisitor<string>
 {
+  public HashSet<string>? AllowedAttributes { set; get; }
+  public IDictionary<string, string>? AttributeMapper { set; get; }
+  
   public override string VisitOperatorExp(ScimFilterParser.OperatorExpContext context)
   {
     var attr = context.attrPath().GetText();
@@ -31,6 +35,12 @@ public class SCIMv2ToSQLVisitor : ScimFilterBaseVisitor<string>
     else if (op == "ew") value = $"'%{TrimQuotes(value)}'";
     else value = IsNumeric(value) ? value : $"'{TrimQuotes(value)}'";
 
+    if (!AllowedAttributes?.Contains(attr) ?? false)
+      throw new InvalidOperationException($"Cannot filter by {attr}");
+    
+    if (AttributeMapper?.TryGetValue(attr, out var mapped) ?? false)
+      attr = mapped;
+    
     return $"{attr} {sqlOp} {value}";
   }
 
