@@ -1,8 +1,8 @@
 using System.Data;
 
 using Looplex.Foundation.Helpers;
-using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Commands;
+using Looplex.Samples.Application.Abstraction;
 using Looplex.Samples.Domain.Entities;
 
 using MediatR;

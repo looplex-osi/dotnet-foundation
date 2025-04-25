@@ -6,6 +6,8 @@ using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
 
+using MediatR;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -39,8 +41,8 @@ public static class SCIMv2
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-      var dbConnections = sp.GetRequiredService<IDbConnections>();
-      return new Users(plugins, rbacService, httpContextAccessor, dbConnections);
+      var mediator = sp.GetRequiredService<IMediator>();
+      return new Users(plugins, rbacService, httpContextAccessor, mediator);
     });
     services.AddScoped<Groups>(sp =>
     {
@@ -49,8 +51,8 @@ public static class SCIMv2
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-      var dbConnections = sp.GetRequiredService<IDbConnections>();
-      return new Groups(plugins, rbacService, httpContextAccessor, dbConnections);
+      var mediator = sp.GetRequiredService<IMediator>();
+      return new Groups(plugins, rbacService, httpContextAccessor, mediator);
     });
 
     return services;

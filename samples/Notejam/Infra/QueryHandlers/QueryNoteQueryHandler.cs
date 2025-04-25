@@ -1,8 +1,8 @@
 using System.Data;
 
 using Looplex.Foundation.Helpers;
-using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Queries;
+using Looplex.Samples.Application.Abstraction;
 using Looplex.Samples.Domain.Entities;
 
 using MediatR;
@@ -12,7 +12,7 @@ namespace Looplex.Samples.Infra.QueryHandlers
   public class QueryNoteQueryHandler(IDbConnections connections)
     : IRequestHandler<QueryResource<Note>, (IList<Note>, int)>
   {
-    internal static readonly string[] ResultSets = [];
+    internal static readonly ResultSetInfo[] ResultSets = [];
 
     public async Task<(IList<Note>, int)> Handle(QueryResource<Note> request, CancellationToken cancellationToken)
     {
@@ -35,7 +35,7 @@ namespace Looplex.Samples.Infra.QueryHandlers
         request.Filter ?? (object)DBNull.Value, DbType.String));
       command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", DBNull.Value, DbType.String));
 
-      IEnumerable<SqlResultSet> result = await command.QueryAsync(ResultSets, cancellationToken);
+      ResultSet[] result = await command.QueryAsync(ResultSets, cancellationToken);
 
       // (List<Note> list, _) = result.MapNotes(); // TODO
 

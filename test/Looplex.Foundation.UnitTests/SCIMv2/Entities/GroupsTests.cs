@@ -15,9 +15,9 @@ using NSubstitute;
 namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
 {
   [TestClass]
-  public class UsersTests
+  public class GroupsTests
   {
-    private Users _users = null!;
+    private Groups _groups = null!;
     private IRbacService _rbacService = null!;
     private IHttpContextAccessor _httpContextAccessor = null!;
     private IMediator _mediator = null!;
@@ -37,7 +37,7 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       httpContext.User.Returns(_user);
       _httpContextAccessor.HttpContext.Returns(httpContext);
 
-      _users = new Users(_plugins, _rbacService, _httpContextAccessor, _mediator);
+      _groups = new Groups(_plugins, _rbacService, _httpContextAccessor, _mediator);
     }
 
     [TestMethod]
@@ -45,14 +45,14 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var expectedUsers = new List<User> { new User() };
+      var expectedGroups = new List<Group> { new Group() };
       int expectedTotal = 1;
 
-      _mediator.Send(Arg.Any<QueryResource<User>>(), cancellationToken)
-        .Returns((expectedUsers, expectedTotal));
+      _mediator.Send(Arg.Any<QueryResource<Group>>(), cancellationToken)
+        .Returns((expectedGroups, expectedTotal));
 
       // Act
-      var response = await _users.Query(1, 10, "filter", "name", "asc", cancellationToken);
+      var response = await _groups.Query(1, 10, "filter", "name", "asc", cancellationToken);
 
       // Assert
       Assert.IsNotNull(response);
@@ -65,36 +65,36 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var user = new User();
+      var group = new Group();
       var expectedId = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<CreateResource<User>>(), cancellationToken)
+      _mediator.Send(Arg.Any<CreateResource<Group>>(), cancellationToken)
         .Returns(expectedId);
 
       // Act
-      var result = await _users.Create(user, cancellationToken);
+      var result = await _groups.Create(group, cancellationToken);
 
       // Assert
       Assert.AreEqual(expectedId, result);
     }
 
     [TestMethod]
-    public async Task Retrieve_ShouldReturnUser()
+    public async Task Retrieve_ShouldReturnGroup()
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var expectedUser = new User();
+      var expectedGroup = new Group();
       var id = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<RetrieveResource<User>>(), cancellationToken)
-        .Returns(expectedUser);
+      _mediator.Send(Arg.Any<RetrieveResource<Group>>(), cancellationToken)
+        .Returns(expectedGroup);
 
       // Act
-      var result = await _users.Retrieve(id, cancellationToken);
+      var result = await _groups.Retrieve(id, cancellationToken);
 
       // Assert
       Assert.IsNotNull(result);
-      Assert.AreEqual(expectedUser, result);
+      Assert.AreEqual(expectedGroup, result);
     }
 
     [TestMethod]
@@ -102,14 +102,14 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var user = new User();
+      var group = new Group();
       var id = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<UpdateResource<User>>(), cancellationToken)
+      _mediator.Send(Arg.Any<UpdateResource<Group>>(), cancellationToken)
         .Returns(1); // Simulating that one row was affected
 
       // Act
-      var result = await _users.Update(id, user, null, cancellationToken);
+      var result = await _groups.Update(id, group, null, cancellationToken);
 
       // Assert
       Assert.IsTrue(result);
@@ -122,11 +122,11 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       var cancellationToken = CancellationToken.None;
       var id = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<DeleteResource<User>>(), cancellationToken)
+      _mediator.Send(Arg.Any<DeleteResource<Group>>(), cancellationToken)
         .Returns(1); // Simulating that one row was affected
 
       // Act
-      var result = await _users.Delete(id, cancellationToken);
+      var result = await _groups.Delete(id, cancellationToken);
 
       // Assert
       Assert.IsTrue(result);
