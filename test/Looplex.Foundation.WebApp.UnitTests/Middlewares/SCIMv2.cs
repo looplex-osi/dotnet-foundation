@@ -23,14 +23,14 @@ public class SCIMv2Tests
   private IHost _host = null!;
   private Users _users = null!;
   private Groups _groups = null!;
-  private ClientCredentials _clientCredentials = null!;
+  private ClientServices _clientServices = null!;
 
   [TestInitialize]
   public Task Setup()
   {
     _users = Substitute.For<Users>();
     _groups = Substitute.For<Groups>();
-    _clientCredentials = Substitute.For<ClientCredentials>();
+    _clientServices = Substitute.For<ClientServices>();
 
     _host = Host.CreateDefaultBuilder()
       .ConfigureWebHostDefaults(webBuilder =>
@@ -41,7 +41,7 @@ public class SCIMv2Tests
           services.AddRouting();
           services.AddSingleton(_users);
           services.AddSingleton(_groups);
-          services.AddSingleton(_clientCredentials);
+          services.AddSingleton(_clientServices);
           services.AddSingleton<ServiceProviderConfiguration>();
         });
         webBuilder.Configure(app =>
@@ -51,7 +51,7 @@ public class SCIMv2Tests
           {
             endpoints.UseSCIMv2<User, Users>("/Users", authorize: false);
             endpoints.UseSCIMv2<Group, Groups>("/Groups", authorize: false);
-            endpoints.UseSCIMv2<ClientCredential, ClientCredentials>("/Api-Keys", authorize: false);
+            endpoints.UseSCIMv2<ClientService, ClientServices>("/Api-Keys", authorize: false);
           });
         });
       })
@@ -395,7 +395,7 @@ public class SCIMv2Tests
 
   #endregion
 
-  #region ClientCredentials
+  #region ClientServices
 
   #region Create Tests
 
@@ -403,12 +403,12 @@ public class SCIMv2Tests
   public async Task CreateClientCredential_ValidRequest_ReturnsCreated()
   {
     // Arrange
-    ClientCredential clientCredential = new() { Digest = "TestClientCredential" };
-    _clientCredentials
-      .Create(Arg.Any<ClientCredential>(), Arg.Any<CancellationToken>())
+    ClientService clientService = new() { Digest = "TestClientCredential" };
+    _clientServices
+      .Create(Arg.Any<ClientService>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(Guid.NewGuid()));
 
-    StringContent content = new(JsonSerializer.Serialize(clientCredential), Encoding.UTF8, "application/json");
+    StringContent content = new(JsonSerializer.Serialize(clientService), Encoding.UTF8, "application/json");
 
     // Act
     HttpResponseMessage response = await _client.PostAsync("/Api-Keys", content);
@@ -426,9 +426,9 @@ public class SCIMv2Tests
   public async Task QueryClientCredentials_ValidRequest_ReturnsOk()
   {
     // Arrange
-    _clientCredentials.Query(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+    _clientServices.Query(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
         Arg.Any<CancellationToken>())
-      .Returns(Task.FromResult(new ListResponse<ClientCredential>()));
+      .Returns(Task.FromResult(new ListResponse<ClientService>()));
 
     // Act
     HttpResponseMessage response = await _client.GetAsync("/Api-Keys?page=1&pageSize=10");
@@ -445,8 +445,8 @@ public class SCIMv2Tests
   public async Task RetrieveClientCredential_NotFound_ReturnsNotFound()
   {
     // Arrange
-    _clientCredentials.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-      .Returns(Task.FromResult<ClientCredential?>(null));
+    _clientServices.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult<ClientService?>(null));
 
     // Act
     HttpResponseMessage response = await _client.GetAsync("/Api-Keys/" + Guid.NewGuid());
@@ -459,9 +459,9 @@ public class SCIMv2Tests
   public async Task RetrieveClientCredential_Found_ReturnsOk()
   {
     // Arrange
-    ClientCredential clientCredential = new() { Digest = "ExistingClientCredential" };
-    _clientCredentials.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
-      .Returns(Task.FromResult(clientCredential));
+    ClientService clientService = new() { Digest = "ExistingClientCredential" };
+    _clientServices.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+      .Returns(Task.FromResult(clientService));
 
     // Act
     HttpResponseMessage response = await _client.GetAsync("/Api-Keys/" + Guid.NewGuid());
@@ -478,8 +478,8 @@ public class SCIMv2Tests
   public async Task UpdateClientCredential_NotFound_ReturnsNotFound()
   {
     // Arrange
-    _clientCredentials.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-      .Returns(Task.FromResult<ClientCredential?>(null));
+    _clientServices.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult<ClientService?>(null));
 
     // Act
     HttpResponseMessage response = await _client.PatchAsync("/Api-Keys/" + Guid.NewGuid(), null);
@@ -492,10 +492,10 @@ public class SCIMv2Tests
   public async Task UpdateClientCredential_Found_ReturnsNoContent()
   {
     // Arrange
-    ClientCredential clientCredential = new() { Digest = "ExistingClientCredential" };
-    _clientCredentials.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
-      .Returns(Task.FromResult(clientCredential));
-    _clientCredentials.Update(Arg.Any<Guid>(), Arg.Any<ClientCredential>(), Arg.Any<string?>(),
+    ClientService clientService = new() { Digest = "ExistingClientCredential" };
+    _clientServices.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+      .Returns(Task.FromResult(clientService));
+    _clientServices.Update(Arg.Any<Guid>(), Arg.Any<ClientService>(), Arg.Any<string?>(),
         Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(true));
 
@@ -510,10 +510,10 @@ public class SCIMv2Tests
   public async Task UpdateClientCredential_Found_Fails_ReturnsInternalServerError()
   {
     // Arrange
-    ClientCredential clientCredential = new() { Digest = "ExistingClientCredential" };
-    _clientCredentials.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
-      .Returns(Task.FromResult(clientCredential));
-    _clientCredentials.Update(Arg.Any<Guid>(), Arg.Any<ClientCredential>(), Arg.Any<string?>(),
+    ClientService clientService = new() { Digest = "ExistingClientCredential" };
+    _clientServices.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+      .Returns(Task.FromResult(clientService));
+    _clientServices.Update(Arg.Any<Guid>(), Arg.Any<ClientService>(), Arg.Any<string?>(),
         Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(false));
 
@@ -532,7 +532,7 @@ public class SCIMv2Tests
   public async Task DeleteClientCredential_NotFound_ReturnsNotFound()
   {
     // Arrange
-    _clientCredentials.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    _clientServices.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(false));
 
     // Act
@@ -546,7 +546,7 @@ public class SCIMv2Tests
   public async Task DeleteClientCredential_Found_ReturnsNoContent()
   {
     // Arrange
-    _clientCredentials.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+    _clientServices.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(true));
 
     // Act

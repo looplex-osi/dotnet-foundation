@@ -16,9 +16,9 @@ using NSubstitute;
 namespace Looplex.Foundation.UnitTests.OAuth2.Entities
 {
   [TestClass]
-  public class ClientCredentialsTests
+  public class ClientServicesTests
   {
-    private ClientCredentials _clientCredentials = null!;
+    private ClientServices _clientServices = null!;
     private IRbacService _rbacService = null!;
     private IHttpContextAccessor _httpContextAccessor = null!;
     private IMediator _mediator = null!;
@@ -42,7 +42,7 @@ namespace Looplex.Foundation.UnitTests.OAuth2.Entities
 
       _configuration["ClientSecretDigestCost"] = "4";
         
-      _clientCredentials = new ClientCredentials(_plugins, _rbacService, _httpContextAccessor, _mediator, _configuration);
+      _clientServices = new ClientServices(_plugins, _rbacService, _httpContextAccessor, _mediator, _configuration);
     }
 
     [TestMethod]
@@ -50,14 +50,14 @@ namespace Looplex.Foundation.UnitTests.OAuth2.Entities
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var expectedClientCredentials = new List<ClientCredential> { new ClientCredential() };
+      var expectedClientServices = new List<ClientService> { new ClientService() };
       int expectedTotal = 1;
 
-      _mediator.Send(Arg.Any<QueryResource<ClientCredential>>(), cancellationToken)
-        .Returns((expectedClientCredentials, expectedTotal));
+      _mediator.Send(Arg.Any<QueryResource<ClientService>>(), cancellationToken)
+        .Returns((expectedClientServices, expectedTotal));
 
       // Act
-      var response = await _clientCredentials.Query(1, 10, "filter", "name", "asc", cancellationToken);
+      var response = await _clientServices.Query(1, 10, "filter", "name", "asc", cancellationToken);
 
       // Assert
       Assert.IsNotNull(response);
@@ -70,61 +70,61 @@ namespace Looplex.Foundation.UnitTests.OAuth2.Entities
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var clientCredential = new ClientCredential
+      var clientService = new ClientService
       {
         ClientSecret = "secret"
       };
       var expectedId = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<CreateResource<ClientCredential>>(), cancellationToken)
+      _mediator.Send(Arg.Any<CreateResource<ClientService>>(), cancellationToken)
         .Returns(expectedId);
 
       // Act
-      var result = await _clientCredentials.Create(clientCredential, cancellationToken);
+      var result = await _clientServices.Create(clientService, cancellationToken);
 
       // Assert
       Assert.AreEqual(expectedId, result);
     }
 
     [TestMethod]
-    public async Task Retrieve_ShouldReturnClientCredential()
+    public async Task Retrieve_ShouldReturnClientService()
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var expectedClientCredential = new ClientCredential();
+      var expectedClientService = new ClientService();
       var id = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<RetrieveResource<ClientCredential>>(), cancellationToken)
-        .Returns(expectedClientCredential);
+      _mediator.Send(Arg.Any<RetrieveResource<ClientService>>(), cancellationToken)
+        .Returns(expectedClientService);
 
       // Act
-      var result = await _clientCredentials.Retrieve(id, cancellationToken);
+      var result = await _clientServices.Retrieve(id, cancellationToken);
 
       // Assert
       Assert.IsNotNull(result);
-      Assert.AreEqual(expectedClientCredential, result);
+      Assert.AreEqual(expectedClientService, result);
     }
 
     [TestMethod]
-    public async Task RetrieveWithVerify_ShouldReturnClientCredential()
+    public async Task RetrieveWithVerify_ShouldReturnClientService()
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var expectedClientCredential = new ClientCredential
+      var expectedClientService = new ClientService
       {
         Digest = "0a714f46-fac5-45a4-a861-ff8f84ba0151:XsMs85RI7tUR2621mObKZMqneEthl53U" 
       };
       var id = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<RetrieveResource<ClientCredential>>(), cancellationToken)
-        .Returns(expectedClientCredential);
+      _mediator.Send(Arg.Any<RetrieveResource<ClientService>>(), cancellationToken)
+        .Returns(expectedClientService);
 
       // Act
-      var result = await _clientCredentials.Retrieve(id, "secret", cancellationToken);
+      var result = await _clientServices.Retrieve(id, "secret", cancellationToken);
 
       // Assert
       Assert.IsNotNull(result);
-      Assert.AreEqual(expectedClientCredential, result);
+      Assert.AreEqual(expectedClientService, result);
     }
 
     [TestMethod]
@@ -132,14 +132,14 @@ namespace Looplex.Foundation.UnitTests.OAuth2.Entities
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var clientCredential = new ClientCredential();
+      var clientService = new ClientService();
       var id = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<UpdateResource<ClientCredential>>(), cancellationToken)
+      _mediator.Send(Arg.Any<UpdateResource<ClientService>>(), cancellationToken)
         .Returns(1); // Simulating that one row was affected
 
       // Act
-      var result = await _clientCredentials.Update(id, clientCredential, null, cancellationToken);
+      var result = await _clientServices.Update(id, clientService, null, cancellationToken);
 
       // Assert
       Assert.IsTrue(result);
@@ -152,11 +152,11 @@ namespace Looplex.Foundation.UnitTests.OAuth2.Entities
       var cancellationToken = CancellationToken.None;
       var id = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<DeleteResource<ClientCredential>>(), cancellationToken)
+      _mediator.Send(Arg.Any<DeleteResource<ClientService>>(), cancellationToken)
         .Returns(1); // Simulating that one row was affected
 
       // Act
-      var result = await _clientCredentials.Delete(id, cancellationToken);
+      var result = await _clientServices.Delete(id, cancellationToken);
 
       // Assert
       Assert.IsTrue(result);

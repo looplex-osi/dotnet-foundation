@@ -21,7 +21,7 @@ namespace Looplex.Foundation.OAuth2.Entities;
 
 public class ClientCredentialsAuthentications : Service, IAuthentications
 {
-  private readonly ClientCredentials? _clientCredentials;
+  private readonly ClientServices? _clientServices;
   private readonly IConfiguration? _configuration;
   private readonly IJwtService? _jwtService;
 
@@ -38,11 +38,11 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
   public ClientCredentialsAuthentications(
     IList<IPlugin> plugins,
     IConfiguration configuration,
-    ClientCredentials clientCredentials,
+    ClientServices clientServices,
     IJwtService jwtService) : base(plugins)
   {
     _configuration = configuration;
-    _clientCredentials = clientCredentials;
+    _clientServices = clientServices;
     _jwtService = jwtService;
   }
 
@@ -60,11 +60,11 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     ValidateAuthorizationHeader(authorization);
     ValidateGrantType(clientCredentialsDto.GrantType);
     (Guid clientId, string clientSecret) = TryGetClientCredentials(authorization);
-    ClientCredential clientCredential =
+    ClientService clientService =
       await GetClientCredentialByIdAndSecretOrDefaultAsync(clientId, clientSecret, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    ctx.Roles["ClientCredential"] = clientCredential;
+    ctx.Roles["ClientService"] = clientService;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -73,7 +73,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
 
     if (!ctx.SkipDefaultAction)
     {
-      string accessToken = CreateAccessToken((ClientCredential)ctx.Roles["ClientCredential"]);
+      string accessToken = CreateAccessToken((ClientService)ctx.Roles["ClientService"]);
       ctx.Result = new AccessTokenDto { AccessToken = accessToken }.Serialize();
     }
 
@@ -139,29 +139,29 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     }
   }
 
-  private async Task<ClientCredential> GetClientCredentialByIdAndSecretOrDefaultAsync(Guid clientId,
+  private async Task<ClientService> GetClientCredentialByIdAndSecretOrDefaultAsync(Guid clientId,
     string clientSecret, CancellationToken cancellationToken)
   {
-    var clientCredential = await _clientCredentials!.Retrieve(clientId, clientSecret, cancellationToken)
+    var clientService = await _clientServices!.Retrieve(clientId, clientSecret, cancellationToken)
                            ?? throw new Exception("Invalid clientId or clientSecret.");
 
-    if (clientCredential.NotBefore > DateTimeOffset.UtcNow)
+    if (clientService.NotBefore > DateTimeOffset.UtcNow)
     {
       throw new Exception("Client access not allowed.");
     }
 
-    if (clientCredential.ExpirationTime <= DateTimeOffset.UtcNow)
+    if (clientService.ExpirationTime <= DateTimeOffset.UtcNow)
     {
       throw new Exception("Client access is expired.");
     }
 
-    return clientCredential;
+    return clientService;
   }
 
-  private string CreateAccessToken(ClientCredential clientCredential)
+  private string CreateAccessToken(ClientService clientService)
   {
     ClaimsIdentity claims = new([
-      new Claim("ClientId", clientCredential.Id)
+      new Claim("ClientId", clientService.Id)
     ]);
 
     string audience = _configuration!["Audience"]!;

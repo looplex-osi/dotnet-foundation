@@ -15,7 +15,7 @@ namespace Looplex.Foundation.UnitTests.Entities;
 [TestClass]
 public class ClientCredentialsAuthenticationsTests
 {
-  private ClientCredentials _mockClientCredentials = null!;
+  private ClientServices _mockClientServices = null!;
   private IConfiguration _mockConfiguration = null!;
   private IJwtService _mockJwtService = null!;
 
@@ -23,7 +23,7 @@ public class ClientCredentialsAuthenticationsTests
   public void Setup()
   {
     _mockConfiguration = Substitute.For<IConfiguration>();
-    _mockClientCredentials = Substitute.For<ClientCredentials>();
+    _mockClientServices = Substitute.For<ClientServices>();
     _mockJwtService = Substitute.For<IJwtService>();
 
     _mockConfiguration["TokenExpirationTimeInMinutes"] = "20";
@@ -36,7 +36,7 @@ public class ClientCredentialsAuthenticationsTests
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
     ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
-      _mockClientCredentials, _mockJwtService);
+      _mockClientServices, _mockJwtService);
 
     // Act & Assert
     Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
@@ -54,7 +54,7 @@ public class ClientCredentialsAuthenticationsTests
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "invalid" });
 
     ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
-      _mockClientCredentials, _mockJwtService);
+      _mockClientServices, _mockJwtService);
 
     // Act & Assert
     Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
@@ -79,18 +79,18 @@ public class ClientCredentialsAuthenticationsTests
 
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
-    ClientCredential clientCredential = new()
+    ClientService clientService = new()
     {
       Id = Guid.NewGuid().ToString(),
       NotBefore = DateTimeOffset.UtcNow.AddMinutes(-1),
       ExpirationTime = DateTimeOffset.UtcNow.AddMinutes(1)
     };
 
-    _mockClientCredentials.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
-      .Returns(clientCredential);
+    _mockClientServices.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
+      .Returns(clientService);
 
     ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
-      _mockClientCredentials, _mockJwtService);
+      _mockClientServices, _mockJwtService);
 
     // Act
     string result = await service.CreateAccessToken(clientCredentials, authorization, CancellationToken.None);
@@ -111,11 +111,11 @@ public class ClientCredentialsAuthenticationsTests
 
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
-    _mockClientCredentials.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
-      .Returns((ClientCredential?)null);
+    _mockClientServices.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
+      .Returns((ClientService?)null);
 
     ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
-      _mockClientCredentials, _mockJwtService);
+      _mockClientServices, _mockJwtService);
 
     // Act & Assert
     Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
@@ -135,17 +135,17 @@ public class ClientCredentialsAuthenticationsTests
 
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
-    ClientCredential clientCredential = new()
+    ClientService clientService = new()
     {
       NotBefore = DateTimeOffset.UtcNow.AddMinutes(10),
       ExpirationTime = DateTimeOffset.UtcNow.AddMinutes(20)
     };
 
-    _mockClientCredentials.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
-      .Returns(clientCredential);
+    _mockClientServices.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
+      .Returns(clientService);
 
     ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
-      _mockClientCredentials, _mockJwtService);
+      _mockClientServices, _mockJwtService);
 
     // Act & Assert
     Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
@@ -165,17 +165,17 @@ public class ClientCredentialsAuthenticationsTests
 
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
-    ClientCredential clientCredential = new()
+    ClientService clientService = new()
     {
       NotBefore = DateTimeOffset.UtcNow.AddMinutes(-10),
       ExpirationTime = DateTimeOffset.UtcNow.AddMinutes(-5)
     };
 
-    _mockClientCredentials.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
-      .Returns(clientCredential);
+    _mockClientServices.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
+      .Returns(clientService);
 
     ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
-      _mockClientCredentials, _mockJwtService);
+      _mockClientServices, _mockJwtService);
 
     // Act & Assert
     Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
