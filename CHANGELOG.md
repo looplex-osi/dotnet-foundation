@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="1.1.0"></a>
+## 1.1.0 (2025-05-02)
+
+### Features
+
+* **clientcredential:** added clientcredential entitty
+
+### Bug Fixes
+
+* **clientcredential:** added clientcredentials scimv2 service
+* **entities:** fix warnings on group
+* **oauth2:** finished modifications on clientcredentials
+
 <a name="1.0.1"></a>
 ## 1.0.1 (2025-04-25)
 
