@@ -186,18 +186,21 @@ public class ClientCredentials : SCIMv2<ClientCredential>
     return (ClientCredential?)ctx.Result;
   }
 
+  /// <summary>
+  /// This method does not have authorization. It needs to be anonymous to validate a secret for the client.
+  /// </summary>
+  /// <param name="id"></param>
+  /// <param name="clientSecret"></param>
+  /// <param name="cancellationToken"></param>
+  /// <returns></returns>
   public async virtual Task<ClientCredential?> Retrieve(Guid id, string clientSecret, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
-    var resource = await Retrieve(id, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    ctx.Roles["ClientCredential"] = resource;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -207,8 +210,8 @@ public class ClientCredentials : SCIMv2<ClientCredential>
     if (!ctx.SkipDefaultAction)
     {
       ClientCredential? result = null;
-      var clientCredential = (ClientCredential)ctx.Roles["ClientCredential"];
-
+      var query = new RetrieveResource<ClientCredential>(id);
+      var clientCredential = await _mediator!.Send(query, cancellationToken);
       var valid = await VerifyCredentials(clientSecret, clientCredential.Digest!);
       if (valid)
       {
