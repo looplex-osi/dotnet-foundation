@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 
 using Looplex.Foundation.OAuth2.Entities;
@@ -10,6 +11,8 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
 using NSubstitute;
+
+using Org.BouncyCastle.Crypto.Generators;
 
 namespace Looplex.Foundation.UnitTests.Entities;
 

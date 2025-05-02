@@ -4,17 +4,29 @@ using Looplex.Foundation.SCIMv2.Entities;
 
 using Newtonsoft.Json;
 
+using PropertyChanged;
+
 namespace Looplex.Foundation.OAuth2.Entities;
 
+[AddINotifyPropertyChangedInterface]
 public class ClientCredential : Resource
 {
-  public virtual string ClientName { get; set; }
-  public virtual Guid ClientId { get; set; }
+  #region Reflectivity
 
-  [JsonIgnore] public string Digest { get; set; }
+  // ReSharper disable once EmptyConstructor
+  public ClientCredential() : base() { }
+
+  #endregion
+
+  public string? ClientName { get; set; }
+
+  [JsonProperty] public string? ClientSecret { get; set; }
+  
+  [JsonIgnore] public string? Digest { get; set; }
 
   [JsonIgnore] public int? UserId { get; set; }
 
-  public virtual DateTimeOffset ExpirationTime { get; set; }
-  public virtual DateTimeOffset NotBefore { get; set; }
+  public DateTimeOffset ExpirationTime { get; set; }
+
+  public DateTimeOffset NotBefore { get; set; }
 }

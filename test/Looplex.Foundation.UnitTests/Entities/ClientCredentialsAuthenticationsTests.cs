@@ -15,7 +15,7 @@ namespace Looplex.Foundation.UnitTests.Entities;
 [TestClass]
 public class ClientCredentialsAuthenticationsTests
 {
-  private IClientCredentials _mockClientCredentials = null!;
+  private ClientCredentials _mockClientCredentials = null!;
   private IConfiguration _mockConfiguration = null!;
   private IJwtService _mockJwtService = null!;
 
@@ -23,7 +23,7 @@ public class ClientCredentialsAuthenticationsTests
   public void Setup()
   {
     _mockConfiguration = Substitute.For<IConfiguration>();
-    _mockClientCredentials = Substitute.For<IClientCredentials>();
+    _mockClientCredentials = Substitute.For<ClientCredentials>();
     _mockJwtService = Substitute.For<IJwtService>();
 
     _mockConfiguration["TokenExpirationTimeInMinutes"] = "20";
@@ -68,26 +68,26 @@ public class ClientCredentialsAuthenticationsTests
   {
     // Arrange
     Guid clientId = Guid.NewGuid();
-    string clientSecret = "clientSecret";
+    string clientSecret = "secret";
 
     _mockConfiguration["Audience"].Returns("audience");
     _mockConfiguration["Issuer"].Returns("issuer");
     _mockConfiguration["PublicKey"].Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes(RsaKeys.PublicKey)));
     _mockConfiguration["PrivateKey"].Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes(RsaKeys.PrivateKey)));
 
-    string authorization = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:clientSecret"));
+    string authorization = "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
 
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
     ClientCredential clientCredential = new()
     {
-      ClientId = clientId,
+      Id = Guid.NewGuid().ToString(),
       NotBefore = DateTimeOffset.UtcNow.AddMinutes(-1),
       ExpirationTime = DateTimeOffset.UtcNow.AddMinutes(1)
     };
 
-    _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
-      .Returns(JsonConvert.SerializeObject(clientCredential));
+    _mockClientCredentials.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
+      .Returns(clientCredential);
 
     ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
       _mockClientCredentials, _mockJwtService);
@@ -111,8 +111,8 @@ public class ClientCredentialsAuthenticationsTests
 
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
-    _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
-      .Returns(Task.FromResult(string.Empty));
+    _mockClientCredentials.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
+      .Returns((ClientCredential?)null);
 
     ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
       _mockClientCredentials, _mockJwtService);
@@ -137,13 +137,12 @@ public class ClientCredentialsAuthenticationsTests
 
     ClientCredential clientCredential = new()
     {
-      ClientId = clientId,
       NotBefore = DateTimeOffset.UtcNow.AddMinutes(10),
       ExpirationTime = DateTimeOffset.UtcNow.AddMinutes(20)
     };
 
-    _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
-      .Returns(JsonConvert.SerializeObject(clientCredential));
+    _mockClientCredentials.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
+      .Returns(clientCredential);
 
     ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
       _mockClientCredentials, _mockJwtService);
@@ -168,13 +167,12 @@ public class ClientCredentialsAuthenticationsTests
 
     ClientCredential clientCredential = new()
     {
-      ClientId = clientId,
       NotBefore = DateTimeOffset.UtcNow.AddMinutes(-10),
       ExpirationTime = DateTimeOffset.UtcNow.AddMinutes(-5)
     };
 
-    _mockClientCredentials.RetrieveAsync(clientId, clientSecret, Arg.Any<CancellationToken>())
-      .Returns(JsonConvert.SerializeObject(clientCredential));
+    _mockClientCredentials.Retrieve(clientId, clientSecret, Arg.Any<CancellationToken>())
+      .Returns(clientCredential);
 
     ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
       _mockClientCredentials, _mockJwtService);

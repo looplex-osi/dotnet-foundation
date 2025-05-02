@@ -1,22 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Looplex.Foundation.Entities;
 using Looplex.Foundation.Helpers;
-using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.Ports;
+using Looplex.Foundation.SCIMv2.Commands;
 using Looplex.Foundation.SCIMv2.Entities;
-using Looplex.Foundation.Serialization.Json;
+using Looplex.Foundation.SCIMv2.Queries;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 
+using MediatR;
+
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,15 +24,12 @@ using Org.BouncyCastle.Crypto.Generators;
 
 namespace Looplex.Foundation.OAuth2.Entities;
 
-public class ClientCredentials : Service, IClientCredentials
+public class ClientCredentials : SCIMv2<ClientCredential>
 {
-  private const string JsonSchemaIdForClientCredentialKey = "JsonSchemaIdForClientCredential";
-
-  internal static readonly IList<ClientCredential>? Data = [];
-  private readonly IConfiguration? _configuration;
-  private readonly IJsonSchemaProvider? _jsonSchemaProvider;
   private readonly IRbacService? _rbacService;
   private readonly ClaimsPrincipal? _user;
+  private readonly IMediator? _mediator;
+  private readonly IConfiguration? _configuration;
 
   #region Reflectivity
 
@@ -44,81 +41,163 @@ public class ClientCredentials : Service, IClientCredentials
   #endregion
 
   [ActivatorUtilitiesConstructor]
-  public ClientCredentials(IList<IPlugin> plugins,
-    IRbacService rbacService,
-    IConfiguration configuration,
-    IJsonSchemaProvider jsonSchemaProvider,
-    ClaimsPrincipal user) : base(plugins)
+  public ClientCredentials(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
+    IMediator mediator, IConfiguration configuration) : base(plugins)
   {
     _rbacService = rbacService;
+    _user = httpContextAccessor.HttpContext.User;
+    _mediator = mediator;
     _configuration = configuration;
-    _jsonSchemaProvider = jsonSchemaProvider;
-    _user = user;
   }
 
-  public async Task<string> QueryAsync(int page, int pageSize, CancellationToken cancellationToken)
+  #region Query
+
+  public override async Task<ListResponse<ClientCredential>> Query(int startIndex, int count,
+    string? filter, string? sortBy, string? sortOrder,
+    CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
+    int page = Page(startIndex, count);
+
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+
+    if (filter == null)
+    {
+      throw new ArgumentNullException(nameof(filter));
+    }
 
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
 
     if (!ctx.SkipDefaultAction)
     {
-      List<ClientCredential> records = Data
-        .Skip((page - 1) * pageSize)
-        .Take(pageSize)
-        .ToList();
+      var query = new QueryResource<ClientCredential>(page, count, filter, sortBy, sortOrder);
 
-      ListResponse<ClientCredential> result = new()
+      var (result, totalResults) = await _mediator!.Send(query, cancellationToken);
+
+      ctx.Result = new ListResponse<ClientCredential>
       {
-        Resources = records.Select(r => r).ToList(),
-        StartIndex = (page - 1) * pageSize + 1,
-        ItemsPerPage = pageSize,
-        TotalResults = Data!.Count
+        StartIndex = startIndex, ItemsPerPage = count, Resources = result, TotalResults = totalResults
       };
-
-      ctx.Result = result.Serialize();
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
-    return (string)ctx.Result;
+    return (ListResponse<ClientCredential>)ctx.Result;
   }
 
-  public async Task<string> RetrieveAsync(string id, CancellationToken cancellationToken)
+  #endregion
+
+  #region Create
+
+  public override async Task<Guid> Create(ClientCredential resource,
+    CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    if (string.IsNullOrWhiteSpace(id))
+    ctx.Roles["ClientCredential"] = resource;
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
     {
-      throw new ArgumentNullException(nameof(id));
+      var clientCredential = ctx.Roles["ClientCredential"];
+
+      clientCredential.Digest = await DigestCredentials(clientCredential.ClientSecret)!;
+      
+      var command = new CreateResource<ClientCredential>(clientCredential);
+
+      var result = await _mediator!.Send(command, cancellationToken);
+
+      ctx.Result = result;
     }
 
-    ClientCredential? clientCredential = Data.FirstOrDefault(c => c.Id == id);
-    if (clientCredential == null)
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+    return (Guid)ctx.Result;
+  }
+  
+  private Task<string> DigestCredentials(string clientSecret)
+  {
+    return Task.Run(() =>
     {
-      throw new Exception($"{nameof(ClientCredential)} with id {id} not found,");
+      Guid salt = Guid.NewGuid();
+      byte[] clientSecretBytes = System.Text.Encoding.UTF8.GetBytes(clientSecret);
+
+      var clientSecretDigestCost = int.Parse(_configuration!["ClientSecretDigestCost"]!);
+
+      string digest = Convert.ToBase64String(BCrypt.Generate(
+        clientSecretBytes,
+        salt.ToByteArray(),
+        clientSecretDigestCost));
+
+      return $"{salt}:{digest}";
+    });
+  }
+
+  #endregion
+
+  #region Retrieve
+
+  public override async Task<ClientCredential?> Retrieve(Guid id, CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
+
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    ctx.Roles["Id"] = id;
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
+    {
+      var query = new RetrieveResource<ClientCredential>(ctx.Roles["Id"]);
+
+      var clientCredential = await _mediator!.Send(query, cancellationToken);
+
+      ctx.Result = clientCredential;
     }
+
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+    return (ClientCredential?)ctx.Result;
+  }
+
+  public async virtual Task<ClientCredential?> Retrieve(Guid id, string clientSecret, CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
+
+    var resource = await Retrieve(id, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    ctx.Roles.Add("ClientCredential", clientCredential);
+    ctx.Roles["ClientCredential"] = resource;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -127,173 +206,114 @@ public class ClientCredentials : Service, IClientCredentials
 
     if (!ctx.SkipDefaultAction)
     {
-      ctx.Result = ((ClientCredential)ctx.Roles["ClientCredential"]).Serialize();
-    }
+      ClientCredential? result = null;
+      var clientCredential = (ClientCredential)ctx.Roles["ClientCredential"];
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-
-    return (string)ctx.Result;
-  }
-
-  public async Task<string> CreateAsync(string json, CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
-    ClientCredential? clientCredential = json.Deserialize<ClientCredential>();
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    ctx.Roles.Add("ClientCredential", clientCredential);
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
-    {
-      clientCredential = (ClientCredential)ctx.Roles["ClientCredential"];
-
-      Guid clientId = Guid.NewGuid();
-
-      int clientSecretByteLength = int.Parse(_configuration!["ClientSecretByteLength"]!);
-
-      byte[] clientSecretBytes = new byte[clientSecretByteLength];
-      using (RandomNumberGenerator? rng = RandomNumberGenerator.Create())
+      var valid = await VerifyCredentials(clientSecret, clientCredential.Digest!);
+      if (valid)
       {
-        rng.GetBytes(clientSecretBytes);
+        result = clientCredential;
       }
 
-      clientCredential.ClientId = clientId;
-      clientCredential.Digest = DigestCredentials(clientId, clientSecretBytes)!;
-
-      clientCredential.Id = Guid.NewGuid().ToString(); // This should be generated by the DB
-      Data.Add(clientCredential); // Persist in storage
-
-      ctx.Result = new ClientCredentialDto
-      {
-        ClientId = clientId, ClientSecret = Convert.ToBase64String(clientSecretBytes)
-      }.Serialize();
+      ctx.Result = result;
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
-    return (string)ctx.Result;
+    return (ClientCredential?)ctx.Result;
   }
-
-  public Task<string> UpdateAsync(string id, string json, CancellationToken cancellationToken)
+  
+  private Task<bool> VerifyCredentials(string clientSecret, string digest)
   {
-    throw new NotImplementedException();
+    return Task.Run(() =>
+    {
+      byte[] clientSecretBytes = System.Text.Encoding.UTF8.GetBytes(clientSecret);
+
+      var clientSecretDigestCost = int.Parse(_configuration!["ClientSecretDigestCost"]!);
+
+      var parts = digest.Split(':');
+      var salt = Guid.Parse(parts[0]).ToByteArray();
+      var digest1 = parts[1];
+      var digest2 = Convert.ToBase64String(BCrypt.Generate(
+        clientSecretBytes,
+        salt,
+        clientSecretDigestCost));
+
+      return digest1 == digest2;
+    });
   }
 
-  public Task<string> PatchAsync(string id, string json, CancellationToken cancellationToken)
-  {
-    throw new NotImplementedException();
-  }
+  #endregion
 
-  public async Task<bool> DeleteAsync(string id, CancellationToken cancellationToken)
+  #region Update
+
+  public override async Task<bool> Update(Guid id, ClientCredential resource, string? fields, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-
-    if (string.IsNullOrWhiteSpace(id))
-    {
-      throw new ArgumentNullException(nameof(id));
-    }
-
-    ClientCredential? clientCredential = Data.FirstOrDefault(c => c.Id == id);
-    if (clientCredential == null)
-    {
-      throw new Exception($"{nameof(ClientCredential)} with id {id} not found,");
-    }
-
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    ctx.Roles.Add("ClientCredential", clientCredential);
+    string resourceName = nameof(ClientCredential).ToLower();
+    ctx.Roles["Id"] = id;
+    ctx.Roles["ClientCredential"] = resource;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
 
     if (!ctx.SkipDefaultAction)
     {
-      ctx.Result = Data.Remove(ctx.Roles["ClientCredential"]);
+      var command = new UpdateResource<ClientCredential>(ctx.Roles["Id"], ctx.Roles["ClientCredential"]);
+
+      var rows = await _mediator!.Send(command, cancellationToken);
+
+      ctx.Result = rows > 0;
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
     return (bool)ctx.Result;
   }
 
-  public async Task<string> RetrieveAsync(Guid clientId, string clientSecret, CancellationToken cancellationToken)
+  #endregion
+
+  #region Delete
+
+  public override async Task<bool> Delete(Guid id, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
-    string? digest = DigestCredentials(clientId, Convert.FromBase64String(clientSecret));
-    ClientCredential? clientCredential = Data.FirstOrDefault(c => c.Digest == digest);
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    if (clientCredential != null && digest != null)
-    {
-      ctx.Roles.Add("ClientCredential", clientCredential);
-    }
-
+    ctx.Roles["Id"] = id;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
 
     if (!ctx.SkipDefaultAction)
     {
-      if (ctx.Roles.TryGetValue("ClientCredential", out dynamic? role))
-      {
-        ctx.Result = ((ClientCredential)role).Serialize();
-      }
+      var command = new DeleteResource<ClientCredential>(ctx.Roles["Id"]);
+
+      var rows = await _mediator!.Send(command, cancellationToken);
+
+      ctx.Result = rows > 0;
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
-    return (string)ctx.Result;
+    return (bool)ctx.Result;
   }
 
-  private string DigestCredentials(Guid clientId, byte[] clientSecretBytes)
-  {
-    string digest;
-
-    try
-    {
-      int clientSecretDigestCost = int.Parse(_configuration!["ClientSecretDigestCost"]!);
-
-      digest = Convert.ToBase64String(BCrypt.Generate(
-        clientSecretBytes,
-        clientId.ToByteArray(),
-        clientSecretDigestCost));
-    }
-    catch (Exception e)
-    {
-      digest = null;
-    }
-
-    return digest;
-  }
+  #endregion
 }
