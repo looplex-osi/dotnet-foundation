@@ -21,7 +21,7 @@ public abstract class Resource : Actor
 
   [ProtoMember(1)] public string? Id { get; set; }
 
-  [ProtoMember(2)] public string ExternalId { get; set; }
+  [ProtoMember(2)] public string? ExternalId { get; set; }
 
   [ProtoMember(3)] public ResourceMeta Meta { get; set; } = new();
 }
@@ -30,13 +30,13 @@ public abstract class Resource : Actor
 [AddINotifyPropertyChangedInterface]
 public class ResourceMeta
 {
-  [ProtoMember(1)] public string ResourceType { get; set; }
+  [ProtoMember(1)] public string? ResourceType { get; set; }
 
   [ProtoMember(2)] public DateTime? Created { get; set; }
 
   [ProtoMember(3)] public DateTime? LastModified { get; set; }
 
-  [ProtoMember(4)] public string Location { get; set; }
+  [ProtoMember(4)] public string? Location { get; set; }
 
-  [ProtoMember(5)] public string Version { get; set; }
+  [ProtoMember(5)] public string? Version { get; set; }
 }
