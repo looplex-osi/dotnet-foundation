@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Looplex.Foundation.SCIMv2.Queries;
 
-public class RetrieveResource<T> : IRequest<T>
+public class RetrieveResource<T> : IRequest<T?>
   where T : Resource
 {
   public Guid Id { get; }
