@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="1.1.5"></a>
+## 1.1.5 (2025-05-02)
+
+### Bug Fixes
+
+* **scimv2:** externalid can be null
+
 <a name="1.1.4"></a>
 ## 1.1.4 (2025-05-02)
 
