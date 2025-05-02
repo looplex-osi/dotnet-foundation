@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
+using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.WebApp.Middlewares;
 
@@ -13,7 +14,6 @@ using Microsoft.Extensions.Hosting;
 
 using NSubstitute;
 
-
 namespace Looplex.Foundation.WebApp.UnitTests.Middlewares;
 
 [TestClass]
@@ -22,11 +22,15 @@ public class SCIMv2Tests
   private HttpClient _client = null!;
   private IHost _host = null!;
   private Users _users = null!;
+  private Groups _groups = null!;
+  private ClientCredentials _clientCredentials = null!;
 
   [TestInitialize]
   public Task Setup()
   {
     _users = Substitute.For<Users>();
+    _groups = Substitute.For<Groups>();
+    _clientCredentials = Substitute.For<ClientCredentials>();
 
     _host = Host.CreateDefaultBuilder()
       .ConfigureWebHostDefaults(webBuilder =>
@@ -36,6 +40,8 @@ public class SCIMv2Tests
         {
           services.AddRouting();
           services.AddSingleton(_users);
+          services.AddSingleton(_groups);
+          services.AddSingleton(_clientCredentials);
           services.AddSingleton<ServiceProviderConfiguration>();
         });
         webBuilder.Configure(app =>
@@ -43,7 +49,9 @@ public class SCIMv2Tests
           app.UseRouting();
           app.UseEndpoints(endpoints =>
           {
-            endpoints.UseSCIMv2<User, Users>("/users", authorize: false);
+            endpoints.UseSCIMv2<User, Users>("/Users", authorize: false);
+            endpoints.UseSCIMv2<Group, Groups>("/Groups", authorize: false);
+            endpoints.UseSCIMv2<ClientCredential, ClientCredentials>("/Api-Keys", authorize: false);
           });
         });
       })
@@ -60,6 +68,8 @@ public class SCIMv2Tests
     await _host.StopAsync();
     _host.Dispose();
   }
+
+  #region Users
 
   #region Create Tests
 
@@ -217,6 +227,336 @@ public class SCIMv2Tests
     // Assert
     Assert.AreEqual(HttpStatusCode.NoContent, response.StatusCode);
   }
+
+  #endregion
+
+  #endregion
+
+  #region Groups
+
+  #region Create Tests
+
+  [TestMethod]
+  public async Task CreateGroup_ValidRequest_ReturnsCreated()
+  {
+    // Arrange
+    Group group = new() { DisplayName = "TestGroup" };
+    _groups
+      .Create(Arg.Any<Group>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(Guid.NewGuid()));
+
+    StringContent content = new(JsonSerializer.Serialize(group), Encoding.UTF8, "application/json");
+
+    // Act
+    HttpResponseMessage response = await _client.PostAsync("/Groups", content);
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
+    Assert.IsTrue(response.Headers.Location != null);
+  }
+
+  #endregion
+
+  #region Query Tests
+
+  [TestMethod]
+  public async Task QueryGroups_ValidRequest_ReturnsOk()
+  {
+    // Arrange
+    _groups.Query(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+        Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(new ListResponse<Group>()));
+
+    // Act
+    HttpResponseMessage response = await _client.GetAsync("/Groups?page=1&pageSize=10");
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+  }
+
+  #endregion
+
+  #region Retrieve Tests
+
+  [TestMethod]
+  public async Task RetrieveGroup_NotFound_ReturnsNotFound()
+  {
+    // Arrange
+    _groups.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult<Group?>(null));
+
+    // Act
+    HttpResponseMessage response = await _client.GetAsync("/Groups/" + Guid.NewGuid());
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+  }
+
+  [TestMethod]
+  public async Task RetrieveGroup_Found_ReturnsOk()
+  {
+    // Arrange
+    Group group = new() { DisplayName = "ExistingGroup" };
+    _groups.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+      .Returns(Task.FromResult(group));
+
+    // Act
+    HttpResponseMessage response = await _client.GetAsync("/Groups/" + Guid.NewGuid());
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+  }
+
+  #endregion
+
+  #region Update Tests
+
+  [TestMethod]
+  public async Task UpdateGroup_NotFound_ReturnsNotFound()
+  {
+    // Arrange
+    _groups.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult<Group?>(null));
+
+    // Act
+    HttpResponseMessage response = await _client.PatchAsync("/Groups/" + Guid.NewGuid(), null);
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+  }
+
+  [TestMethod]
+  public async Task UpdateGroup_Found_ReturnsNoContent()
+  {
+    // Arrange
+    Group group = new() { DisplayName = "ExistingGroup" };
+    _groups.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+      .Returns(Task.FromResult(group));
+    _groups.Update(Arg.Any<Guid>(), Arg.Any<Group>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(true));
+
+    // Act
+    HttpResponseMessage response = await _client.PatchAsync("/Groups/" + Guid.NewGuid(), null);
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.NoContent, response.StatusCode);
+  }
+
+  [TestMethod]
+  public async Task UpdateGroup_Found_Fails_ReturnsInternalServerError()
+  {
+    // Arrange
+    Group group = new() { DisplayName = "ExistingGroup" };
+    _groups.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+      .Returns(Task.FromResult(group));
+    _groups.Update(Arg.Any<Guid>(), Arg.Any<Group>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(false));
+
+    // Act
+    HttpResponseMessage response = await _client.PatchAsync("/Groups/" + Guid.NewGuid(), null);
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+  }
+
+  #endregion
+
+  #region Delete Tests
+
+  [TestMethod]
+  public async Task DeleteGroup_NotFound_ReturnsNotFound()
+  {
+    // Arrange
+    _groups.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(false));
+
+    // Act
+    HttpResponseMessage response = await _client.DeleteAsync("/Groups/" + Guid.NewGuid());
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+  }
+
+  [TestMethod]
+  public async Task DeleteGroup_Found_ReturnsNoContent()
+  {
+    // Arrange
+    _groups.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(true));
+
+    // Act
+    HttpResponseMessage response = await _client.DeleteAsync("/Groups/" + Guid.NewGuid());
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.NoContent, response.StatusCode);
+  }
+
+  #endregion
+
+  #endregion
+
+  #region ClientCredentials
+
+  #region Create Tests
+
+  [TestMethod]
+  public async Task CreateClientCredential_ValidRequest_ReturnsCreated()
+  {
+    // Arrange
+    ClientCredential clientCredential = new() { Digest = "TestClientCredential" };
+    _clientCredentials
+      .Create(Arg.Any<ClientCredential>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(Guid.NewGuid()));
+
+    StringContent content = new(JsonSerializer.Serialize(clientCredential), Encoding.UTF8, "application/json");
+
+    // Act
+    HttpResponseMessage response = await _client.PostAsync("/Api-Keys", content);
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
+    Assert.IsTrue(response.Headers.Location != null);
+  }
+
+  #endregion
+
+  #region Query Tests
+
+  [TestMethod]
+  public async Task QueryClientCredentials_ValidRequest_ReturnsOk()
+  {
+    // Arrange
+    _clientCredentials.Query(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+        Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(new ListResponse<ClientCredential>()));
+
+    // Act
+    HttpResponseMessage response = await _client.GetAsync("/Api-Keys?page=1&pageSize=10");
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+  }
+
+  #endregion
+
+  #region Retrieve Tests
+
+  [TestMethod]
+  public async Task RetrieveClientCredential_NotFound_ReturnsNotFound()
+  {
+    // Arrange
+    _clientCredentials.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult<ClientCredential?>(null));
+
+    // Act
+    HttpResponseMessage response = await _client.GetAsync("/Api-Keys/" + Guid.NewGuid());
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+  }
+
+  [TestMethod]
+  public async Task RetrieveClientCredential_Found_ReturnsOk()
+  {
+    // Arrange
+    ClientCredential clientCredential = new() { Digest = "ExistingClientCredential" };
+    _clientCredentials.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+      .Returns(Task.FromResult(clientCredential));
+
+    // Act
+    HttpResponseMessage response = await _client.GetAsync("/Api-Keys/" + Guid.NewGuid());
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+  }
+
+  #endregion
+
+  #region Update Tests
+
+  [TestMethod]
+  public async Task UpdateClientCredential_NotFound_ReturnsNotFound()
+  {
+    // Arrange
+    _clientCredentials.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult<ClientCredential?>(null));
+
+    // Act
+    HttpResponseMessage response = await _client.PatchAsync("/Api-Keys/" + Guid.NewGuid(), null);
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+  }
+
+  [TestMethod]
+  public async Task UpdateClientCredential_Found_ReturnsNoContent()
+  {
+    // Arrange
+    ClientCredential clientCredential = new() { Digest = "ExistingClientCredential" };
+    _clientCredentials.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+      .Returns(Task.FromResult(clientCredential));
+    _clientCredentials.Update(Arg.Any<Guid>(), Arg.Any<ClientCredential>(), Arg.Any<string?>(),
+        Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(true));
+
+    // Act
+    HttpResponseMessage response = await _client.PatchAsync("/Api-Keys/" + Guid.NewGuid(), null);
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.NoContent, response.StatusCode);
+  }
+
+  [TestMethod]
+  public async Task UpdateClientCredential_Found_Fails_ReturnsInternalServerError()
+  {
+    // Arrange
+    ClientCredential clientCredential = new() { Digest = "ExistingClientCredential" };
+    _clientCredentials.Retrieve(Arg.Any<Guid>(), Arg.Any<CancellationToken>())!
+      .Returns(Task.FromResult(clientCredential));
+    _clientCredentials.Update(Arg.Any<Guid>(), Arg.Any<ClientCredential>(), Arg.Any<string?>(),
+        Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(false));
+
+    // Act
+    HttpResponseMessage response = await _client.PatchAsync("/Api-Keys/" + Guid.NewGuid(), null);
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+  }
+
+  #endregion
+
+  #region Delete Tests
+
+  [TestMethod]
+  public async Task DeleteClientCredential_NotFound_ReturnsNotFound()
+  {
+    // Arrange
+    _clientCredentials.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(false));
+
+    // Act
+    HttpResponseMessage response = await _client.DeleteAsync("/Api-Keys/" + Guid.NewGuid());
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
+  }
+
+  [TestMethod]
+  public async Task DeleteClientCredential_Found_ReturnsNoContent()
+  {
+    // Arrange
+    _clientCredentials.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(true));
+
+    // Act
+    HttpResponseMessage response = await _client.DeleteAsync("/Api-Keys/" + Guid.NewGuid());
+
+    // Assert
+    Assert.AreEqual(HttpStatusCode.NoContent, response.StatusCode);
+  }
+
+  #endregion
 
   #endregion
 }
