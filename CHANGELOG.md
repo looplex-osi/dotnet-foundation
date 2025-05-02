@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="1.1.2"></a>
+## 1.1.2 (2025-05-02)
+
+### Bug Fixes
+
+* **scimv2:** added api-keys scimv2 routes
+
 <a name="1.1.1"></a>
 ## 1.1.1 (2025-05-02)
 
