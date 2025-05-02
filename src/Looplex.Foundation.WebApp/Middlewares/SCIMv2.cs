@@ -1,5 +1,6 @@
 using System.Net;
 
+using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.Serialization.Json;
@@ -68,6 +69,7 @@ public static class SCIMv2
   {
     app.UseSCIMv2<User, Users>("/Users", authorize);
     app.UseSCIMv2<Group, Groups>("/Groups", authorize);
+    app.UseSCIMv2<ClientCredential, ClientCredentials>("/Api-Keys", authorize);
 
     app.UseBulk("/Bulk", authorize);
 
