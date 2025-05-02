@@ -212,11 +212,13 @@ public class ClientServices : SCIMv2<ClientService>
       ClientService? result = null;
       var query = new RetrieveResource<ClientService>(id);
       var clientService = await _mediator!.Send(query, cancellationToken);
-      var valid = await VerifyCredentials(clientSecret, clientService.Digest!);
+      bool valid = false;
+      
+      if (clientService != null)
+        valid = await VerifyCredentials(clientSecret, clientService.Digest!);
+        
       if (valid)
-      {
         result = clientService;
-      }
 
       ctx.Result = result;
     }
