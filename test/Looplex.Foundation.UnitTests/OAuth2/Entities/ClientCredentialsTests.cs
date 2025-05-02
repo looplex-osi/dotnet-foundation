@@ -1,145 +1,165 @@
 using System.Security.Claims;
 
-using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
-using Looplex.Foundation.SCIMv2.Entities;
-using Looplex.Foundation.Serialization.Json;
+using Looplex.Foundation.SCIMv2.Commands;
+using Looplex.Foundation.SCIMv2.Queries;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 
+using MediatR;
+
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-
-using Newtonsoft.Json;
 
 using NSubstitute;
 
-namespace Looplex.Foundation.UnitTests.OAuth2.Entities;
-
-[TestClass]
-public class ClientCredentialsTests
+namespace Looplex.Foundation.UnitTests.OAuth2.Entities
 {
-  private CancellationToken _cancellationToken;
-  private IConfiguration _mockConfiguration = null!;
-  private IJsonSchemaProvider _mockJsonSchemaProvider = null!;
-  private IRbacService _mockRbacService = null!;
-  private ClaimsPrincipal _mockUser = null!;
-
-  [TestInitialize]
-  public void SetUp()
+  [TestClass]
+  public class ClientCredentialsTests
   {
-    ClientCredentials.Data!.Clear();
-    _mockRbacService = Substitute.For<IRbacService>();
-    _mockConfiguration = Substitute.For<IConfiguration>();
-    _mockConfiguration["ClientSecretByteLength"].Returns("72");
-    _mockConfiguration["ClientSecretDigestCost"].Returns("4");
-    _mockJsonSchemaProvider = Substitute.For<IJsonSchemaProvider>();
-    _mockUser = Substitute.For<ClaimsPrincipal>();
-    _cancellationToken = new CancellationToken();
-  }
+    private ClientCredentials _clientCredentials = null!;
+    private IRbacService _rbacService = null!;
+    private IHttpContextAccessor _httpContextAccessor = null!;
+    private IMediator _mediator = null!;
+    private IConfiguration _configuration = null!;
+    private List<IPlugin> _plugins = null!;
+    private ClaimsPrincipal _user = null!;
 
-  [TestMethod]
-  public async Task QueryAsync_ShouldReturnPaginatedResults()
-  {
-    // Arrange
-    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUser);
-    ClientCredentials.Data!.Add(new ClientCredential { Id = "1" });
+    [TestInitialize]
+    public void Setup()
+    {
+      _rbacService = Substitute.For<IRbacService>();
+      _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+      _mediator = Substitute.For<IMediator>();
+      _configuration = Substitute.For<IConfiguration>();
+      _plugins = new List<IPlugin>();
+      _user = new ClaimsPrincipal();
 
-    // Act
-    string resultJson = await service.QueryAsync(1, 10, _cancellationToken);
-    ListResponse<ClientCredential>? result = JsonConvert.DeserializeObject<ListResponse<ClientCredential>>(resultJson);
+      var httpContext = Substitute.For<HttpContext>();
+      httpContext.User.Returns(_user);
+      _httpContextAccessor.HttpContext.Returns(httpContext);
 
-    // Assert
-    Assert.AreEqual(1, result!.TotalResults);
-    Assert.AreEqual("1", result.Resources[0].Id);
-  }
+      _configuration["ClientSecretDigestCost"] = "4";
+        
+      _clientCredentials = new ClientCredentials(_plugins, _rbacService, _httpContextAccessor, _mediator, _configuration);
+    }
 
-  [TestMethod]
-  public async Task RetrieveAsync_ValidId_ShouldReturnClientCredential()
-  {
-    // Arrange
-    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUser);
-    ClientCredential clientCredential = new() { Id = "123" };
-    ClientCredentials.Data!.Add(clientCredential);
+    [TestMethod]
+    public async Task Query_ShouldReturnListResponse()
+    {
+      // Arrange
+      var cancellationToken = CancellationToken.None;
+      var expectedClientCredentials = new List<ClientCredential> { new ClientCredential() };
+      int expectedTotal = 1;
 
-    // Act
-    string resultJson = await service.RetrieveAsync("123", _cancellationToken);
-    ClientCredential? result = JsonConvert.DeserializeObject<ClientCredential>(resultJson);
+      _mediator.Send(Arg.Any<QueryResource<ClientCredential>>(), cancellationToken)
+        .Returns((expectedClientCredentials, expectedTotal));
 
-    // Assert
-    Assert.IsNotNull(result);
-    Assert.AreEqual("123", result.Id);
-  }
+      // Act
+      var response = await _clientCredentials.Query(1, 10, "filter", "name", "asc", cancellationToken);
 
-  [TestMethod]
-  public async Task CreateAsync_ShouldGenerateClientIdAndDigest()
-  {
-    // Arrange
-    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUser);
-    string inputJson = JsonConvert.SerializeObject(new ClientCredential { ClientName = "client-1" });
+      // Assert
+      Assert.IsNotNull(response);
+      Assert.AreEqual(1, response.TotalResults);
+      Assert.AreEqual(1, response.Resources.Count);
+    }
 
-    // Act
-    string result = await service.CreateAsync(inputJson, _cancellationToken);
-    ClientCredentialDto? clientCredentialDto = result.Deserialize<ClientCredentialDto>();
-    ClientCredential? createdCredential =
-      ClientCredentials.Data!.FirstOrDefault(c => c.ClientId == clientCredentialDto!.ClientId);
+    [TestMethod]
+    public async Task Create_ShouldReturnGuid()
+    {
+      // Arrange
+      var cancellationToken = CancellationToken.None;
+      var clientCredential = new ClientCredential
+      {
+        ClientSecret = "secret"
+      };
+      var expectedId = Guid.NewGuid();
 
-    // Assert
-    Assert.IsNotNull(createdCredential);
-    Assert.IsFalse(clientCredentialDto!.ClientId == Guid.Empty);
-    Assert.IsFalse(string.IsNullOrEmpty(clientCredentialDto.ClientSecret));
-    Assert.IsFalse(createdCredential.ClientId == Guid.Empty);
-    Assert.IsFalse(string.IsNullOrEmpty(createdCredential.Digest));
-  }
+      _mediator.Send(Arg.Any<CreateResource<ClientCredential>>(), cancellationToken)
+        .Returns(expectedId);
 
-  [TestMethod]
-  public async Task DeleteAsync_ValidId_ShouldRemoveCredential()
-  {
-    // Arrange
-    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUser);
-    ClientCredential clientCredential = new() { Id = "789" };
-    ClientCredentials.Data!.Add(clientCredential);
+      // Act
+      var result = await _clientCredentials.Create(clientCredential, cancellationToken);
 
-    // Act
-    bool result = await service.DeleteAsync("789", _cancellationToken);
+      // Assert
+      Assert.AreEqual(expectedId, result);
+    }
 
-    // Assert
-    Assert.IsTrue(result);
-    Assert.IsFalse(ClientCredentials.Data.Any(c => c.Id == "789"));
-  }
+    [TestMethod]
+    public async Task Retrieve_ShouldReturnClientCredential()
+    {
+      // Arrange
+      var cancellationToken = CancellationToken.None;
+      var expectedClientCredential = new ClientCredential();
+      var id = Guid.NewGuid();
 
-  [TestMethod]
-  public async Task RetrieveAsync_InvalidId_ShouldThrowException()
-  {
-    // Arrange
-    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUser);
+      _mediator.Send(Arg.Any<RetrieveResource<ClientCredential>>(), cancellationToken)
+        .Returns(expectedClientCredential);
 
-    // Act & Assert
-    Exception exception =
-      await Assert.ThrowsExceptionAsync<Exception>(() => service.RetrieveAsync("999", _cancellationToken));
-    Assert.AreEqual("ClientCredential with id 999 not found,", exception.Message);
-  }
+      // Act
+      var result = await _clientCredentials.Retrieve(id, cancellationToken);
 
-  [TestMethod]
-  public async Task RetrieveAsync_ValidClientIdAndSecret_ShouldReturnCredential()
-  {
-    // Arrange
-    ClientCredentials service = new([], _mockRbacService, _mockConfiguration, _mockJsonSchemaProvider,
-      _mockUser);
-    ClientCredential clientCredential = new() { ClientName = "client-1" };
-    string json = await service.CreateAsync(clientCredential.Serialize(), CancellationToken.None);
-    ClientCredentialDto? clientCredentialDto = json.Deserialize<ClientCredentialDto>();
+      // Assert
+      Assert.IsNotNull(result);
+      Assert.AreEqual(expectedClientCredential, result);
+    }
 
-    // Act
-    string resultJson = await service.RetrieveAsync(clientCredentialDto!.ClientId, clientCredentialDto.ClientSecret,
-      _cancellationToken);
-    ClientCredential? result = JsonConvert.DeserializeObject<ClientCredential>(resultJson);
+    [TestMethod]
+    public async Task RetrieveWithVerify_ShouldReturnClientCredential()
+    {
+      // Arrange
+      var cancellationToken = CancellationToken.None;
+      var expectedClientCredential = new ClientCredential
+      {
+        Digest = "0a714f46-fac5-45a4-a861-ff8f84ba0151:XsMs85RI7tUR2621mObKZMqneEthl53U" 
+      };
+      var id = Guid.NewGuid();
 
-    // Assert
-    Assert.IsNotNull(result);
-    Assert.AreEqual("client-1", result.ClientName);
+      _mediator.Send(Arg.Any<RetrieveResource<ClientCredential>>(), cancellationToken)
+        .Returns(expectedClientCredential);
+
+      // Act
+      var result = await _clientCredentials.Retrieve(id, "secret", cancellationToken);
+
+      // Assert
+      Assert.IsNotNull(result);
+      Assert.AreEqual(expectedClientCredential, result);
+    }
+
+    [TestMethod]
+    public async Task Update_ShouldReturnTrue_WhenRowsAffected()
+    {
+      // Arrange
+      var cancellationToken = CancellationToken.None;
+      var clientCredential = new ClientCredential();
+      var id = Guid.NewGuid();
+
+      _mediator.Send(Arg.Any<UpdateResource<ClientCredential>>(), cancellationToken)
+        .Returns(1); // Simulating that one row was affected
+
+      // Act
+      var result = await _clientCredentials.Update(id, clientCredential, null, cancellationToken);
+
+      // Assert
+      Assert.IsTrue(result);
+    }
+
+    [TestMethod]
+    public async Task Delete_ShouldReturnTrue_WhenRowsAffected()
+    {
+      // Arrange
+      var cancellationToken = CancellationToken.None;
+      var id = Guid.NewGuid();
+
+      _mediator.Send(Arg.Any<DeleteResource<ClientCredential>>(), cancellationToken)
+        .Returns(1); // Simulating that one row was affected
+
+      // Act
+      var result = await _clientCredentials.Delete(id, cancellationToken);
+
+      // Assert
+      Assert.IsTrue(result);
+    }
   }
 }

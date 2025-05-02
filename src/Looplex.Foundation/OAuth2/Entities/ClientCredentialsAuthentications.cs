@@ -21,7 +21,7 @@ namespace Looplex.Foundation.OAuth2.Entities;
 
 public class ClientCredentialsAuthentications : Service, IAuthentications
 {
-  private readonly IClientCredentials? _clientCredentials;
+  private readonly ClientCredentials? _clientCredentials;
   private readonly IConfiguration? _configuration;
   private readonly IJwtService? _jwtService;
 
@@ -38,7 +38,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
   public ClientCredentialsAuthentications(
     IList<IPlugin> plugins,
     IConfiguration configuration,
-    IClientCredentials clientCredentials,
+    ClientCredentials clientCredentials,
     IJwtService jwtService) : base(plugins)
   {
     _configuration = configuration;
@@ -61,7 +61,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     ValidateGrantType(clientCredentialsDto.GrantType);
     (Guid clientId, string clientSecret) = TryGetClientCredentials(authorization);
     ClientCredential clientCredential =
-      await GetClientCredentialByIdAndSecretOrDefaultAsync(clientId, clientSecret, ctx, cancellationToken);
+      await GetClientCredentialByIdAndSecretOrDefaultAsync(clientId, clientSecret, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
     ctx.Roles["ClientCredential"] = clientCredential;
@@ -135,26 +135,15 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     if (grantType != null && !grantType
           .Equals("client_credentials", StringComparison.InvariantCultureIgnoreCase))
     {
-      throw new Exception($"grant_type is invalid.");
+      throw new Exception("grant_type is invalid.");
     }
   }
 
   private async Task<ClientCredential> GetClientCredentialByIdAndSecretOrDefaultAsync(Guid clientId,
-    string clientSecret,
-    IContext parentContext, CancellationToken cancellationToken)
+    string clientSecret, CancellationToken cancellationToken)
   {
-    string json = await _clientCredentials!.RetrieveAsync(clientId, clientSecret, cancellationToken);
-    if (string.IsNullOrWhiteSpace(json))
-    {
-      throw new Exception("Invalid clientId or clientSecret.");
-    }
-
-    ClientCredential? clientCredential = json.Deserialize<ClientCredential>();
-
-    if (clientCredential == default)
-    {
-      throw new Exception("Invalid clientId or clientSecret.");
-    }
+    var clientCredential = await _clientCredentials!.Retrieve(clientId, clientSecret, cancellationToken)
+                           ?? throw new Exception("Invalid clientId or clientSecret.");
 
     if (clientCredential.NotBefore > DateTimeOffset.UtcNow)
     {
@@ -172,7 +161,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
   private string CreateAccessToken(ClientCredential clientCredential)
   {
     ClaimsIdentity claims = new([
-      new Claim("ClientId", clientCredential.ClientId.ToString())
+      new Claim("ClientId", clientCredential.Id)
     ]);
 
     string audience = _configuration!["Audience"]!;

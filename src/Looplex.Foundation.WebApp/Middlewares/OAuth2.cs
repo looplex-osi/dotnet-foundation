@@ -8,6 +8,8 @@ using Looplex.Foundation.WebApp.Adapters;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
 
+using MediatR;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -37,6 +39,18 @@ public static class OAuth2
 
     services.AddSingleton<IJwtService, JwtService>();
     services.AddScoped<AuthenticationsFactory>();
+    services.AddScoped<ClientCredentials>(sp =>
+    {
+      PluginLoader loader = new();
+      IEnumerable<string> dlls = Directory.Exists("plugins")
+        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+        : [];
+      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+      var rbacService = sp.GetRequiredService<IRbacService>();
+      var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+      var mediator = sp.GetRequiredService<IMediator>();
+      return new ClientCredentials(plugins, rbacService, httpContextAccessor, mediator, configuration);
+    });
     services.AddScoped<ClientCredentialsAuthentications>(sp =>
     {
       PluginLoader loader = new();
@@ -44,7 +58,7 @@ public static class OAuth2
         ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
         : [];
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
-      var clientCredentials = sp.GetRequiredService<IClientCredentials>();
+      var clientCredentials = sp.GetRequiredService<ClientCredentials>();
       var jwtService = sp.GetRequiredService<IJwtService>();
       return new ClientCredentialsAuthentications(plugins, configuration, clientCredentials, jwtService);
     });
