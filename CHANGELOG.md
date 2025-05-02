@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="1.1.6"></a>
+## 1.1.6 (2025-05-02)
+
+### Bug Fixes
+
+* **cqrs:** retrieve resource may return null
+* **oauth2:** validate when clientservice is not found
+
 <a name="1.1.5"></a>
 ## 1.1.5 (2025-05-02)
 
