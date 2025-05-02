@@ -10,6 +10,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Looplex.Samples</RootNamespace>
+    
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
 </Project>

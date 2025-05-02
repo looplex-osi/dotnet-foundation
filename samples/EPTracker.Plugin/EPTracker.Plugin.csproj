@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Looplex.Samples.EPTracker</RootNamespace>
     <EnableDynamicLoading>true</EnableDynamicLoading>
+
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
