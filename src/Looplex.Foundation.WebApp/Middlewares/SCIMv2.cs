@@ -69,7 +69,7 @@ public static class SCIMv2
   {
     app.UseSCIMv2<User, Users>("/Users", authorize);
     app.UseSCIMv2<Group, Groups>("/Groups", authorize);
-    app.UseSCIMv2<ClientCredential, ClientCredentials>("/Api-Keys", authorize);
+    app.UseSCIMv2<ClientService, ClientServices>("/Api-Keys", authorize);
 
     app.UseBulk("/Bulk", authorize);
 

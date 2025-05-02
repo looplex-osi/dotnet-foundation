@@ -39,7 +39,7 @@ public class TokenExchangeAuthenticationsTests
   public async Task CreateAccessToken_InvalidGrantType_ThrowsUnauthorized()
   {
     // Arrange
-    string clientCredentials = JsonConvert.SerializeObject(new
+    string clientServices = JsonConvert.SerializeObject(new
     {
       grant_type = "invalid", subject_token = "invalid", subject_token_type = "invalid"
     });
@@ -48,7 +48,7 @@ public class TokenExchangeAuthenticationsTests
 
     // Act & Assert
     Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
-      () => service.CreateAccessToken(clientCredentials, "", CancellationToken.None));
+      () => service.CreateAccessToken(clientServices, "", CancellationToken.None));
 
     Assert.AreEqual("grant_type is invalid.", exception.Message);
   }
@@ -57,7 +57,7 @@ public class TokenExchangeAuthenticationsTests
   public async Task CreateAccessToken_InvalidSubjectTokenType_ThrowsUnauthorized()
   {
     // Arrange
-    string clientCredentials = JsonConvert.SerializeObject(new
+    string clientServices = JsonConvert.SerializeObject(new
     {
       grant_type = "urn:ietf:params:oauth:grant-type:token-exchange",
       subject_token = "invalid",
@@ -68,7 +68,7 @@ public class TokenExchangeAuthenticationsTests
 
     // Act & Assert
     Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
-      () => service.CreateAccessToken(clientCredentials, "", CancellationToken.None));
+      () => service.CreateAccessToken(clientServices, "", CancellationToken.None));
 
     Assert.AreEqual("subject_token_type is invalid.", exception.Message);
   }
@@ -83,7 +83,7 @@ public class TokenExchangeAuthenticationsTests
     _mockConfiguration["PrivateKey"].Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes(RsaKeys.PrivateKey)));
     _mockConfiguration["OicdUserInfoEndpoint"].Returns("https://graph.microsoft.com/oidc/userinfo");
 
-    string clientCredentials = JsonConvert.SerializeObject(new
+    string clientServices = JsonConvert.SerializeObject(new
     {
       grant_type = "urn:ietf:params:oauth:grant-type:token-exchange",
       subject_token = "validToken",
@@ -93,7 +93,7 @@ public class TokenExchangeAuthenticationsTests
     TokenExchangeAuthentications service = new(new List<IPlugin>(), _mockConfiguration, _mockJwtService, _httpClient);
 
     // Act
-    string result = await service.CreateAccessToken(clientCredentials, "", CancellationToken.None);
+    string result = await service.CreateAccessToken(clientServices, "", CancellationToken.None);
 
     // Assert
     Assert.IsNotNull(result);
@@ -104,7 +104,7 @@ public class TokenExchangeAuthenticationsTests
   public async Task CreateAccessToken_TokenIsEmpty_ThrowsUnauthorized()
   {
     // Arrange
-    string clientCredentials = JsonConvert.SerializeObject(new
+    string clientServices = JsonConvert.SerializeObject(new
     {
       grant_type = "urn:ietf:params:oauth:grant-type:token-exchange",
       subject_token = "",
@@ -115,7 +115,7 @@ public class TokenExchangeAuthenticationsTests
 
     // Act & Assert
     Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
-      () => service.CreateAccessToken(clientCredentials, "", CancellationToken.None));
+      () => service.CreateAccessToken(clientServices, "", CancellationToken.None));
 
     Assert.AreEqual("Token is invalid.", exception.Message);
   }
@@ -125,7 +125,7 @@ public class TokenExchangeAuthenticationsTests
   {
     // Arrange
     _mockConfiguration["OicdUserInfoEndpoint"].Returns("https://graph.microsoft.com/oidc/userinfo");
-    string clientCredentials = JsonConvert.SerializeObject(new
+    string clientServices = JsonConvert.SerializeObject(new
     {
       grant_type = "urn:ietf:params:oauth:grant-type:token-exchange",
       subject_token = "invalid",
@@ -139,7 +139,7 @@ public class TokenExchangeAuthenticationsTests
 
     // Act & Assert
     HttpRequestException exception = await Assert.ThrowsExceptionAsync<HttpRequestException>(
-      () => service.CreateAccessToken(clientCredentials, "", CancellationToken.None));
+      () => service.CreateAccessToken(clientServices, "", CancellationToken.None));
 
     Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
   }

@@ -9,12 +9,12 @@ using PropertyChanged;
 namespace Looplex.Foundation.OAuth2.Entities;
 
 [AddINotifyPropertyChangedInterface]
-public class ClientCredential : Resource
+public class ClientService : Resource
 {
   #region Reflectivity
 
   // ReSharper disable once EmptyConstructor
-  public ClientCredential() : base() { }
+  public ClientService() : base() { }
 
   #endregion
 

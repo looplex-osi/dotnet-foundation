@@ -24,7 +24,7 @@ using Org.BouncyCastle.Crypto.Generators;
 
 namespace Looplex.Foundation.OAuth2.Entities;
 
-public class ClientCredentials : SCIMv2<ClientCredential>
+public class ClientServices : SCIMv2<ClientService>
 {
   private readonly IRbacService? _rbacService;
   private readonly ClaimsPrincipal? _user;
@@ -34,14 +34,14 @@ public class ClientCredentials : SCIMv2<ClientCredential>
   #region Reflectivity
 
   // ReSharper disable once PublicConstructorInAbstractClass
-  public ClientCredentials() : base()
+  public ClientServices() : base()
   {
   }
 
   #endregion
 
   [ActivatorUtilitiesConstructor]
-  public ClientCredentials(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
+  public ClientServices(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
     IMediator mediator, IConfiguration configuration) : base(plugins)
   {
     _rbacService = rbacService;
@@ -52,7 +52,7 @@ public class ClientCredentials : SCIMv2<ClientCredential>
 
   #region Query
 
-  public override async Task<ListResponse<ClientCredential>> Query(int startIndex, int count,
+  public override async Task<ListResponse<ClientService>> Query(int startIndex, int count,
     string? filter, string? sortBy, string? sortOrder,
     CancellationToken cancellationToken)
   {
@@ -78,11 +78,11 @@ public class ClientCredentials : SCIMv2<ClientCredential>
 
     if (!ctx.SkipDefaultAction)
     {
-      var query = new QueryResource<ClientCredential>(page, count, filter, sortBy, sortOrder);
+      var query = new QueryResource<ClientService>(page, count, filter, sortBy, sortOrder);
 
       var (result, totalResults) = await _mediator!.Send(query, cancellationToken);
 
-      ctx.Result = new ListResponse<ClientCredential>
+      ctx.Result = new ListResponse<ClientService>
       {
         StartIndex = startIndex, ItemsPerPage = count, Resources = result, TotalResults = totalResults
       };
@@ -92,14 +92,14 @@ public class ClientCredentials : SCIMv2<ClientCredential>
 
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
-    return (ListResponse<ClientCredential>)ctx.Result;
+    return (ListResponse<ClientService>)ctx.Result;
   }
 
   #endregion
 
   #region Create
 
-  public override async Task<Guid> Create(ClientCredential resource,
+  public override async Task<Guid> Create(ClientService resource,
     CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
@@ -109,7 +109,7 @@ public class ClientCredentials : SCIMv2<ClientCredential>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    ctx.Roles["ClientCredential"] = resource;
+    ctx.Roles["ClientService"] = resource;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -117,11 +117,11 @@ public class ClientCredentials : SCIMv2<ClientCredential>
 
     if (!ctx.SkipDefaultAction)
     {
-      var clientCredential = ctx.Roles["ClientCredential"];
+      var clientService = ctx.Roles["ClientService"];
 
-      clientCredential.Digest = await DigestCredentials(clientCredential.ClientSecret)!;
+      clientService.Digest = await DigestCredentials(clientService.ClientSecret)!;
       
-      var command = new CreateResource<ClientCredential>(clientCredential);
+      var command = new CreateResource<ClientService>(clientService);
 
       var result = await _mediator!.Send(command, cancellationToken);
 
@@ -156,7 +156,7 @@ public class ClientCredentials : SCIMv2<ClientCredential>
 
   #region Retrieve
 
-  public override async Task<ClientCredential?> Retrieve(Guid id, CancellationToken cancellationToken)
+  public override async Task<ClientService?> Retrieve(Guid id, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -173,17 +173,17 @@ public class ClientCredentials : SCIMv2<ClientCredential>
 
     if (!ctx.SkipDefaultAction)
     {
-      var query = new RetrieveResource<ClientCredential>(ctx.Roles["Id"]);
+      var query = new RetrieveResource<ClientService>(ctx.Roles["Id"]);
 
-      var clientCredential = await _mediator!.Send(query, cancellationToken);
+      var clientService = await _mediator!.Send(query, cancellationToken);
 
-      ctx.Result = clientCredential;
+      ctx.Result = clientService;
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
-    return (ClientCredential?)ctx.Result;
+    return (ClientService?)ctx.Result;
   }
 
   /// <summary>
@@ -193,7 +193,7 @@ public class ClientCredentials : SCIMv2<ClientCredential>
   /// <param name="clientSecret"></param>
   /// <param name="cancellationToken"></param>
   /// <returns></returns>
-  public async virtual Task<ClientCredential?> Retrieve(Guid id, string clientSecret, CancellationToken cancellationToken)
+  public async virtual Task<ClientService?> Retrieve(Guid id, string clientSecret, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -209,13 +209,13 @@ public class ClientCredentials : SCIMv2<ClientCredential>
 
     if (!ctx.SkipDefaultAction)
     {
-      ClientCredential? result = null;
-      var query = new RetrieveResource<ClientCredential>(id);
-      var clientCredential = await _mediator!.Send(query, cancellationToken);
-      var valid = await VerifyCredentials(clientSecret, clientCredential.Digest!);
+      ClientService? result = null;
+      var query = new RetrieveResource<ClientService>(id);
+      var clientService = await _mediator!.Send(query, cancellationToken);
+      var valid = await VerifyCredentials(clientSecret, clientService.Digest!);
       if (valid)
       {
-        result = clientCredential;
+        result = clientService;
       }
 
       ctx.Result = result;
@@ -225,7 +225,7 @@ public class ClientCredentials : SCIMv2<ClientCredential>
 
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
-    return (ClientCredential?)ctx.Result;
+    return (ClientService?)ctx.Result;
   }
   
   private Task<bool> VerifyCredentials(string clientSecret, string digest)
@@ -252,7 +252,7 @@ public class ClientCredentials : SCIMv2<ClientCredential>
 
   #region Update
 
-  public override async Task<bool> Update(Guid id, ClientCredential resource, string? fields, CancellationToken cancellationToken)
+  public override async Task<bool> Update(Guid id, ClientService resource, string? fields, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -261,9 +261,9 @@ public class ClientCredentials : SCIMv2<ClientCredential>
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    string resourceName = nameof(ClientCredential).ToLower();
+    string resourceName = nameof(ClientService).ToLower();
     ctx.Roles["Id"] = id;
-    ctx.Roles["ClientCredential"] = resource;
+    ctx.Roles["ClientService"] = resource;
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
@@ -271,7 +271,7 @@ public class ClientCredentials : SCIMv2<ClientCredential>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new UpdateResource<ClientCredential>(ctx.Roles["Id"], ctx.Roles["ClientCredential"]);
+      var command = new UpdateResource<ClientService>(ctx.Roles["Id"], ctx.Roles["ClientService"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 
@@ -305,7 +305,7 @@ public class ClientCredentials : SCIMv2<ClientCredential>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new DeleteResource<ClientCredential>(ctx.Roles["Id"]);
+      var command = new DeleteResource<ClientService>(ctx.Roles["Id"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 

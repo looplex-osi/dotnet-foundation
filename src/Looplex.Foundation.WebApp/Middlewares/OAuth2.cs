@@ -39,7 +39,7 @@ public static class OAuth2
 
     services.AddSingleton<IJwtService, JwtService>();
     services.AddScoped<AuthenticationsFactory>();
-    services.AddScoped<ClientCredentials>(sp =>
+    services.AddScoped<ClientServices>(sp =>
     {
       PluginLoader loader = new();
       IEnumerable<string> dlls = Directory.Exists("plugins")
@@ -49,7 +49,7 @@ public static class OAuth2
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
       var mediator = sp.GetRequiredService<IMediator>();
-      return new ClientCredentials(plugins, rbacService, httpContextAccessor, mediator, configuration);
+      return new ClientServices(plugins, rbacService, httpContextAccessor, mediator, configuration);
     });
     services.AddScoped<ClientCredentialsAuthentications>(sp =>
     {
@@ -58,7 +58,7 @@ public static class OAuth2
         ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
         : [];
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
-      var clientCredentials = sp.GetRequiredService<ClientCredentials>();
+      var clientCredentials = sp.GetRequiredService<ClientServices>();
       var jwtService = sp.GetRequiredService<IJwtService>();
       return new ClientCredentialsAuthentications(plugins, configuration, clientCredentials, jwtService);
     });

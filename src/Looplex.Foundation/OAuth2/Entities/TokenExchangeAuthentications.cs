@@ -66,7 +66,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     ValidateAccessToken(clientCredentialsDto.SubjectToken);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
-    ctx.Roles["ClientCredentials"] = clientCredentialsDto;
+    ctx.Roles["ClientServices"] = clientCredentialsDto;
     ctx.Roles["UserInfo"] = await GetUserInfoAsync(clientCredentialsDto.SubjectToken!);
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
 
