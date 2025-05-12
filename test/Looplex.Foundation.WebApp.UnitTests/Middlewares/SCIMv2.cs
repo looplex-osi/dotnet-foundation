@@ -49,9 +49,9 @@ public class SCIMv2Tests
           app.UseRouting();
           app.UseEndpoints(endpoints =>
           {
-            endpoints.UseSCIMv2<User, Users>("/Users", authorize: false);
-            endpoints.UseSCIMv2<Group, Groups>("/Groups", authorize: false);
-            endpoints.UseSCIMv2<ClientService, ClientServices>("/Api-Keys", authorize: false);
+            endpoints.UseSCIMv2<User, User, Users>("/Users", authorize: false);
+            endpoints.UseSCIMv2<Group, Group, Groups>("/Groups", authorize: false);
+            endpoints.UseSCIMv2<ClientService, ClientService, ClientServices>("/Api-Keys", authorize: false);
           });
         });
       })

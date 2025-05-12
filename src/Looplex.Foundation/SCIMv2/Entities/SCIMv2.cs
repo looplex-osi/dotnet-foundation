@@ -8,8 +8,7 @@ using Looplex.OpenForExtension.Abstractions.Plugins;
 
 namespace Looplex.Foundation.SCIMv2.Entities;
 
-public abstract class SCIMv2<T> : Service
-  where T : Resource, new()
+public abstract class SCIMv2<Tmeta, Tdata> : Service where Tmeta : Resource, new()
 {
   #region Reflectivity
 
@@ -24,15 +23,13 @@ public abstract class SCIMv2<T> : Service
   {
   }
 
-  public abstract Task<ListResponse<T>> Query(int startIndex, int count,
-    string? filter, string? sortBy, string? sortOrder,
-    CancellationToken cancellationToken);
+  public abstract Task<ListResponse<Tmeta>> Query(int startIndex, int count, string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken);
 
-  public abstract Task<Guid> Create(T resource, CancellationToken cancellationToken);
+  public abstract Task<Guid> Create(Tdata resource, CancellationToken cancellationToken);
 
-  public abstract Task<T?> Retrieve(Guid id, CancellationToken cancellationToken);
+  public abstract Task<Tdata?> Retrieve(Guid id, CancellationToken cancellationToken);
 
-  public abstract Task<bool> Update(Guid id, T resource, string? fields, CancellationToken cancellationToken);
+  public abstract Task<bool> Update(Guid id, Tdata resource, string? fields, CancellationToken cancellationToken);
 
   public abstract Task<bool> Delete(Guid id, CancellationToken cancellationToken);
 }

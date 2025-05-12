@@ -18,7 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Looplex.Samples.Application.Services;
 
-public class Notes : SCIMv2<Note>
+public class Notes : SCIMv2<Note, Note>
 {
   private readonly IRbacService? _rbacService;
   private readonly ClaimsPrincipal? _user;
