@@ -67,19 +67,20 @@ public static class SCIMv2
   /// <returns></returns>
   public static IEndpointRouteBuilder UseSCIMv2(this IEndpointRouteBuilder app, bool authorize = true)
   {
-    app.UseSCIMv2<User, Users>("/Users", authorize);
-    app.UseSCIMv2<Group, Groups>("/Groups", authorize);
-    app.UseSCIMv2<ClientService, ClientServices>("/Api-Keys", authorize);
+    app.UseSCIMv2<User, User, Users>("/Users", authorize);
+    app.UseSCIMv2<Group, Group, Groups>("/Groups", authorize);
+    app.UseSCIMv2<ClientService, ClientService, ClientServices>("/Api-Keys", authorize);
 
     app.UseBulk("/Bulk", authorize);
 
     return app;
   }
 
-  public static IEndpointRouteBuilder UseSCIMv2<TRes, TSCIMv2Svc>(this IEndpointRouteBuilder app, string prefix,
+  public static IEndpointRouteBuilder UseSCIMv2<TRes, TFullRes, TSCIMv2Svc>(this IEndpointRouteBuilder app, string prefix,
     bool authorize = true)
     where TRes : Resource, new()
-    where TSCIMv2Svc : SCIMv2<TRes>
+    where TFullRes : Resource, new()
+    where TSCIMv2Svc : SCIMv2<TRes, TFullRes>
   {
     var resourceMap = new ResourceMap(typeof(TRes), prefix);
     ServiceProviderConfiguration.Map.Add(resourceMap);
@@ -143,7 +144,7 @@ public static class SCIMv2
 
       using StreamReader reader = new(context.Request.Body);
       string json = await reader.ReadToEndAsync(cancellationToken);
-      TRes? resource = json.Deserialize<TRes>();
+      TFullRes? resource = json.Deserialize<TFullRes>();
 
       if (resource == null)
         throw new Exception($"Could not deserialize {typeof(TRes).Name}");
@@ -164,7 +165,7 @@ public static class SCIMv2
       CancellationToken cancellationToken = context.RequestAborted;
       var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
 
-      TRes? result = await svc.Retrieve(id, cancellationToken);
+      TFullRes? result = await svc.Retrieve(id, cancellationToken);
 
       if (result == null)
       {
@@ -189,7 +190,7 @@ public static class SCIMv2
       CancellationToken cancellationToken = context.RequestAborted;
       var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
 
-      TRes? resource = await svc.Retrieve(id, cancellationToken);
+      TFullRes? resource = await svc.Retrieve(id, cancellationToken);
       if (resource == null)
       {
         context.Response.StatusCode = (int)HttpStatusCode.NotFound;
