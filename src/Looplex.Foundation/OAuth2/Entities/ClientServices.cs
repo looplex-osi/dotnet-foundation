@@ -24,7 +24,7 @@ using Org.BouncyCastle.Crypto.Generators;
 
 namespace Looplex.Foundation.OAuth2.Entities;
 
-public class ClientServices : SCIMv2<ClientService>
+public class ClientServices : SCIMv2<ClientService, ClientService>
 {
   private readonly IRbacService? _rbacService;
   private readonly ClaimsPrincipal? _user;

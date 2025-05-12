@@ -20,7 +20,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Looplex.Foundation.SCIMv2.Entities;
 
-public class Groups : SCIMv2<Group>
+public class Groups : SCIMv2<Group, Group>
 {
   private readonly IRbacService? _rbacService;
   private readonly ClaimsPrincipal? _user;

@@ -1,5 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35825.156
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation", "src\Looplex.Foundation\Looplex.Foundation.csproj", "{FE2F018E-B7D6-42AB-A27A-79B090D98272}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{46910C4E-E213-47AF-960A-12080DA743E3}"
@@ -8,19 +11,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{790545C2-E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.UnitTests", "test\Looplex.Foundation.UnitTests\Looplex.Foundation.UnitTests.csproj", "{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5DF23ABA-28BD-4A21-8720-C26BA487AA41}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EPTracker.Plugin", "samples\EPTracker.Plugin\EPTracker.Plugin.csproj", "{FB70FDA2-1827-4575-A707-60719AF04B0B}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CLIApp", "samples\CLIApp\CLIApp.csproj", "{852705F6-8F83-45B9-A551-500892EBD89E}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notejam.WebApp", "samples\Notejam.WebApp\Notejam.WebApp.csproj", "{405E2BAC-236B-4962-BB55-30C079180E00}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.WebApp", "src\Looplex.Foundation.WebApp\Looplex.Foundation.WebApp.csproj", "{10CCE025-B4B9-49A4-9C9C-A21A4906E120}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.WebApp.UnitTests", "test\Looplex.Foundation.WebApp.UnitTests\Looplex.Foundation.WebApp.UnitTests.csproj", "{DA9A81B7-2872-43D7-ACFA-9831357C0F73}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notejam", "samples\Notejam\Notejam\Notejam.csproj", "{843F46C6-D4FD-4C4A-84D2-25117C067DE2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,18 +29,6 @@ Global
 		{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FB70FDA2-1827-4575-A707-60719AF04B0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FB70FDA2-1827-4575-A707-60719AF04B0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FB70FDA2-1827-4575-A707-60719AF04B0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FB70FDA2-1827-4575-A707-60719AF04B0B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{852705F6-8F83-45B9-A551-500892EBD89E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{852705F6-8F83-45B9-A551-500892EBD89E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{852705F6-8F83-45B9-A551-500892EBD89E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{852705F6-8F83-45B9-A551-500892EBD89E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{405E2BAC-236B-4962-BB55-30C079180E00}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{405E2BAC-236B-4962-BB55-30C079180E00}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{405E2BAC-236B-4962-BB55-30C079180E00}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{405E2BAC-236B-4962-BB55-30C079180E00}.Release|Any CPU.Build.0 = Release|Any CPU
 		{10CCE025-B4B9-49A4-9C9C-A21A4906E120}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{10CCE025-B4B9-49A4-9C9C-A21A4906E120}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10CCE025-B4B9-49A4-9C9C-A21A4906E120}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -56,19 +37,17 @@ Global
 		{DA9A81B7-2872-43D7-ACFA-9831357C0F73}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DA9A81B7-2872-43D7-ACFA-9831357C0F73}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DA9A81B7-2872-43D7-ACFA-9831357C0F73}.Release|Any CPU.Build.0 = Release|Any CPU
-		{843F46C6-D4FD-4C4A-84D2-25117C067DE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{843F46C6-D4FD-4C4A-84D2-25117C067DE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{843F46C6-D4FD-4C4A-84D2-25117C067DE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{843F46C6-D4FD-4C4A-84D2-25117C067DE2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{FE2F018E-B7D6-42AB-A27A-79B090D98272} = {46910C4E-E213-47AF-960A-12080DA743E3}
 		{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7} = {790545C2-EA0E-438D-B8A7-DAB859342435}
-		{FB70FDA2-1827-4575-A707-60719AF04B0B} = {5DF23ABA-28BD-4A21-8720-C26BA487AA41}
-		{852705F6-8F83-45B9-A551-500892EBD89E} = {5DF23ABA-28BD-4A21-8720-C26BA487AA41}
-		{405E2BAC-236B-4962-BB55-30C079180E00} = {5DF23ABA-28BD-4A21-8720-C26BA487AA41}
 		{10CCE025-B4B9-49A4-9C9C-A21A4906E120} = {46910C4E-E213-47AF-960A-12080DA743E3}
 		{DA9A81B7-2872-43D7-ACFA-9831357C0F73} = {790545C2-EA0E-438D-B8A7-DAB859342435}
-		{843F46C6-D4FD-4C4A-84D2-25117C067DE2} = {5DF23ABA-28BD-4A21-8720-C26BA487AA41}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0EB92CF0-DFE0-42F5-8E9E-8BCF5A0A5F46}
 	EndGlobalSection
 EndGlobal
