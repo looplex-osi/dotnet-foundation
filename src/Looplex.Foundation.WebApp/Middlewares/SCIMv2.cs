@@ -147,7 +147,7 @@ public static class SCIMv2
       Tdata? resource = json.Deserialize<Tdata>();
 
       if (resource == null)
-        throw new Exception($"Could not deserialize {typeof(Tmeta).Name}");
+        throw new Exception($"Could not deserialize {typeof(Tdata).Name}");
 
       Guid id = await svc.Create(resource, cancellationToken);
       context.Response.StatusCode = (int)HttpStatusCode.Created;
