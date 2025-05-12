@@ -76,13 +76,13 @@ public static class SCIMv2
     return app;
   }
 
-  public static IEndpointRouteBuilder UseSCIMv2<TRes, TFullRes, TSCIMv2Svc>(this IEndpointRouteBuilder app, string prefix,
+  public static IEndpointRouteBuilder UseSCIMv2<Tmeta, Tdata, Tsvc>(this IEndpointRouteBuilder app, string prefix,
     bool authorize = true)
-    where TRes : Resource, new()
-    where TFullRes : Resource, new()
-    where TSCIMv2Svc : SCIMv2<TRes, TFullRes>
+    where Tmeta : Resource, new()
+    where Tdata : Resource, new()
+    where Tsvc : SCIMv2<Tmeta, Tdata>
   {
-    var resourceMap = new ResourceMap(typeof(TRes), prefix);
+    var resourceMap = new ResourceMap(typeof(Tmeta), prefix);
     ServiceProviderConfiguration.Map.Add(resourceMap);
 
     RouteGroupBuilder group = app.MapGroup(prefix);
@@ -92,7 +92,7 @@ public static class SCIMv2
     var map = group.MapGet("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
+      var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
       // [SCIMv2 Filtering](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
       string? filter = null;
@@ -117,7 +117,7 @@ public static class SCIMv2
       {
       }
 
-      ListResponse<TRes> result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
+      ListResponse<Tmeta> result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
       var objects = result.Resources.Select(JObject.FromObject);
       var processedResult = new ListResponse<JObject>
       {
@@ -140,14 +140,14 @@ public static class SCIMv2
     map = group.MapPost("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
+      var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
       using StreamReader reader = new(context.Request.Body);
       string json = await reader.ReadToEndAsync(cancellationToken);
-      TFullRes? resource = json.Deserialize<TFullRes>();
+      Tdata? resource = json.Deserialize<Tdata>();
 
       if (resource == null)
-        throw new Exception($"Could not deserialize {typeof(TRes).Name}");
+        throw new Exception($"Could not deserialize {typeof(Tmeta).Name}");
 
       Guid id = await svc.Create(resource, cancellationToken);
       context.Response.StatusCode = (int)HttpStatusCode.Created;
@@ -163,9 +163,9 @@ public static class SCIMv2
     map = group.MapGet("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
+      var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
-      TFullRes? result = await svc.Retrieve(id, cancellationToken);
+      Tdata? result = await svc.Retrieve(id, cancellationToken);
 
       if (result == null)
       {
@@ -188,9 +188,9 @@ public static class SCIMv2
     map = group.MapPatch("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
+      var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
-      TFullRes? resource = await svc.Retrieve(id, cancellationToken);
+      Tdata? resource = await svc.Retrieve(id, cancellationToken);
       if (resource == null)
       {
         context.Response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -221,7 +221,7 @@ public static class SCIMv2
     map = group.MapDelete("/{id}", async (HttpContext context, Guid id) =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
-      var svc = context.RequestServices.GetRequiredService<TSCIMv2Svc>();
+      var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
       bool deleted = await svc.Delete(id, cancellationToken);
 
