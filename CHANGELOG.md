@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="1.2.0"></a>
+## [1.2.0](https://www.github.com/looplex-osi/dotnet-foundation/releases/tag/v1.2.0) (2025-05-12)
+
+### Features
+
+* **scimv2:** allow different types for collections (metadata) and item (data) ([ee24011](https://www.github.com/looplex-osi/dotnet-foundation/commit/ee24011362f773777ebbcabb2949117efeec3f75))
+
+### Bug Fixes
+
+* fixing project references ([ed909e9](https://www.github.com/looplex-osi/dotnet-foundation/commit/ed909e90d857ea619912fd9a7ce23990bd4db9d8))
+* fixing references ([645dee3](https://www.github.com/looplex-osi/dotnet-foundation/commit/645dee3469be8083a4b9a117a38f13482de0bf56))
+* **scimv2:** changing abstract class ([80ff852](https://www.github.com/looplex-osi/dotnet-foundation/commit/80ff852928e45076a373e2213382a1f3918750c5))
+
 <a name="1.1.6"></a>
 ## 1.1.6 (2025-05-02)
 
