@@ -1,3 +1,35 @@
+# Service Architecture Overview
+
+```mermaid
+erDiagram
+  DOMAIN ||--|{ APPLICATION : "referenced by"
+  DOMAIN ||--|{ APPLICATION_ABSTRACTIONS : "referenced by"
+
+  APPLICATION_ABSTRACTIONS ||--|{ APPLICATION : "used by"
+  APPLICATION_ABSTRACTIONS ||--o{ INFRA : "implemented by"
+  DOMAIN ||--o{ INFRA : "referenced by"
+```
+
+## Domain
+* **Purpose:** Holds all the core business logic and domain models (`entities`, value objects, domain events, interfaces that are purely domain-driven, etc.).
+* **Dependencies:** Generally depends on no other projects (it’s the core).
+* **Key Point:** It should remain free of infrastructure or framework-specific concerns so it can be tested and reused without external dependencies.
+
+## Application
+* **Purpose:** Contains application-specific logic, like use-cases, `commands`, `queries`, handlers, and orchestrators that coordinate domain operations.
+* **Dependencies:** Typically references Domain (for using domain entities, interfaces, or domain services). Often references `Application.Abstractions` if the two are separate (see next section).
+**Key Point:** The Application layer uses the Domain but tries to remain framework-agnostic. It coordinates high-level domain operations.
+
+## Application.Abstractions
+* **Purpose:** Provides interfaces or **contracts** that define how external services or infrastructure (e.g., file storage, messaging, external APIs) can be accessed. Also used when you want to avoid direct references to infrastructure from your application logic.
+* **Dependencies:** May reference Domain for domain-related interfaces. Does not typically reference Infra—the Infrastructure layer is meant to implement these abstractions.
+* **Key Point:** Splitting these abstractions out keeps the Application project from needing knowledge of the underlying infrastructure (for example, ORM, external APIs). The Infrastructure layer implements these interfaces.
+
+## Infra (Infrastructure)
+* **Purpose:** Implements the interfaces defined in `Application.Abstractions`, providing actual access to external resources: databases, file storage, third-party services, and so on.
+* **Dependencies:** References Domain (for domain types and entities). References `Application.Abstractions` so it can implement those interfaces.
+* **Key Point:** Keep all “external” logic here, such as EF Core repositories, external API calls, or messaging frameworks.
+
 # Identity and Resources Management
 
 SCIM (System for Cross-domain Identity Management) is considered an industry standard for identity management and user provisioning across multiple applications and domains. It has been widely adopted by cloud service providers, SaaS applications, and enterprise solutions due to its interoperability, scalability, and ease of integration.
