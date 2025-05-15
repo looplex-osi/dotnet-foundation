@@ -8,6 +8,9 @@ erDiagram
   APPLICATION_ABSTRACTIONS ||--|{ APPLICATION : "used by"
   APPLICATION_ABSTRACTIONS ||--o{ INFRA : "implemented by"
   DOMAIN ||--o{ INFRA : "referenced by"
+
+  APPLICATION ||--|{ DRIVER : "used by"
+  INFRA ||--|{ DRIVER : "used by"
 ```
 
 ## Domain
@@ -29,6 +32,13 @@ erDiagram
 * **Purpose:** Implements the interfaces defined in `Application.Abstractions`, providing actual access to external resources: databases, file storage, third-party services, and so on.
 * **Dependencies:** References Domain (for domain types and entities). References `Application.Abstractions` so it can implement those interfaces.
 * **Key Point:** Keep all “external” logic here, such as EF Core repositories, external API calls, or messaging frameworks.
+
+## Driver
+* **Purpose:** Serves as the system’s entry point, translating external interactions (HTTP requests, CLI commands, RPC calls, GUI events, etc.) into calls into your Application and Infrastructure layers.
+* **Dependencies:**
+  * **Application:** Invokes use-case handlers, commands, and queries to execute business workflows.
+  * **Infra:** May directly leverage low-level services (e.g., logging, monitoring, configuration providers) or pass through resource concerns handled by your Infrastructure implementations.
+* **Key Point:** Keeps all orchestration and adapter code (routing, request/response mapping, argument parsing) here, while delegating real work to the Application and Infra layers—ensuring drivers remain thin and easily replaceable.
 
 # Identity and Resources Management
 
