@@ -8,7 +8,12 @@ erDiagram
   APPLICATION_ABSTRACTIONS ||--|{ APPLICATION : "used by"
   APPLICATION_ABSTRACTIONS ||--o{ INFRA : "implemented by"
   DOMAIN ||--o{ INFRA : "referenced by"
+```
 
+# Driver Architecture Overview
+
+```mermaid
+erDiagram
   APPLICATION ||--|{ DRIVER : "used by"
   INFRA ||--|{ DRIVER : "used by"
 ```
