@@ -197,9 +197,11 @@ public static class SCIMv2
       }
       else
       {
-        string? fields = null; // TODO
+        // [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902#section-3)
+        using StreamReader reader = new(context.Request.Body);
+        string patches = await reader.ReadToEndAsync(cancellationToken);
 
-        bool updated = await svc.Update(id, resource, fields, cancellationToken);
+        bool updated = await svc.Update(id, resource, patches, cancellationToken);
 
         if (!updated)
         {
