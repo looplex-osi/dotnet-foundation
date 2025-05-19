@@ -18,6 +18,8 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
+using Newtonsoft.Json.Linq;
+
 namespace Looplex.Foundation.SCIMv2.Entities;
 
 public class Users : SCIMv2<User, User>
@@ -77,7 +79,10 @@ public class Users : SCIMv2<User, User>
 
       ctx.Result = new ListResponse<User>
       {
-        StartIndex = startIndex, ItemsPerPage = count, Resources = result, TotalResults = totalResults
+        StartIndex = startIndex,
+        ItemsPerPage = count,
+        Resources = result,
+        TotalResults = totalResults
       };
     }
 
@@ -159,9 +164,9 @@ public class Users : SCIMv2<User, User>
 
   #endregion
 
-  #region Update
+  #region Replace
 
-  public override async Task<bool> Update(Guid id, User resource, string? fields, CancellationToken cancellationToken)
+  public override async Task<bool> Replace(Guid id, User resource, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -180,7 +185,44 @@ public class Users : SCIMv2<User, User>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new UpdateResource<User>(ctx.Roles["Id"], ctx.Roles["User"]);
+      var command = new ReplaceResource<User>(ctx.Roles["Id"], ctx.Roles["User"]);
+
+      var rows = await _mediator!.Send(command, cancellationToken);
+
+      ctx.Result = rows > 0;
+    }
+
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+    return (bool)ctx.Result;
+  }
+
+  #endregion
+
+  #region Update
+
+  public override async Task<bool> Update(Guid id, User resource, JArray patches, CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
+
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    string resourceName = nameof(User).ToLower();
+    ctx.Roles["Id"] = id;
+    ctx.Roles["User"] = resource;
+    ctx.Roles["Patches"] = patches;
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
+    {
+      var command = new UpdateResource<User>(ctx.Roles["Id"], ctx.Roles["User"], ctx.Roles["Patches"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 

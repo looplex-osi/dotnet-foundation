@@ -22,6 +22,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Org.BouncyCastle.Crypto.Generators;
 
+using Newtonsoft.Json.Linq;
+
 namespace Looplex.Foundation.OAuth2.Entities;
 
 public class ClientServices : SCIMv2<ClientService, ClientService>
@@ -84,7 +86,10 @@ public class ClientServices : SCIMv2<ClientService, ClientService>
 
       ctx.Result = new ListResponse<ClientService>
       {
-        StartIndex = startIndex, ItemsPerPage = count, Resources = result, TotalResults = totalResults
+        StartIndex = startIndex,
+        ItemsPerPage = count,
+        Resources = result,
+        TotalResults = totalResults
       };
     }
 
@@ -120,7 +125,7 @@ public class ClientServices : SCIMv2<ClientService, ClientService>
       var clientService = ctx.Roles["ClientService"];
 
       clientService.Digest = await DigestCredentials(clientService.ClientSecret)!;
-      
+
       var command = new CreateResource<ClientService>(clientService);
 
       var result = await _mediator!.Send(command, cancellationToken);
@@ -133,7 +138,7 @@ public class ClientServices : SCIMv2<ClientService, ClientService>
 
     return (Guid)ctx.Result;
   }
-  
+
   private Task<string> DigestCredentials(string clientSecret)
   {
     return Task.Run(() =>
@@ -213,10 +218,10 @@ public class ClientServices : SCIMv2<ClientService, ClientService>
       var query = new RetrieveResource<ClientService>(id);
       var clientService = await _mediator!.Send(query, cancellationToken);
       bool valid = false;
-      
+
       if (clientService != null)
         valid = await VerifyCredentials(clientSecret, clientService.Digest!);
-        
+
       if (valid)
         result = clientService;
 
@@ -229,7 +234,7 @@ public class ClientServices : SCIMv2<ClientService, ClientService>
 
     return (ClientService?)ctx.Result;
   }
-  
+
   private Task<bool> VerifyCredentials(string clientSecret, string digest)
   {
     return Task.Run(() =>
@@ -252,9 +257,9 @@ public class ClientServices : SCIMv2<ClientService, ClientService>
 
   #endregion
 
-  #region Update
+  #region Replace
 
-  public override async Task<bool> Update(Guid id, ClientService resource, string? fields, CancellationToken cancellationToken)
+  public override async Task<bool> Replace(Guid id, ClientService resource, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -273,7 +278,44 @@ public class ClientServices : SCIMv2<ClientService, ClientService>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new UpdateResource<ClientService>(ctx.Roles["Id"], ctx.Roles["ClientService"]);
+      var command = new ReplaceResource<ClientService>(ctx.Roles["Id"], ctx.Roles["ClientService"]);
+
+      var rows = await _mediator!.Send(command, cancellationToken);
+
+      ctx.Result = rows > 0;
+    }
+
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+    return (bool)ctx.Result;
+  }
+
+  #endregion
+
+  #region Update
+
+  public override async Task<bool> Update(Guid id, ClientService resource, JArray patches, CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
+
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    string resourceName = nameof(ClientService).ToLower();
+    ctx.Roles["Id"] = id;
+    ctx.Roles["ClientService"] = resource;
+    ctx.Roles["Patches"] = patches;
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
+    {
+      var command = new UpdateResource<ClientService>(ctx.Roles["Id"], ctx.Roles["ClientService"], ctx.Roles["Patches"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 
