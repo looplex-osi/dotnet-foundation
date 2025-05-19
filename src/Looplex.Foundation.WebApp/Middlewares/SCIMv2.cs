@@ -87,7 +87,7 @@ public static class SCIMv2
 
     RouteGroupBuilder group = app.MapGroup(prefix);
 
-    #region Query
+    #region Query (GET /)
 
     var map = group.MapGet("/", async context =>
     {
@@ -135,7 +135,7 @@ public static class SCIMv2
 
     #endregion
 
-    #region Create
+    #region Create (POST /)
 
     map = group.MapPost("/", async context =>
     {
@@ -158,7 +158,7 @@ public static class SCIMv2
 
     #endregion
 
-    #region Retrieve
+    #region Retrieve (GET /:id)
 
     map = group.MapGet("/{id}", async (HttpContext context, Guid id) =>
     {
@@ -183,7 +183,45 @@ public static class SCIMv2
 
     #endregion
 
-    #region Update
+    #region Replace (PUT /:id)
+
+    map = group.MapPut("/{id}", async (HttpContext context, Guid id) =>
+    {
+      CancellationToken cancellationToken = context.RequestAborted;
+      var svc = context.RequestServices.GetRequiredService<Tsvc>();
+
+      Tdata? result = await svc.Retrieve(id, cancellationToken);
+      if (result == null)
+      {
+        context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+      }
+      else
+      {
+        using StreamReader reader = new(context.Request.Body);
+        string json = await reader.ReadToEndAsync(cancellationToken);
+        Tdata? resource = json.Deserialize<Tdata>();
+
+        if (resource == null)
+          throw new Exception($"Could not deserialize {typeof(Tdata).Name}");
+
+        bool replaced = await svc.Replace(id, resource, cancellationToken);
+
+        if (!replaced)
+        {
+          context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        }
+        else
+        {
+          context.Response.StatusCode = (int)HttpStatusCode.NoContent;
+        }
+      }
+    });
+    if (authorize)
+      map.RequireAuthorization();
+
+    #endregion
+
+    #region Update (PATCH /:id)
 
     map = group.MapPatch("/{id}", async (HttpContext context, Guid id) =>
     {
@@ -199,7 +237,8 @@ public static class SCIMv2
       {
         // [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902#section-3)
         using StreamReader reader = new(context.Request.Body);
-        string patches = await reader.ReadToEndAsync(cancellationToken);
+        string json = await reader.ReadToEndAsync(cancellationToken);
+        JArray patches = JArray.Parse(json);
 
         bool updated = await svc.Update(id, resource, patches, cancellationToken);
 
@@ -218,7 +257,7 @@ public static class SCIMv2
 
     #endregion
 
-    #region Delete
+    #region Delete (DELETE /:id)
 
     map = group.MapDelete("/{id}", async (HttpContext context, Guid id) =>
     {
@@ -240,6 +279,8 @@ public static class SCIMv2
       map.RequireAuthorization();
 
     #endregion
+
+
 
     return app;
   }

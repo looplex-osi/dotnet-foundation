@@ -18,6 +18,8 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
+using Newtonsoft.Json.Linq;
+
 namespace Looplex.Foundation.SCIMv2.Entities;
 
 public class Groups : SCIMv2<Group, Group>
@@ -78,7 +80,10 @@ public class Groups : SCIMv2<Group, Group>
 
       ctx.Result = new ListResponse<Group>
       {
-        StartIndex = startIndex, ItemsPerPage = count, Resources = result, TotalResults = totalResults
+        StartIndex = startIndex,
+        ItemsPerPage = count,
+        Resources = result,
+        TotalResults = totalResults
       };
     }
 
@@ -160,9 +165,9 @@ public class Groups : SCIMv2<Group, Group>
 
   #endregion
 
-  #region Update
+  #region Replace
 
-  public override async Task<bool> Update(Guid id, Group resource, string? fields, CancellationToken cancellationToken)
+  public override async Task<bool> Replace(Guid id, Group resource, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -181,7 +186,44 @@ public class Groups : SCIMv2<Group, Group>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new UpdateResource<Group>(ctx.Roles["Id"], ctx.Roles["Group"]);
+      var command = new ReplaceResource<Group>(ctx.Roles["Id"], ctx.Roles["Group"]);
+
+      var rows = await _mediator!.Send(command, cancellationToken);
+
+      ctx.Result = rows > 0;
+    }
+
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+    return (bool)ctx.Result;
+  }
+
+  #endregion
+
+  #region Update
+
+  public override async Task<bool> Update(Guid id, Group resource, JArray patches, CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
+
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    string resourceName = nameof(Group).ToLower();
+    ctx.Roles["Id"] = id;
+    ctx.Roles["Group"] = resource;
+    ctx.Roles["Patches"] = patches;
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
+    {
+      var command = new UpdateResource<Group>(ctx.Roles["Id"], ctx.Roles["Group"], ctx.Roles["Patches"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 
