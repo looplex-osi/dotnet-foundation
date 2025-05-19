@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="1.3.0"></a>
+## [1.3.0](https://www.github.com/looplex-osi/dotnet-foundation/releases/tag/v1.3.0) (2025-05-19)
+
+### Features
+
+* **scimv2:** forward `patches` to service ([3ff121b](https://www.github.com/looplex-osi/dotnet-foundation/commit/3ff121bab8b20f52f366a7cc3745c0437158b759))
+
+### Bug Fixes
+
+* **scimv2:** update semantics to align with given documentation ([a2ac222](https://www.github.com/looplex-osi/dotnet-foundation/commit/a2ac2222a546ea2664559bc6ec51c8ca920d3c7c))
+
 <a name="1.2.0"></a>
 ## [1.2.0](https://www.github.com/looplex-osi/dotnet-foundation/releases/tag/v1.2.0) (2025-05-12)
 
