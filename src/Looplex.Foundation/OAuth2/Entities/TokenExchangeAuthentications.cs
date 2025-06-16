@@ -5,7 +5,7 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
-
+using System.IO;
 using Looplex.Foundation.Entities;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.OAuth2.Dtos;
@@ -37,17 +37,21 @@ public class TokenExchangeAuthentications : Service, IAuthentications
   }
 
   #endregion
+  // injete ClientServices
+  private readonly ClientServices _clientServices;
 
   [ActivatorUtilitiesConstructor]
   public TokenExchangeAuthentications(
     IList<IPlugin> plugins,
     IConfiguration configuration,
     IJwtService jwtService,
-    HttpClient httpClient) : base(plugins)
+    HttpClient httpClient,
+    ClientServices clientServices) : base(plugins)
   {
     _configuration = configuration;
     _jwtService = jwtService;
     _httpClient = httpClient;
+    _clientServices = clientServices;
   }
 
   public async Task<string> CreateAccessToken(string json, string authentication, CancellationToken cancellationToken)
@@ -61,31 +65,56 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     if (clientCredentialsDto == null)
       throw new ArgumentNullException(nameof(json));
 
-    ValidateGrantType(clientCredentialsDto.GrantType);
-    ValidateTokenType(clientCredentialsDto.SubjectTokenType);
-    ValidateAccessToken(clientCredentialsDto.SubjectToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
     ctx.Roles["ClientServices"] = clientCredentialsDto;
-    ctx.Roles["UserInfo"] = await GetUserInfoAsync(clientCredentialsDto.SubjectToken!);
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
+    if (clientCredentialsDto.GrantType.Equals("client_credentials", StringComparison.OrdinalIgnoreCase))
     {
-      string accessToken = CreateAccessToken((UserInfo)ctx.Roles["UserInfo"]);
+      if (!Guid.TryParse(clientCredentialsDto.ClientId, out var clientId))
+        throw new Exception("Invalid ClientId");
+
+      var clientSecret = clientCredentialsDto.ClientSecret ?? throw new Exception("ClientSecret missing");
+
+      var client = await _clientServices.Retrieve(clientId, clientSecret, cancellationToken);
+
+      if (client == null)
+        throw new Exception("Client authentication failed.");
+
+      var accessToken = CreateAccessTokenForClient(client);
       ctx.Result = new AccessTokenDto { AccessToken = accessToken }.Serialize();
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    else if (clientCredentialsDto.GrantType.Equals("urn:ietf:params:oauth:grant-type:token-exchange", StringComparison.OrdinalIgnoreCase))
+    {
+      // restante do código
+    }
+    else
+    {
+      throw new Exception("Unsupported grant_type.");
+    }
 
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-
-    return (string)ctx.Result;
+    return (string)ctx.Result!;
   }
+
+  private string CreateAccessTokenForClient(ClientService client)
+  {
+    ClaimsIdentity claims = new(new[]
+    {
+        new Claim("client_id", client.Id.ToString()),
+        new Claim("client_name", client.ClientName ?? "ConfidentialClient")
+    });
+
+    string audience = _configuration!["Audience"]!;
+    string issuer = _configuration["Issuer"]!;
+    var tokenExpirationTimeInMinutes = int.Parse(_configuration["TokenExpirationTimeInMinutes"]!);
+
+    // Decodifique a chave privada em string, não em bytes
+    var privateKeyBase64 = _configuration["PrivateKey"]!;
+    var privateKeyBytes = Convert.FromBase64String(privateKeyBase64);
+    var privateKeyString = System.Text.Encoding.UTF8.GetString(privateKeyBytes);
+
+    return _jwtService!.GenerateToken(privateKeyString, issuer, audience, claims,
+        TimeSpan.FromMinutes(tokenExpirationTimeInMinutes));
+  }
+
 
   private static void ValidateGrantType(string? grantType)
   {

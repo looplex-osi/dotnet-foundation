@@ -67,12 +67,21 @@ public static class OAuth2
       PluginLoader loader = new();
       IEnumerable<string> dlls = Directory.Exists("plugins")
         ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : [];
+        : Array.Empty<string>();
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+
       var jwtService = sp.GetRequiredService<IJwtService>();
       var httpClient = sp.GetRequiredService<HttpClient>();
-      return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient);
+
+      var rbacService = sp.GetRequiredService<IRbacService>();
+      var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+      var mediator = sp.GetRequiredService<IMediator>();
+
+      var clientServices = new ClientServices(plugins, rbacService, httpContextAccessor, mediator, configuration);
+
+      return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient, clientServices);
     });
+
 
     return services;
   }
