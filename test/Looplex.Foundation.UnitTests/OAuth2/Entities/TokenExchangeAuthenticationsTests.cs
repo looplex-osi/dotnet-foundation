@@ -26,12 +26,11 @@ namespace Looplex.Foundation.UnitTests.OAuth2.Entities
     private IJwtService _jwtService = null!;
     private IConfiguration _configuration = null!;
     private ClientServices _clientServices = null!;
-    private HttpClient _httpClient = null!;
     private List<IPlugin> _plugins = null!;
     private IRbacService _rbacService = null!;
     private IHttpContextAccessor _httpContextAccessor = null!;
     private IMediator _mediator = null!;
-
+    private HttpClient _httpClient = null!;
     [TestInitialize]
     public void Setup()
     {
@@ -45,18 +44,17 @@ namespace Looplex.Foundation.UnitTests.OAuth2.Entities
             ["TokenExpirationTimeInMinutes"] = "60"
           })
           .Build();
-
       _rbacService = Substitute.For<IRbacService>();
       _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
       _mediator = Substitute.For<IMediator>();
       _plugins = new List<IPlugin>();
       _httpClient = new HttpClient();
-
       _clientServices = new ClientServices(_plugins, _rbacService, _httpContextAccessor, _mediator, _configuration);
-
       _sut = new TokenExchangeAuthentications(_plugins, _configuration, _jwtService, _httpClient);
       _sut.InjectServiceOverride(typeof(ClientServices), _clientServices);
     }
+    [TestCleanup]
+    public void TearDown() => _httpClient.Dispose();
 
     [TestMethod]
     public async Task CreateAccessToken_ShouldReturnToken_WhenClientCredentialsAreValid()

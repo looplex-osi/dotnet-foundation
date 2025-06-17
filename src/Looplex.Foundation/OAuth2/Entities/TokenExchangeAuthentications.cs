@@ -59,38 +59,46 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
 
-    ClientCredentialsGrantDto? clientCredentialsDto = json.Deserialize<ClientCredentialsGrantDto>();
+    var jObject = Newtonsoft.Json.Linq.JObject.Parse(json);
+    var grantType = jObject["grant_type"]?.ToString();
+
+    if (string.IsNullOrWhiteSpace(grantType))
+      throw new ArgumentNullException("grant_type", "Grant type is required.");
+
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
-    if (clientCredentialsDto == null)
-      throw new ArgumentNullException(nameof(json));
-
-    ctx.Roles["ClientServices"] = clientCredentialsDto;
-    if (clientCredentialsDto.GrantType.Equals("client_credentials", StringComparison.OrdinalIgnoreCase))
+    switch (grantType.ToLowerInvariant())
     {
-      if (!Guid.TryParse(clientCredentialsDto.ClientId, out var clientId))
-        throw new Exception("Invalid ClientId");
+      case "client_credentials":
+        {
+          var dto = json.Deserialize<ClientCredentialDto>()
+                    ?? throw new ArgumentNullException(nameof(json), "Invalid client credentials payload");
 
-      var clientSecret = clientCredentialsDto.ClientSecret ?? throw new Exception("ClientSecret missing");
+          if (dto.ClientId == Guid.Empty)
+            throw new ArgumentException("ClientId is required.");
 
-      var client = await _clientServices.Retrieve(clientId, clientSecret, cancellationToken);
+          if (string.IsNullOrWhiteSpace(dto.ClientSecret))
+            throw new ArgumentException("ClientSecret is required.");
 
-      if (client == null)
-        throw new Exception("Client authentication failed.");
+          var client = await _clientServices.Retrieve(dto.ClientId, dto.ClientSecret, cancellationToken);
+          if (client == null)
+            throw new UnauthorizedAccessException($"Client authentication failed for client ID: {dto.ClientId}");
 
-      var accessToken = CreateAccessTokenForClient(client);
-      ctx.Result = new AccessTokenDto { AccessToken = accessToken }.Serialize();
+          ctx.Result = CreateAccessTokenForClient(client);
+          break;
+        }
+
+      case "urn:ietf:params:oauth:grant-type:token-exchange":
+        {
+          var dto = json.Deserialize<TokenExchangeDto>()
+                    ?? throw new ArgumentNullException(nameof(json), "Invalid token exchange payload");
+
+          throw new NotImplementedException("Token Exchange flow is not implemented yet.");
+        }
+
+      default:
+        throw new Exception($"Unsupported grant_type: {grantType}");
     }
-
-    else if (clientCredentialsDto.GrantType.Equals("urn:ietf:params:oauth:grant-type:token-exchange", StringComparison.OrdinalIgnoreCase))
-    {
-      // restante do código
-    }
-    else
-    {
-      throw new Exception("Unsupported grant_type.");
-    }
-
     return (string)ctx.Result!;
   }
 
