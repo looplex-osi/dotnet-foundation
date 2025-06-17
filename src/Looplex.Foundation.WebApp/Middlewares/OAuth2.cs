@@ -33,7 +33,6 @@ public static class OAuth2
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
       })
       .AddJwtBearer(options => JwtBearerMiddleware(options, configuration));
-
     services.AddAuthorization();
     services.AddSingleton<IJwtService, JwtService>();
     services.AddScoped<AuthenticationsFactory>();
@@ -42,8 +41,8 @@ public static class OAuth2
     {
       var loader = new PluginLoader();
       var dlls = Directory.Exists("plugins")
-        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : Enumerable.Empty<string>();
+          ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+          : Enumerable.Empty<string>();
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
 
       var rbacService = sp.GetRequiredService<IRbacService>();
@@ -52,13 +51,12 @@ public static class OAuth2
 
       return new ClientServices(plugins, rbacService, httpContextAccessor, mediator, configuration);
     });
-
     services.AddScoped<ClientCredentialsAuthentications>(sp =>
     {
       var loader = new PluginLoader();
       var dlls = Directory.Exists("plugins")
-        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : Enumerable.Empty<string>();
+          ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+          : Enumerable.Empty<string>();
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
 
       var clientServices = sp.GetRequiredService<ClientServices>();
@@ -66,13 +64,12 @@ public static class OAuth2
 
       return new ClientCredentialsAuthentications(plugins, configuration, clientServices, jwtService);
     });
-
     services.AddScoped<TokenExchangeAuthentications>(sp =>
     {
       var loader = new PluginLoader();
       var dlls = Directory.Exists("plugins")
-        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : Enumerable.Empty<string>();
+          ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+          : Enumerable.Empty<string>();
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
 
       var jwtService = sp.GetRequiredService<IJwtService>();
@@ -81,10 +78,10 @@ public static class OAuth2
 
       return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient, clientServices);
     });
-
+    services.AddScoped<FlowRouter>();
+    services.AddScoped<OAuth2Service>();
     return services;
   }
-
 
   public static WebApplication UseOAuth2(this WebApplication app, string prefix = "/token")
   {
