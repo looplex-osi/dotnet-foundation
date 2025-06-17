@@ -8,12 +8,12 @@ namespace Looplex.Foundation.OAuth2.Entities
 {
   public class FlowRouter
   {
-    private readonly ClientCredentialsAuthentications _clientCredentials;
-    private readonly TokenExchangeAuthentications _tokenExchange;
+    private readonly IClientCredentialsAuthentications _clientCredentials;
+    private readonly ITokenExchangeAuthentications _tokenExchange;
 
     public FlowRouter(
-        ClientCredentialsAuthentications clientCredentials,
-        TokenExchangeAuthentications tokenExchange)
+        IClientCredentialsAuthentications clientCredentials,
+        ITokenExchangeAuthentications tokenExchange)
     {
       _clientCredentials = clientCredentials;
       _tokenExchange = tokenExchange;
@@ -21,12 +21,17 @@ namespace Looplex.Foundation.OAuth2.Entities
 
     public async Task<string> Route(string grantType, string json, string authentication, CancellationToken cancellationToken)
     {
-      return grantType.ToLowerInvariant() switch
+      if (string.IsNullOrWhiteSpace(grantType))
+        throw new ArgumentException("grantType cannot be null or empty", nameof(grantType));
+
+      var normalized = grantType.Trim();
+
+      return normalized switch
       {
-        "client_credentials" =>
+        var g when g.Equals("client_credentials", StringComparison.OrdinalIgnoreCase) =>
             await _clientCredentials.CreateAccessToken(json, authentication, cancellationToken),
 
-        "urn:ietf:params:oauth:grant-type:token-exchange" =>
+        var g when g.Equals("urn:ietf:params:oauth:grant-type:token-exchange", StringComparison.OrdinalIgnoreCase) =>
             await _tokenExchange.CreateAccessToken(json, authentication, cancellationToken),
 
         _ => throw new NotSupportedException($"Unsupported grant_type: {grantType}")

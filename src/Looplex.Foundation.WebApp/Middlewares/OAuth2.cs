@@ -78,6 +78,8 @@ public static class OAuth2
 
       return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient, clientServices);
     });
+    services.AddScoped<IClientCredentialsAuthentications, ClientCredentialsAuthentications>();
+    services.AddScoped<ITokenExchangeAuthentications, TokenExchangeAuthentications>();
     services.AddScoped<FlowRouter>();
     services.AddScoped<OAuth2Service>();
     return services;
