@@ -20,8 +20,7 @@ namespace Looplex.Foundation.OAuth2.Entities
         public async Task<string> CreateAccessToken(string json, string authentication, CancellationToken cancellationToken)
         {
             var jObject = JObject.Parse(json);
-            var grantTypeValue = jObject["grant_type"]?.ToString();
-
+            var grantTypeValue = jObject["grant_type"]?.ToString()?.ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(grantTypeValue))
                 throw new ArgumentException("grant_type is required");
 
