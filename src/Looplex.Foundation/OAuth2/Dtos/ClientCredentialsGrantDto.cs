@@ -17,5 +17,4 @@ public class ClientCredentialsGrantDto : Actor
   [JsonProperty("subject_token")] public string? SubjectToken { get; set; }
 
   [JsonProperty("subject_token_type")] public string? SubjectTokenType { get; set; }
-
 }

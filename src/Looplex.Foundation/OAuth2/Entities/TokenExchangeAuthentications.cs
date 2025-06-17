@@ -5,7 +5,6 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
-using System.IO;
 using Looplex.Foundation.Entities;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.OAuth2.Dtos;
