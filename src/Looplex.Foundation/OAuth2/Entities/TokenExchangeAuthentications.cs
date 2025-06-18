@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Looplex.Foundation.Entities;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.OAuth2.Dtos;
@@ -92,8 +93,25 @@ public class TokenExchangeAuthentications : Service, ITokenExchangeAuthenticatio
           var dto = json.Deserialize<TokenExchangeDto>()
                     ?? throw new ArgumentNullException(nameof(json), "Invalid token exchange payload");
 
-          throw new NotImplementedException("Token Exchange flow is not implemented yet.");
+          if (!"urn:ietf:params:oauth:grant-type:token-exchange"
+                .Equals(dto.GrantType, StringComparison.InvariantCultureIgnoreCase))
+            throw new InvalidOperationException("Invalid grant_type for token exchange.");
+
+          if (!"urn:ietf:params:oauth:token-type:access_token"
+                .Equals(dto.SubjectTokenType, StringComparison.InvariantCultureIgnoreCase))
+            throw new InvalidOperationException("Unsupported subject_token_type. Only access_token is allowed.");
+
+          if (string.IsNullOrWhiteSpace(dto.SubjectToken))
+            throw new InvalidOperationException("Missing subject_token.");
+
+          UserInfo userInfo = await GetUserInfoAsync(dto.SubjectToken);
+
+          string newAccessToken = CreateAccessToken(userInfo);
+
+          ctx.Result = newAccessToken;
+          break;
         }
+
 
       default:
         throw new Exception($"Unsupported grant_type: {grantType}");
