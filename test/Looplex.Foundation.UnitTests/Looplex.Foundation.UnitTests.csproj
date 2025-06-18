@@ -10,29 +10,26 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.0"/>
-    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0"/>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0"/>
-    <PackageReference Include="MSTest.TestAdapter" Version="3.1.1"/>
-    <PackageReference Include="MSTest.TestFramework" Version="3.1.1"/>
-    <PackageReference Include="NSubstitute" Version="5.3.0"/>
+  <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+  <PackageReference Include="coverlet.collector" Version="6.0.0" />
+  <PackageReference Include="MediatR" Version="12.5.0" />
+  <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
+  <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.6" />
+  <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.6" />
+  <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.6" />
+  <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+  <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
+  <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
+  <PackageReference Include="NSubstitute" Version="5.3.0" />
+  <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.1" />
+</ItemGroup>
+
+
+  <ItemGroup>
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting"/>
+    <ProjectReference Include="..\..\src\Looplex.Foundation.WebApp\Looplex.Foundation.WebApp.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Looplex.Foundation\Looplex.Foundation.csproj"/>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="model.conf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="policy.csv">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>
