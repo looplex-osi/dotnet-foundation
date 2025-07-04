@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 
 using Newtonsoft.Json;
@@ -58,9 +59,12 @@ public static class OAuth2
         ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
         : [];
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+
       var clientCredentials = sp.GetRequiredService<ClientServices>();
       var jwtService = sp.GetRequiredService<IJwtService>();
-      return new ClientCredentialsAuthentications(plugins, configuration, clientCredentials, jwtService);
+      var logger = sp.GetRequiredService<ILogger<ClientCredentialsAuthentications>>();
+
+      return new ClientCredentialsAuthentications(plugins, configuration, clientCredentials, jwtService, logger);
     });
     services.AddScoped<TokenExchangeAuthentications>(sp =>
     {
@@ -89,26 +93,76 @@ public static class OAuth2
     return app;
   }
 
+  /// <summary>
+  /// Handles the OAuth2 token endpoint POST request, processing different grant types,
+  /// including client_credentials. Validates input, delegates to the appropriate handler,
+  /// and writes a JSON response. Standardized error responses follow RFC 6749 section 5.2.
+  /// </summary>
   public static readonly RequestDelegate TokenMiddleware = async context =>
   {
-    var factory = context.RequestServices.GetRequiredService<AuthenticationsFactory>();
-    CancellationToken cancellationToken = context.RequestAborted;
+    try
+    {
+      var factory = context.RequestServices.GetRequiredService<AuthenticationsFactory>();
+      var cancellationToken = context.RequestAborted;
 
-    string authorization = context.Request.Headers.Authorization.ToString();
+      var form = await context.Request.ReadFormAsync();
+      var formDict = form.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToString());
 
-    IFormCollection form = await context.Request.ReadFormAsync();
-    Dictionary<string, string> formDict = form.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToString());
+      var credentials = JsonConvert.SerializeObject(formDict);
+      var grantType = form["grant_type"].ToString();
+      var parsedGrantType = grantType.ToGrantType();
 
-    string credentials = JsonConvert.SerializeObject(formDict);
+      var service = factory.GetService(parsedGrantType);
 
-    GrantType grantType = form["grant_type"].ToString().ToGrantType();
-    IAuthentications service = factory.GetService(grantType);
+      string json = parsedGrantType switch
+      {
+        GrantType.ClientCredentials => await ((IClientCredentialsAuthentications)service)
+          .CreateAccessToken(credentials, ExtractClientCredentials(context.Request, form), cancellationToken),
 
-    string json = await service.CreateAccessToken(credentials, authorization, cancellationToken);
+        GrantType.TokenExchange => await ((ITokenExchangeAuthentications)service)
+          .CreateAccessToken(credentials, context.Request.Headers.Authorization.ToString(), cancellationToken),
 
-    context.Response.ContentType = "application/json; charset=utf-8";
-    await context.Response.WriteAsync(json, cancellationToken);
+        _ => throw new NotSupportedException($"Unsupported grant type: {grantType}")
+      };
+
+      context.Response.ContentType = "application/json; charset=utf-8";
+      await context.Response.WriteAsync(json, cancellationToken);
+    }
+    catch (ArgumentNullException ex)
+    {
+      await WriteOAuthError(context, 400, "invalid_request", ex.Message);
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+      await WriteOAuthError(context, 401, "invalid_client", ex.Message);
+    }
+    catch (NotSupportedException ex)
+    {
+      await WriteOAuthError(context, 400, "unsupported_grant_type", ex.Message);
+    }
+    catch (Exception ex)
+    {
+      await WriteOAuthError(context, 400, "invalid_request", ex.Message); // fallback
+    }
   };
+  /// <summary>
+  /// Writes a JSON-formatted error response in compliance with RFC 6749 section 5.2.
+  /// This method standardizes error output for OAuth 2.0 token endpoint failures.
+  /// </summary>
+  private static async Task WriteOAuthError(HttpContext context, int statusCode, string error, string description)
+  {
+    context.Response.StatusCode = statusCode;
+    context.Response.ContentType = "application/json; charset=utf-8";
+
+    var errorPayload = new
+    {
+      error,
+      error_description = description
+    };
+
+    var json = JsonConvert.SerializeObject(errorPayload);
+    await context.Response.WriteAsync(json);
+  }
 
   private static GrantType ToGrantType(this string grantType)
   {
@@ -119,7 +173,56 @@ public static class OAuth2
       _ => throw new ArgumentException("Invalid value", nameof(grantType))
     };
   }
+  /// <summary>
+  /// Extracts client credentials from either the Authorization header (Basic)
+  /// or the request body, as allowed by RFC 6749 §2.3.1.
+  /// </summary>
+  private static (Guid, string) ExtractClientCredentials(HttpRequest request, IFormCollection form)
+  {
+    string? auth = request.Headers["Authorization"].ToString();
 
+    if (!string.IsNullOrWhiteSpace(auth) && auth.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+    {
+      return TryGetClientCredentials(auth); // já existe em ClientCredentialsAuthentications
+    }
+
+    if (form.TryGetValue("client_id", out var clientId) &&
+        form.TryGetValue("client_secret", out var clientSecret))
+    {
+      return (Guid.Parse(clientId), clientSecret.ToString());
+    }
+
+    throw new UnauthorizedAccessException("Missing client credentials.");
+  }
+  private static (Guid, string) TryGetClientCredentials(string authorization)
+  {
+    if (IsBasicAuthentication(authorization, out string? base64Credentials) && base64Credentials != null)
+    {
+      return DecodeCredentials(base64Credentials);
+    }
+
+    throw new UnauthorizedAccessException("Invalid Basic authorization format.");
+  }
+  private static bool IsBasicAuthentication(string value, out string? token)
+  {
+    token = null;
+    if (value.StartsWith("Basic", StringComparison.OrdinalIgnoreCase))
+    {
+      token = value["Basic".Length..].Trim();
+      return true;
+    }
+    return false;
+  }
+
+  private static (Guid, string) DecodeCredentials(string credentials)
+  {
+    string decoded = Strings.Base64Decode(credentials);
+    string[] parts = decoded.Split(':');
+    if (parts.Length != 2)
+      throw new UnauthorizedAccessException("Invalid credentials format.");
+
+    return (Guid.Parse(parts[0]), parts[1]);
+  }
   public static readonly Action<JwtBearerOptions, IConfiguration> JwtBearerMiddleware = (options, configuration) =>
   {
     string issuer = configuration["Issuer"]!;
