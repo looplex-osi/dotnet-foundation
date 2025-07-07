@@ -130,26 +130,26 @@ public static class OAuth2
     }
     catch (ArgumentNullException ex)
     {
-      await WriteOAuthError(context, 400, "invalid_request", ex.Message);
+      await HandleOAuthError(context, 400, "invalid_request", ex.Message);
     }
     catch (UnauthorizedAccessException ex)
     {
-      await WriteOAuthError(context, 401, "invalid_client", ex.Message);
+      await HandleOAuthError(context, 401, "invalid_client", ex.Message);
     }
     catch (NotSupportedException ex)
     {
-      await WriteOAuthError(context, 400, "unsupported_grant_type", ex.Message);
+      await HandleOAuthError(context, 400, "unsupported_grant_type", ex.Message);
     }
     catch (Exception ex)
     {
-      await WriteOAuthError(context, 400, "invalid_request", ex.Message); // fallback
+      await HandleOAuthError(context, 400, "invalid_request", ex.Message); // fallback
     }
   };
   /// <summary>
   /// Writes a JSON-formatted error response in compliance with RFC 6749 section 5.2.
   /// This method standardizes error output for OAuth 2.0 token endpoint failures.
   /// </summary>
-  private static async Task WriteOAuthError(HttpContext context, int statusCode, string error, string description)
+  private static async Task HandleOAuthError(HttpContext context, int statusCode, string error, string description)
   {
     context.Response.StatusCode = statusCode;
     context.Response.ContentType = "application/json; charset=utf-8";
