@@ -16,14 +16,23 @@ using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.JsonWebTokens;
+
 
 namespace Looplex.Foundation.OAuth2.Entities;
 
-public class ClientCredentialsAuthentications : Service, IAuthentications
+/// <summary>
+/// Handles the OAuth 2.0 Client Credentials Grant flow (RFC 6749 §4.4),
+/// including validation of client credentials, plugin execution pipeline,
+/// and secure generation of access tokens using JWT.
+/// </summary>
+public class ClientCredentialsAuthentications : Service, IClientCredentialsAuthentications
 {
   private readonly ClientServices? _clientServices;
   private readonly IConfiguration? _configuration;
   private readonly IJwtService? _jwtService;
+  private readonly ILogger<ClientCredentialsAuthentications> _logger;
 
   #region Reflectivity
 
@@ -39,49 +48,129 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     IList<IPlugin> plugins,
     IConfiguration configuration,
     ClientServices clientServices,
-    IJwtService jwtService) : base(plugins)
+    IJwtService jwtService,
+    ILogger<ClientCredentialsAuthentications> logger) // inject logger 
+    : base(plugins)
   {
     _configuration = configuration;
     _clientServices = clientServices;
     _jwtService = jwtService;
+    _logger = logger;
   }
 
-  public async Task<string> CreateAccessToken(string json, string authorization, CancellationToken cancellationToken)
+  /// <summary>
+  /// Generates a JSON-formatted access token using the OAuth 2.0 Client Credentials Grant flow (RFC 6749 §4.4).
+  /// Validates the client ID and secret, checks the client's validity period, and issues a JWT if allowed.
+  /// </summary>
+  /// <param name="json">A JSON string containing the grant_type and optional scope.</param>
+  /// <param name="credentials">A tuple with the client_id (Guid) and client_secret (string).</param>
+  /// <param name="cancellationToken">Token used to cancel the request.</param>
+  /// <returns>A JSON string representing the AccessTokenDto.</returns>
+  /// <exception cref="ArgumentNullException">Thrown when JSON is null or invalid.</exception>
+  /// <exception cref="Exception">Thrown when grant_type is invalid or client validation fails.</exception>
+  public async Task<string> CreateAccessToken(string json, (Guid clientId, string clientSecret) credentials, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
 
-    ClientCredentialsGrantDto? clientCredentialsDto = json.Deserialize<ClientCredentialsGrantDto>();
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    var clientCredentialsDto = json.Deserialize<ClientCredentialsGrantDto>()
+        ?? throw new ArgumentNullException(nameof(json));
 
-    if (clientCredentialsDto == null)
-      throw new ArgumentNullException(nameof(json));
-
-    ValidateAuthorizationHeader(authorization);
     ValidateGrantType(clientCredentialsDto.GrantType);
-    (Guid clientId, string clientSecret) = TryGetClientCredentials(authorization);
-    ClientService clientService =
-      await GetClientCredentialByIdAndSecretOrDefaultAsync(clientId, clientSecret, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    // Extracted from either Authorization header or body
+    (Guid clientId, string clientSecret) = credentials;
+
+    _logger.LogDebug("Attempting to authenticate client_id: {ClientId}", clientId);
+    ClientService clientService;
+    try
+    {
+      clientService = await GetClientCredentialByIdAndSecretOrDefaultAsync(
+        clientId, clientSecret, cancellationToken
+      );
+    }
+    catch (Exception ex) {
+      _logger.LogError(ex, "Failed to retrieve client credentials for client_id: {ClientId}", clientId);
+      throw;
+    }
+    _logger.LogDebug("ClientService retrieved for client_id: {ClientId}", clientId);
 
     ctx.Roles["ClientService"] = clientService;
+
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
     await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
     await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
     await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
 
     if (!ctx.SkipDefaultAction)
     {
-      string accessToken = CreateAccessToken((ClientService)ctx.Roles["ClientService"]);
-      ctx.Result = new AccessTokenDto { AccessToken = accessToken }.Serialize();
+      string token = GenerateJwtToken(clientService, clientCredentialsDto.Scope);
+
+      _logger.LogInformation("Access token generated successfully for client_id: {ClientId}", clientId);
+
+      ctx.Result = new AccessTokenDto
+      {
+        AccessToken = token,
+        TokenType = "Bearer",
+        ExpiresIn = (int)GetTokenExpiration().TotalSeconds,
+        Scope = clientCredentialsDto.Scope
+      }.Serialize();
+    }
+    else
+    {
+      _logger.LogDebug("Default action skipped for client_id: {ClientId}", clientId);
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-
     await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
 
     return (string)ctx.Result;
+  }
+
+  /// <summary>
+  /// Generates a signed JWT access token with standard claims for the authenticated client.
+  /// </summary>
+  private string GenerateJwtToken(ClientService client, string? scope)
+  {
+    var claims = new List<Claim>
+        {
+            new("client_id", client.Id),
+            new(JwtRegisteredClaimNames.Sub, client.Id),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+        };
+
+    if (!string.IsNullOrWhiteSpace(scope))
+    {
+      claims.Add(new Claim("scope", scope));
+    }
+
+    var identity = new ClaimsIdentity(claims);
+
+    return _jwtService!.GenerateToken(
+        GetPrivateKey(),
+        _configuration!["Issuer"]!,
+        _configuration["Audience"]!,
+        identity,
+        GetTokenExpiration()
+    );
+  }
+  /// <summary>
+  /// Reads and parses the expiration duration for the JWT from configuration.
+  /// </summary>
+  private TimeSpan GetTokenExpiration()
+  {
+    int minutes = int.Parse(_configuration!["TokenExpirationTimeInMinutes"]!);
+    return TimeSpan.FromMinutes(minutes);
+  }
+
+  /// <summary>
+  /// Retrieves and decodes the Base64-encoded private signing key.
+  /// </summary>
+  private string GetPrivateKey()
+  {
+    return Strings.Base64Decode(_configuration!["PrivateKey"]!);
   }
 
   private static void ValidateAuthorizationHeader(string? authorization)
@@ -92,11 +181,19 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     }
   }
 
+  private static void ValidateGrantType(string? grantType)
+  {
+    if (!string.Equals(grantType, "client_credentials", StringComparison.InvariantCultureIgnoreCase))
+    {
+      throw new Exception("grant_type is invalid.");
+    }
+  }
+
   private static (Guid, string) TryGetClientCredentials(string? authorization)
   {
-    if (authorization != default
-        && IsBasicAuthentication(authorization, out string? base64Credentials)
-        && base64Credentials != default)
+    if (authorization != null &&
+        IsBasicAuthentication(authorization, out string? base64Credentials) &&
+        base64Credentials != null)
     {
       return DecodeCredentials(base64Credentials);
     }
@@ -107,15 +204,12 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
   private static bool IsBasicAuthentication(string value, out string? token)
   {
     token = null;
-    bool result = false;
-
     if (value.StartsWith("Basic", StringComparison.OrdinalIgnoreCase))
     {
       token = value["Basic".Length..];
-      result = true;
+      return true;
     }
-
-    return result;
+    return false;
   }
 
   private static (Guid, string) DecodeCredentials(string credentials)
@@ -130,20 +224,12 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     return (Guid.Parse(parts[0]), parts[1]);
   }
 
-  private static void ValidateGrantType(string? grantType)
+  private async Task<ClientService> GetClientCredentialByIdAndSecretOrDefaultAsync(
+      Guid clientId, string clientSecret, CancellationToken cancellationToken)
   {
-    if (grantType != null && !grantType
-          .Equals("client_credentials", StringComparison.InvariantCultureIgnoreCase))
-    {
-      throw new Exception("grant_type is invalid.");
-    }
-  }
-
-  private async Task<ClientService> GetClientCredentialByIdAndSecretOrDefaultAsync(Guid clientId,
-    string clientSecret, CancellationToken cancellationToken)
-  {
-    var clientService = await _clientServices!.Retrieve(clientId, clientSecret, cancellationToken)
-                           ?? throw new Exception("Invalid clientId or clientSecret.");
+    var clientService = await _clientServices!
+        .Retrieve(clientId, clientSecret, cancellationToken)
+        ?? throw new Exception("Invalid clientId or clientSecret.");
 
     if (clientService.NotBefore > DateTimeOffset.UtcNow)
     {
@@ -156,22 +242,5 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     }
 
     return clientService;
-  }
-
-  private string CreateAccessToken(ClientService clientService)
-  {
-    ClaimsIdentity claims = new([
-      new Claim("ClientId", clientService.Id)
-    ]);
-
-    string audience = _configuration!["Audience"]!;
-    string issuer = _configuration["Issuer"]!;
-    var tokenExpirationTimeInMinutes = int.Parse(_configuration["TokenExpirationTimeInMinutes"]!);
-
-    string privateKey = Strings.Base64Decode(_configuration["PrivateKey"]!);
-
-    string accessToken = _jwtService!.GenerateToken(privateKey, issuer, audience, claims,
-      TimeSpan.FromMinutes(tokenExpirationTimeInMinutes));
-    return accessToken;
   }
 }
