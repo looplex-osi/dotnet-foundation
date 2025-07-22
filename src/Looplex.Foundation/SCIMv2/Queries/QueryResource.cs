@@ -29,6 +29,8 @@ public class QueryResource<T> : IRequest<(IList<T>, int)>
   }
   public static int pageFromScimPaginationRequest(int startIndex, int count)
   {
+    if (count <= 0) throw new ArgumentException("Count must be greater than 0", nameof(count));
+    if (startIndex < 1) throw new ArgumentException("StartIndex must be greater than 0 for SCIM", nameof(startIndex));
     return (int)Math.Ceiling((double)startIndex / count);
   }
 }
