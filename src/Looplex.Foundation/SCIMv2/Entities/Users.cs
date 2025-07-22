@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Helpers;
+using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Commands;
 using Looplex.Foundation.SCIMv2.Queries;
@@ -55,7 +56,7 @@ public class Users : SCIMv2<User, User>
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
-    int page = Page(startIndex, count);
+    int page = QueryResource<ClientService>.pageFromScimPaginationRequest(startIndex, count);
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 

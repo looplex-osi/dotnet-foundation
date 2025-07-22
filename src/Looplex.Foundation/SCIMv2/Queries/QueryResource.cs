@@ -27,4 +27,8 @@ public class QueryResource<T> : IRequest<(IList<T>, int)>
     SortBy = sortBy;
     SortOrder = sortOrder;
   }
+  public static int pageFromScimPaginationRequest(int startIndex, int count)
+  {
+    return (int)Math.Ceiling((double)startIndex / count);
+  }
 }
