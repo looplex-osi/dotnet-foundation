@@ -180,7 +180,8 @@ erDiagram
 | **Replace** | `PUT`    | https://domain.com/:version/:resource/:id                                                                                   |
 | **Delete**  | `DELETE` | https://domain.com/:version/:resource/:id                                                                                   |
 | **Update**  | `PATCH`  | https://domain.com/:version/:resource/:id                                                                                   |
-| **Search**  | `GET`    | https://domain.com/:version/:resource?ﬁlter={attribute}{op}{value}&sortBy={attributeName}&sortOrder={ascending\|descending} |
+| **Query**   | `GET`    | https://domain.com/:version/:resource?ﬁlter={attribute}{op}{value}&sortBy={attributeName}&sortOrder={ascending\|descending} |
+| **Search**  | `POST`   | https://domain.com/:version/[prefixes/].search                                                                              |
 | **Bulk**    | `POST`   | https://domain.com/:version/Bulk                                                                                            |
 
 **Discovery**
