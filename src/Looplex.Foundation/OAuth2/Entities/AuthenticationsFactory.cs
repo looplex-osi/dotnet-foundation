@@ -22,16 +22,13 @@ public class AuthenticationsFactory
     _serviceProvider = serviceProvider;
   }
 
-  public IAuthentications GetService(GrantType grantType)
+  public object GetService(GrantType grantType)
   {
-    switch (grantType)
+    return grantType switch
     {
-      case GrantType.TokenExchange:
-        return _serviceProvider!.GetRequiredService<TokenExchangeAuthentications>();
-      case GrantType.ClientCredentials:
-        return _serviceProvider!.GetRequiredService<ClientCredentialsAuthentications>();
-      default:
-        throw new ArgumentOutOfRangeException(nameof(grantType), grantType, null);
-    }
+      GrantType.ClientCredentials => _serviceProvider!.GetRequiredService<IClientCredentialsAuthentications>(),
+      GrantType.TokenExchange => _serviceProvider!.GetRequiredService<ITokenExchangeAuthentications>(),
+      _ => throw new NotSupportedException($"Grant type {grantType} is not supported.")
+    };
   }
 }

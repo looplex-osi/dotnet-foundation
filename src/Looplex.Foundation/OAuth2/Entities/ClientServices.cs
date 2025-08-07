@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Security.Claims;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,9 +21,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-using Org.BouncyCastle.Crypto.Generators;
-
 using Newtonsoft.Json.Linq;
+
+using Org.BouncyCastle.Crypto.Generators;
 
 namespace Looplex.Foundation.OAuth2.Entities;
 
@@ -234,7 +235,10 @@ public class ClientServices : SCIMv2<ClientService, ClientService>
 
     return (ClientService?)ctx.Result;
   }
-
+  /// <summary>
+  /// Verifies a client secret against its stored digest using salt and bcrypt,
+  /// performing a fixed-time (OWASP) comparison to protect against timing attacks.
+  /// </summary>
   private Task<bool> VerifyCredentials(string clientSecret, string digest)
   {
     return Task.Run(() =>
@@ -246,14 +250,31 @@ public class ClientServices : SCIMv2<ClientService, ClientService>
       var parts = digest.Split(':');
       var salt = Guid.Parse(parts[0]).ToByteArray();
       var digest1 = parts[1];
-      var digest2 = Convert.ToBase64String(BCrypt.Generate(
-        clientSecretBytes,
-        salt,
-        clientSecretDigestCost));
+      var digest2 = Convert.ToBase64String(BCrypt.Generate(clientSecretBytes, salt, clientSecretDigestCost));
 
-      return digest1 == digest2;
+      return SecureEquals(digest1,digest2);
     });
   }
+  /// <summary>
+  /// Performs a time-constant comparison to prevent timing attacks.
+  /// </summary>
+  private static bool SecureEquals(string expected, string actual)
+  {
+    if (expected == null || actual == null)
+      return false;
+
+    if (expected.Length != actual.Length)
+      return false;
+
+    int result = 0;
+    for (int i = 0; i < expected.Length; i++)
+    {
+      result |= expected[i] ^ actual[i];
+    }
+
+    return result == 0;
+  }
+
 
   #endregion
 
