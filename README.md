@@ -207,6 +207,7 @@ Additionally to being globally recognized and used as protocol for sharing and s
 * [RFC5321](https://datatracker.ietf.org/doc/html/rfc5321) -- Simple Mail Transfer Protocol
 * [RFC5646](https://datatracker.ietf.org/doc/html/rfc5646) -- Tags for Identifying Languages
 * [RFC6557](https://datatracker.ietf.org/doc/html/rfc6557) -- Procedures for Maintaining the Time Zone Database
+* [RFC6902](https://datatracker.ietf.org/doc/html/rfc6901) -- JSON Pointer
 * [RFC6902](https://datatracker.ietf.org/doc/html/rfc6902) -- JSON Patch
 * [RFC7642](https://datatracker.ietf.org/doc/html/rfc7642) -- System for Cross-domain Identity Management: Definitions, Overview, Concepts, and Requirements
 * [RFC7643](https://datatracker.ietf.org/doc/html/rfc7643) -- System for Cross-domain Identity Management: Core Schema
