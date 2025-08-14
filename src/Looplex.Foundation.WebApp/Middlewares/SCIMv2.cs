@@ -14,9 +14,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
-using Newtonsoft.Json;                 
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;   
+using Newtonsoft.Json.Serialization;
 
 namespace Looplex.Foundation.WebApp.Middlewares;
 
@@ -24,18 +24,19 @@ public static class SCIMv2
 {
   private static readonly ServiceProviderConfiguration ServiceProviderConfiguration = new();
 
-  private static readonly JsonSerializer CamelCaseItemSerializer =
-    JsonSerializer.Create(new JsonSerializerSettings
+  // Immutable settings to create per-call JsonSerializer instances (JsonSerializer is not thread-safe).
+  private static readonly JsonSerializerSettings CamelCaseItemSerializerSettings =
+    new JsonSerializerSettings
     {
       ContractResolver = new DefaultContractResolver
       {
         NamingStrategy = new CamelCaseNamingStrategy
         {
           ProcessDictionaryKeys = true,
-          OverrideSpecifiedNames = true // <-- Fainho: força o camelCase nos itens
+          OverrideSpecifiedNames = true // force camelCase on item properties even if [JsonProperty] is present
         }
       }
-    });
+    };
 
   public static IServiceCollection AddSCIMv2(this IServiceCollection services)
   {
@@ -75,11 +76,8 @@ public static class SCIMv2
   }
 
   /// <summary>
-  /// Registers /Users, /Groups, /Bulk routes.
+  /// Registers the /Users, /Groups and /Bulk routes.
   /// </summary>
-  /// <param name="app"></param>
-  /// <param name="authorize"></param>
-  /// <returns></returns>
   public static IEndpointRouteBuilder UseSCIMv2(this IEndpointRouteBuilder app, bool authorize = true)
   {
     app.UseSCIMv2<User, User, Users>("/Users", authorize);
@@ -109,12 +107,12 @@ public static class SCIMv2
       CancellationToken cancellationToken = context.RequestAborted;
       var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
-      // [SCIMv2 Filtering](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
+      // SCIMv2 Filtering (RFC 7644 §3.4.2.2)
       string? filter = null;
       if (context.Request.Query.TryGetValue("filter", out var filterStr))
         filter = filterStr;
 
-      // [SCIMv2 Sorting](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.3)
+      // SCIMv2 Sorting (RFC 7644 §3.4.2.3)
       string? sortBy = null;
       string? sortOrder = null;
       if (context.Request.Query.TryGetValue("sortBy", out var sortByStr))
@@ -122,7 +120,7 @@ public static class SCIMv2
       if (context.Request.Query.TryGetValue("sortOrder", out var sortOrderStr))
         sortOrder = sortOrderStr;
 
-      // [SCIMv2 Pagination](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.4)
+      // SCIMv2 Pagination (RFC 7644 §3.4.2.4)
       int startIndex = 1;
       int count = 12;
       if (context.Request.Query.TryGetValue("count", out var countStr) &&
@@ -134,13 +132,17 @@ public static class SCIMv2
 
       ListResponse<Tmeta> result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
 
-      var objects = result.Resources.Select(r => JObject.FromObject(r!, CamelCaseItemSerializer));
+      // Create per-call JsonSerializer and materialize items enforcing camelCase; ignore potential null entries.
+      var serializer = JsonSerializer.Create(CamelCaseItemSerializerSettings);
+      var objects = result.Resources
+        .Where(r => r != null)
+        .Select(r => JObject.FromObject(r!, serializer));
 
       var processedResult = new ListResponse<JObject>
       {
         StartIndex = result.StartIndex,
         ItemsPerPage = result.ItemsPerPage,
-        Resources = objects.ProcessAttributes(context).ToList(), 
+        Resources = objects.ProcessAttributes(context).ToList(),
         TotalResults = result.TotalResults
       };
       string json = processedResult.Serialize();
@@ -190,7 +192,8 @@ public static class SCIMv2
       }
       else
       {
-        var jItem = JObject.FromObject(result, CamelCaseItemSerializer);
+        var serializer = JsonSerializer.Create(CamelCaseItemSerializerSettings);
+        JObject jItem = JObject.FromObject(result, serializer);
         context.Response.ContentType = "application/json; charset=utf-8";
         await context.Response.WriteAsync(jItem.ToString(Formatting.Indented), cancellationToken);
       }
@@ -252,7 +255,7 @@ public static class SCIMv2
       }
       else
       {
-        // [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902#section-3)
+        // JSON Patch (RFC 6902 §3)
         using StreamReader reader = new(context.Request.Body);
         string json = await reader.ReadToEndAsync(cancellationToken);
         JArray patches = JArray.Parse(json);
