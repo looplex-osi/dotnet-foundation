@@ -14,13 +14,28 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
+using Newtonsoft.Json;                 
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;   
 
 namespace Looplex.Foundation.WebApp.Middlewares;
 
 public static class SCIMv2
 {
   private static readonly ServiceProviderConfiguration ServiceProviderConfiguration = new();
+
+  private static readonly JsonSerializer CamelCaseItemSerializer =
+    JsonSerializer.Create(new JsonSerializerSettings
+    {
+      ContractResolver = new DefaultContractResolver
+      {
+        NamingStrategy = new CamelCaseNamingStrategy
+        {
+          ProcessDictionaryKeys = true,
+          OverrideSpecifiedNames = true // <-- Fainho: força o camelCase nos itens
+        }
+      }
+    });
 
   public static IServiceCollection AddSCIMv2(this IServiceCollection services)
   {
@@ -118,12 +133,14 @@ public static class SCIMv2
       }
 
       ListResponse<Tmeta> result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
-      var objects = result.Resources.Select(JObject.FromObject);
+
+      var objects = result.Resources.Select(r => JObject.FromObject(r!, CamelCaseItemSerializer));
+
       var processedResult = new ListResponse<JObject>
       {
         StartIndex = result.StartIndex,
         ItemsPerPage = result.ItemsPerPage,
-        Resources = objects.ProcessAttributes(context).ToList(),
+        Resources = objects.ProcessAttributes(context).ToList(), 
         TotalResults = result.TotalResults
       };
       string json = processedResult.Serialize();
@@ -173,9 +190,9 @@ public static class SCIMv2
       }
       else
       {
-        string json = result.Serialize();
+        var jItem = JObject.FromObject(result, CamelCaseItemSerializer);
         context.Response.ContentType = "application/json; charset=utf-8";
-        await context.Response.WriteAsync(json, cancellationToken);
+        await context.Response.WriteAsync(jItem.ToString(Formatting.Indented), cancellationToken);
       }
     });
     if (authorize)
@@ -279,8 +296,6 @@ public static class SCIMv2
       map.RequireAuthorization();
 
     #endregion
-
-
 
     return app;
   }
