@@ -15,9 +15,19 @@ public static class ActorJsonSerializer
     if (actor == null)
       throw new ArgumentNullException(nameof(actor));
 
+    var resolver = new DefaultContractResolver
+    {
+      NamingStrategy = new CamelCaseNamingStrategy
+      {
+        ProcessDictionaryKeys = true,
+        OverrideSpecifiedNames = false // <-- preserve explicit names
+      }
+    };
+
     JsonSerializerSettings settings = new()
     {
-      ContractResolver = new CamelCasePropertyNamesContractResolver(), Formatting = Formatting.Indented
+      ContractResolver = resolver,
+      Formatting = Formatting.Indented
     };
     string json = JsonConvert.SerializeObject(actor, actor.GetType(), settings);
     return json;
@@ -36,7 +46,16 @@ public static class ActorJsonSerializer
     if (string.IsNullOrWhiteSpace(json))
       throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
 
-    JsonSerializerSettings settings = new() { ContractResolver = new CamelCasePropertyNamesContractResolver() };
+    var resolver = new DefaultContractResolver
+    {
+      NamingStrategy = new CamelCaseNamingStrategy
+      {
+        ProcessDictionaryKeys = true,
+        OverrideSpecifiedNames = false
+      }
+    };
+
+    JsonSerializerSettings settings = new() { ContractResolver = resolver };
     return JsonConvert.DeserializeObject(json, type, settings);
   }
 }
