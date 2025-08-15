@@ -14,13 +14,36 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace Looplex.Foundation.WebApp.Middlewares;
 
+/// <summary>
+/// SCIM v2 endpoint wiring for Looplex Foundation. Exposes Users, Groups and API Keys plus Bulk operations,
+/// and enforces response casing (Resources envelope + camelCase items).
+/// </summary>
 public static class SCIMv2
 {
   private static readonly ServiceProviderConfiguration ServiceProviderConfiguration = new();
+
+  /// <summary>
+  /// Json.NET settings used to create per-call serializers that force camelCase on item properties,
+  /// even when entities specify [JsonProperty]. Kept as settings (not a shared JsonSerializer) for thread safety.
+  /// </summary>
+  private static readonly JsonSerializerSettings CamelCaseItemSerializerSettings =
+    new JsonSerializerSettings
+    {
+      ContractResolver = new DefaultContractResolver
+      {
+        NamingStrategy = new CamelCaseNamingStrategy
+        {
+          ProcessDictionaryKeys = true,
+          OverrideSpecifiedNames = true // force camelCase on item properties even if [JsonProperty] is present
+        }
+      }
+    };
 
   public static IServiceCollection AddSCIMv2(this IServiceCollection services)
   {
@@ -60,11 +83,10 @@ public static class SCIMv2
   }
 
   /// <summary>
-  /// Registers /Users, /Groups, /Bulk routes.
+  /// Registers the /Users, /Groups, /Api-Keys and /Bulk routes.
   /// </summary>
-  /// <param name="app"></param>
-  /// <param name="authorize"></param>
-  /// <returns></returns>
+  /// <param name="app">Endpoint route builder.</param>
+  /// <param name="authorize">Whether to require authorization on the mapped routes.</param>
   public static IEndpointRouteBuilder UseSCIMv2(this IEndpointRouteBuilder app, bool authorize = true)
   {
     app.UseSCIMv2<User, User, Users>("/Users", authorize);
@@ -76,6 +98,17 @@ public static class SCIMv2
     return app;
   }
 
+  /// <summary>
+  /// Registers SCIM v2 routes for a given resource type at the provided prefix,
+  /// wiring Query/Create/Retrieve/Replace/Update/Delete with the configured casing rules.
+  /// </summary>
+  /// <typeparam name="Tmeta">Resource type used in list responses (metadata projection).</typeparam>
+  /// <typeparam name="Tdata">Resource type used for single-item operations and payloads.</typeparam>
+  /// <typeparam name="Tsvc">Concrete SCIM service handling the resource operations.</typeparam>
+  /// <param name="app">Endpoint route builder.</param>
+  /// <param name="prefix">URL prefix (e.g., "/Users").</param>
+  /// <param name="authorize">Whether to require authorization on the mapped routes.</param>
+  /// <returns>The route builder.</returns>
   public static IEndpointRouteBuilder UseSCIMv2<Tmeta, Tdata, Tsvc>(this IEndpointRouteBuilder app, string prefix,
     bool authorize = true)
     where Tmeta : Resource, new()
@@ -94,12 +127,12 @@ public static class SCIMv2
       CancellationToken cancellationToken = context.RequestAborted;
       var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
-      // [SCIMv2 Filtering](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
+      // SCIMv2 Filtering (RFC 7644 §3.4.2.2)
       string? filter = null;
       if (context.Request.Query.TryGetValue("filter", out var filterStr))
         filter = filterStr;
 
-      // [SCIMv2 Sorting](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.3)
+      // SCIMv2 Sorting (RFC 7644 §3.4.2.3)
       string? sortBy = null;
       string? sortOrder = null;
       if (context.Request.Query.TryGetValue("sortBy", out var sortByStr))
@@ -107,18 +140,34 @@ public static class SCIMv2
       if (context.Request.Query.TryGetValue("sortOrder", out var sortOrderStr))
         sortOrder = sortOrderStr;
 
-      // [SCIMv2 Pagination](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.4)
+      // SCIMv2 Pagination (RFC 7644 §3.4.2.4)
       int startIndex = 1;
       int count = 12;
+
       if (context.Request.Query.TryGetValue("count", out var countStr) &&
-          int.TryParse(countStr, out count) &&
-          context.Request.Query.TryGetValue("startIndex", out var startIndexStr) &&
-          int.TryParse(startIndexStr, out startIndex))
+          int.TryParse(countStr, out var parsedCount))  
       {
+        count = parsedCount;
+
+      }
+      if (context.Request.Query.TryGetValue("startIndex", out var startIndexStr) &&
+          int.TryParse(startIndexStr, out var parsedStart))
+      {
+        startIndex = parsedStart;
       }
 
       ListResponse<Tmeta> result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
-      var objects = result.Resources.Select(JObject.FromObject);
+
+      // Create per-call JsonSerializer and materialize items enforcing camelCase; ignore potential null entries.
+      var serializer = JsonSerializer.Create(CamelCaseItemSerializerSettings);
+
+      // Treat null Resources as empty, then filter null elements -> defensively
+      var resources = result.Resources ?? Enumerable.Empty<Tmeta>();
+
+      var objects = resources
+        .Where(r => r != null)
+        .Select(r => JObject.FromObject(r!, serializer));
+
       var processedResult = new ListResponse<JObject>
       {
         StartIndex = result.StartIndex,
@@ -173,9 +222,10 @@ public static class SCIMv2
       }
       else
       {
-        string json = result.Serialize();
+        var serializer = JsonSerializer.Create(CamelCaseItemSerializerSettings);
+        JObject jItem = JObject.FromObject(result, serializer);
         context.Response.ContentType = "application/json; charset=utf-8";
-        await context.Response.WriteAsync(json, cancellationToken);
+        await context.Response.WriteAsync(jItem.ToString(Formatting.Indented), cancellationToken);
       }
     });
     if (authorize)
@@ -235,7 +285,7 @@ public static class SCIMv2
       }
       else
       {
-        // [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902#section-3)
+        // JSON Patch (RFC 6902 §3)
         using StreamReader reader = new(context.Request.Body);
         string json = await reader.ReadToEndAsync(cancellationToken);
         JArray patches = JArray.Parse(json);
@@ -280,11 +330,15 @@ public static class SCIMv2
 
     #endregion
 
-
-
     return app;
   }
 
+  /// <summary>
+  /// Registers SCIM Bulk operation handler at the given prefix.
+  /// </summary>
+  /// <param name="app">Endpoint route builder.</param>
+  /// <param name="prefix">URL prefix, defaults to "/Bulk".</param>
+  /// <param name="authorize">Whether to require authorization on the mapped route.</param>
   public static IEndpointRouteBuilder UseBulk(this IEndpointRouteBuilder app, string prefix = "/Bulk",
     bool authorize = true)
   {
