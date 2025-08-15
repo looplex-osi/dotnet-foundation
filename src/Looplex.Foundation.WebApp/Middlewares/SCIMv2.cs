@@ -20,11 +20,18 @@ using Newtonsoft.Json.Serialization;
 
 namespace Looplex.Foundation.WebApp.Middlewares;
 
+/// <summary>
+/// SCIM v2 endpoint wiring for Looplex Foundation. Exposes Users, Groups and API Keys plus Bulk operations,
+/// and enforces response casing (Resources envelope + camelCase items).
+/// </summary>
 public static class SCIMv2
 {
   private static readonly ServiceProviderConfiguration ServiceProviderConfiguration = new();
 
-  // Immutable settings to create per-call JsonSerializer instances (JsonSerializer is not thread-safe).
+  /// <summary>
+  /// Json.NET settings used to create per-call serializers that force camelCase on item properties,
+  /// even when entities specify [JsonProperty]. Kept as settings (not a shared JsonSerializer) for thread safety.
+  /// </summary>
   private static readonly JsonSerializerSettings CamelCaseItemSerializerSettings =
     new JsonSerializerSettings
     {
@@ -76,8 +83,10 @@ public static class SCIMv2
   }
 
   /// <summary>
-  /// Registers the /Users, /Groups and /Bulk routes.
+  /// Registers the /Users, /Groups, /Api-Keys and /Bulk routes.
   /// </summary>
+  /// <param name="app">Endpoint route builder.</param>
+  /// <param name="authorize">Whether to require authorization on the mapped routes.</param>
   public static IEndpointRouteBuilder UseSCIMv2(this IEndpointRouteBuilder app, bool authorize = true)
   {
     app.UseSCIMv2<User, User, Users>("/Users", authorize);
@@ -89,6 +98,17 @@ public static class SCIMv2
     return app;
   }
 
+  /// <summary>
+  /// Registers SCIM v2 routes for a given resource type at the provided prefix,
+  /// wiring Query/Create/Retrieve/Replace/Update/Delete with the configured casing rules.
+  /// </summary>
+  /// <typeparam name="Tmeta">Resource type used in list responses (metadata projection).</typeparam>
+  /// <typeparam name="Tdata">Resource type used for single-item operations and payloads.</typeparam>
+  /// <typeparam name="Tsvc">Concrete SCIM service handling the resource operations.</typeparam>
+  /// <param name="app">Endpoint route builder.</param>
+  /// <param name="prefix">URL prefix (e.g., "/Users").</param>
+  /// <param name="authorize">Whether to require authorization on the mapped routes.</param>
+  /// <returns>The route builder.</returns>
   public static IEndpointRouteBuilder UseSCIMv2<Tmeta, Tdata, Tsvc>(this IEndpointRouteBuilder app, string prefix,
     bool authorize = true)
     where Tmeta : Resource, new()
@@ -123,18 +143,28 @@ public static class SCIMv2
       // SCIMv2 Pagination (RFC 7644 §3.4.2.4)
       int startIndex = 1;
       int count = 12;
+
       if (context.Request.Query.TryGetValue("count", out var countStr) &&
-          int.TryParse(countStr, out count) &&
-          context.Request.Query.TryGetValue("startIndex", out var startIndexStr) &&
-          int.TryParse(startIndexStr, out startIndex))
+          int.TryParse(countStr, out var parsedCount))  
       {
+        count = parsedCount;
+
+      }
+      if (context.Request.Query.TryGetValue("startIndex", out var startIndexStr) &&
+          int.TryParse(startIndexStr, out var parsedStart))
+      {
+        startIndex = parsedStart;
       }
 
       ListResponse<Tmeta> result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
 
       // Create per-call JsonSerializer and materialize items enforcing camelCase; ignore potential null entries.
       var serializer = JsonSerializer.Create(CamelCaseItemSerializerSettings);
-      var objects = result.Resources
+
+      // Treat null Resources as empty, then filter null elements -> defensively
+      var resources = result.Resources ?? Enumerable.Empty<Tmeta>();
+
+      var objects = resources
         .Where(r => r != null)
         .Select(r => JObject.FromObject(r!, serializer));
 
@@ -303,6 +333,12 @@ public static class SCIMv2
     return app;
   }
 
+  /// <summary>
+  /// Registers SCIM Bulk operation handler at the given prefix.
+  /// </summary>
+  /// <param name="app">Endpoint route builder.</param>
+  /// <param name="prefix">URL prefix, defaults to "/Bulk".</param>
+  /// <param name="authorize">Whether to require authorization on the mapped route.</param>
   public static IEndpointRouteBuilder UseBulk(this IEndpointRouteBuilder app, string prefix = "/Bulk",
     bool authorize = true)
   {

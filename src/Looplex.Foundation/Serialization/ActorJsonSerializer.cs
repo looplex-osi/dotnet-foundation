@@ -8,6 +8,10 @@ using Newtonsoft.Json.Serialization;
 // ReSharper disable once CheckNamespace
 namespace Looplex.Foundation.Serialization.Json;
 
+/// <summary>
+/// JSON serializer helpers for Actor-derived types. Applies camelCase naming while preserving explicitly
+/// attributed names (e.g., [JsonProperty("Resources")]) and centralizes the naming policy across the app.
+/// </summary>
 public static class ActorJsonSerializer
 {
   // Reuse a single resolver to avoid per-call allocations; preserves explicitly specified names
