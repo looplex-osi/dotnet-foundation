@@ -1,4 +1,6 @@
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -20,6 +22,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace Looplex.Foundation.WebApp.Middlewares;
 
@@ -36,12 +39,27 @@ public static class SCIMv2
 
   private sealed class ResourcesEnvelope<T>
   {
+    // SCIM requires the top-level "Resources" key (uppercase R)
     [JsonPropertyName("Resources")]
     public IList<T> Items { get; set; } = new List<T>();
 
-    public long totalResults { get; set; }
-    public long startIndex { get; set; }
-    public long itemsPerPage { get; set; }
+    // SCIM ListResponse MUST include this schemas value
+    // RFC 7644 §3.4.2.2 / §3.4.2.4
+    [JsonPropertyName("schemas")]
+    public string[] Schemas { get; set; } = new[]
+    {
+    "urn:ietf:params:scim:api:messages:2.0:ListResponse"
+    };
+
+    // These names are already camelCase by default, but we pin them explicitly.
+    [JsonPropertyName("totalResults")]
+    public long TotalResults { get; set; }
+
+    [JsonPropertyName("startIndex")]
+    public long StartIndex { get; set; }
+
+    [JsonPropertyName("itemsPerPage")]
+    public long ItemsPerPage { get; set; }
 
   }
 
@@ -130,15 +148,21 @@ public static class SCIMv2
       // [SCIMv2 Pagination](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.4)
       int startIndex = 1;
       int count = 12;
-      if (context.Request.Query.TryGetValue("startIndex", out var si) &&
-      int.TryParse(si, out var parsedSi) && parsedSi >= 1)
-        startIndex = parsedSi;
 
+      // startIndex
+      if (context.Request.Query.TryGetValue("startIndex", out var si) &&
+          int.TryParse(si, out var parsedSi) && parsedSi >= 1)
+      {
+        startIndex = parsedSi;
+      }
+
+      // count with clamp
       if (context.Request.Query.TryGetValue("count", out var c) &&
           int.TryParse(c, out var parsedCount))
       {
-        var max = ServiceProviderConfiguration.MaxPageSize > 0 ? ServiceProviderConfiguration.MaxPageSize : 200;
-        count = Math.Clamp(parsedCount, 0, max);
+        var cfg = context.RequestServices.GetRequiredService<ServiceProviderConfiguration>();
+        var max = cfg.Filter?.MaxResults > 0 ? cfg.Filter.MaxResults : 200;
+        count = (int)Math.Clamp(parsedCount, 0, max);
       }
 
       var result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
@@ -159,16 +183,17 @@ public static class SCIMv2
         items.Add(doc.RootElement.Clone());
       }
 
-      // Envelope with PascalCase top-level key "Resources"
+      // SCIM ListResponse envelope (includes required "schemas")
       var envelope = new ResourcesEnvelope<JsonElement>
       {
-        startIndex = result.StartIndex,
-        itemsPerPage = result.ItemsPerPage,
-        totalResults = result.TotalResults,
+        StartIndex = result.StartIndex,
+        ItemsPerPage = result.ItemsPerPage,
+        TotalResults = result.TotalResults,
         Items = items
       };
-      // Final JSON via our serializer (camelCase by default; "Resources" preserved by attribute)
-      string json = JsonSerializerFoundation.Serialize(envelope);
+
+      // Serialize with omitNulls=true for SCIM parity
+      string json = JsonSerializerFoundation.Serialize(envelope, omitNulls: true);
       context.Response.ContentType = "application/scim+json; charset=utf-8";
       await context.Response.WriteAsync(json, cancellationToken);
     });
@@ -203,10 +228,7 @@ public static class SCIMv2
       var relativeLocation = $"{context.Request.Path.Value}/{id}";
       var absoluteLocation = $"{context.Request.Scheme}://{context.Request.Host}{relativeLocation}";
 
-
-
       // Minimal SCIM resource payload (schemas + id + meta)
-
       var now = DateTimeOffset.UtcNow;
       var resourceObject = context.Request.Path.Value?.Trim('/').Split('/').Last();
 
@@ -215,19 +237,21 @@ public static class SCIMv2
         // Core "Resource" schema for custom resources
         // [SCIMv2 Core Schema Identifier](https://datatracker.ietf.org/doc/html/rfc7643#section-3)
         // Custom extension schema defined by Looplex (RFC 7643 §6 — schema extension).
-        ["schemas"] = new JsonArray($"urn:ietf:params:scim:schemas:core:2.0:Resource" , $"urn:looplex:params:scim:schemas:{resourceObject}:2.0:{typeof(Tdata).Name}"),
+        ["schemas"] = new JsonArray(
+          "urn:ietf:params:scim:schemas:core:2.0:Resource",
+          $"urn:looplex:params:scim:schemas:{resourceObject}:2.0:{typeof(Tdata).Name}"
+        ),
 
         ["id"] = id.ToString(), // MUST be stable, non-reassignable
 
-        // meta fields per SCIM representation (resourceType, created, lastModified, location, version)
+        // meta fields per SCIM representation (resourceType, created, lastModified, location)
         ["meta"] = new JsonObject
         {
           ["resourceType"] = typeof(Tdata).Name, // Prefer a stable literal like "Policy" if applicable
           ["created"] = now.ToString("o"),
           ["lastModified"] = now.ToString("o"),
-          ["location"] = absoluteLocation,
-          // ETag SHOULD reflect a object version
-          ["version"] = $"W/\"{resource.ComputeMD5()}\""
+          ["location"] = absoluteLocation
+          // Do NOT set "version" yet; it must reflect the final representation (see ETag block below)
         }
       };
 
@@ -238,46 +262,71 @@ public static class SCIMv2
       {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true,
-        // This ensures properties with null values are not written
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull // omit nulls for SCIM parity
       };
 
       // Merge payload attributes into SCIM root (RFC 7644 requires attributes at the top-level)
       // [SCIMv2 Attribute Representation](https://datatracker.ietf.org/doc/html/rfc7644#section-3.1)
       var payload = System.Text.Json.JsonSerializer.SerializeToNode(resource, scimJsonOptions)!.AsObject();
-
       foreach (var kv in payload)
       {
         // Do not overwrite reserved SCIM fields
         if (kv.Key is "id" or "meta" or "schemas") continue;
-
         scimBody[kv.Key] = kv.Value?.DeepClone();
       }
 
-      // Add Location header: relative is allowed per RFC 9110
-      context.Response.StatusCode = (int)HttpStatusCode.Created;
-      context.Response.Headers.Location = $"{context.Request.Path.Value}/{id}";
+      // Prepare HTTP response (single place)
+      context.Response.StatusCode = StatusCodes.Status201Created;                 // RFC 9110 §10.2.2
+      context.Response.Headers.Location = relativeLocation;                       // Relative is OK
+      context.Response.ContentType = "application/scim+json; charset=utf-8";      // SCIM media type
 
-      // Prepare HTTP response
-      context.Response.StatusCode = StatusCodes.Status201Created;
-      context.Response.Headers.Location = $"{context.Request.Path.Value}/{id}";           // RFC 9110 §10.2.2
-      context.Response.Headers.ETag = $"W/\"{resource.ComputeMD5()}\"";                  // RFC 7644 §3.14; rfc 9110 §8.8
-      context.Response.ContentType = "application/scim+json";                           // RFC 7644 §3; [SCIMv2 Media Type](https://www.iana.org/assignments/media-types/application/scim+json)
-
-      // Serialize in camelCase to match SCIM examples
-      var jsonOptions = new JsonSerializerOptions
+      // ---- Compute ETag from the FINAL SCIM representation ----
+      // Canonical JSON for hashing: camelCase, compact, omit nulls (SCIM parity)
+      var etagJsonOptions = new JsonSerializerOptions
       {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = true
+        WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
       };
 
-      await System.Text.Json.JsonSerializer.SerializeAsync(context.Response.Body, scimBody, jsonOptions, cancellationToken);
+      // Serialize the final body (after merging payload + server-generated fields)
+      string etagPayload = System.Text.Json.JsonSerializer.Serialize(scimBody, etagJsonOptions);
+
+      // Weak ETag only (NOT for cryptographic security) — RFC 9110 §8.8
+      string etagValue;
+      using (var md5 = MD5.Create())
+      {
+        etagValue = Convert.ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(etagPayload)));
+      }
+
+      // Set ETag header and mirror it into meta.version to keep both in sync
+      context.Response.Headers.ETag = $"W/\"{etagValue}\"";                        // RFC 7644 §3.14; RFC 9110 §8.8
+      if (scimBody["meta"] is JsonObject metaObj)
+      {
+        metaObj["version"] = $"W/\"{etagValue}\"";
+      }
+
+      // ---- Write response body ----
+      // Pretty output for readability; still omit nulls for SCIM parity
+      var outputOptions = new JsonSerializerOptions
+      {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+      };
+
+      await System.Text.Json.JsonSerializer.SerializeAsync(
+        context.Response.Body,
+        scimBody,
+        outputOptions,
+        cancellationToken);
     });
 
     if (authorize)
       map.RequireAuthorization();
 
     #endregion
+
 
 
     #region Retrieve (GET /:id)
@@ -287,26 +336,56 @@ public static class SCIMv2
       CancellationToken cancellationToken = context.RequestAborted;
       var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
-      Tdata? result = await svc.Retrieve(id, cancellationToken);
+      var result = await svc.Retrieve(id, cancellationToken);
 
-      if (result == null)
+      if (result is null)
       {
-        context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+        // [HTTP Semantics — 404 Not Found](https://www.rfc-editor.org/rfc/rfc9110#name-404-not-found)
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
       }
-      else
-      {
-        // Wrap single item under "Resource" (uppercase R)
-        var envelope = new ResourceEnvelope<Tdata> { Item = result };
-        string json = envelope.Serialize();
 
-        context.Response.ContentType = "application/scim+json; charset=utf-8";
-        await context.Response.WriteAsync(json, cancellationToken);
-      }
+      // Newtonsoft-only pipeline (no System.Text.Json round-trips).
+      // [SCIM Representation — omit null attributes](https://www.rfc-editor.org/rfc/rfc7644#section-3.1)
+      var settings = new JsonSerializerSettings
+      {
+        ContractResolver = new DefaultContractResolver
+        {
+          NamingStrategy = new CamelCaseNamingStrategy(
+            processDictionaryKeys: true,
+            overrideSpecifiedNames: false // Preserve explicit PascalCase keys when specified
+          )
+        },
+        NullValueHandling = NullValueHandling.Ignore // Omit nulls for SCIM parity
+      };
+      var serializer = Newtonsoft.Json.JsonSerializer.Create(settings);
+
+      // Domain -> JObject
+      var jobj = (JObject)JToken.FromObject(result, serializer);
+
+      // Apply 'attributes' and 'excludedAttributes' if supplied by the client.
+      // [SCIMv2 Attributes Parameter](https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.5)
+      var processed = new[] { jobj }.ProcessAttributes(context).First();
+
+      // Envelope with PascalCase top-level key "Resource".
+      // Note: SCIM single-resource responses are commonly bare resources; this envelope is an implementation choice.
+      // [SCIMv2 Resource Retrieval](https://www.rfc-editor.org/rfc/rfc7644#section-3.4.1)
+      var envelope = new JObject
+      {
+        ["Resource"] = processed
+      };
+
+      // Write response using SCIM media type.
+      // [SCIMv2 Media Type](https://www.rfc-editor.org/rfc/rfc7644#section-3)
+      context.Response.ContentType = "application/scim+json; charset=utf-8";
+      string json = envelope.ToString(Formatting.None); // or Formatting.Indented if desired
+      await context.Response.WriteAsync(json, cancellationToken);
     });
     if (authorize)
       map.RequireAuthorization();
 
     #endregion
+
 
     #region Replace (PUT /:id)
 
