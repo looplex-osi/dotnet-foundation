@@ -16,6 +16,12 @@ namespace Looplex.Foundation.SCIMv2.Entities;
 /// </summary>
 public class ServiceProviderConfiguration : Actor
 {
+  // SCIM ServiceProviderConfig MUST include this schemas entry
+  // [SCIM Service Provider Configuration](https://www.rfc-editor.org/rfc/rfc7643#section-5)
+  public string[] Schemas { get; } = new[]
+  {
+    "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"
+  };
   /// <summary>
   /// A multi-valued complex type that specifies supported authentication scheme properties.
   /// To enable seamless discovery of configurations, the service provider SHOULD, with the
@@ -112,12 +118,12 @@ public class Bulk
   /// <summary>
   /// An integer value specifying the maximum number of operations.
   /// </summary>
-  public double MaxOperations { get; set; }
+  public int MaxOperations { get; set; }
 
   /// <summary>
   /// An integer value specifying the maximum payload size in bytes.
   /// </summary>
-  public double MaxPayloadSize { get; set; }
+  public long MaxPayloadSize { get; set; }
 
   /// <summary>
   /// A Boolean value specifying whether or not the operation is supported.
@@ -155,7 +161,7 @@ public class Filter
   /// <summary>
   /// An integer value specifying the maximum number of resources returned in a response.
   /// </summary>
-  public double MaxResults { get; set; }
+  public int MaxResults { get; set; }
 
   /// <summary>
   /// A Boolean value specifying whether or not the operation is supported.
