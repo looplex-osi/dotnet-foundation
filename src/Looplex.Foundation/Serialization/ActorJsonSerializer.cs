@@ -1,74 +1,70 @@
 using System;
 
-using Looplex.Foundation.Entities;
-
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
 // ReSharper disable once CheckNamespace
-namespace Looplex.Foundation.Serialization.Json;
-
-/// <summary>
-/// JSON serializer helpers for Actor-derived types. Applies camelCase naming while preserving explicitly
-/// attributed names (e.g., [JsonProperty("Resources")]) and centralizes the naming policy across the app.
-/// </summary>
-public static class ActorJsonSerializer
+namespace Looplex.Foundation.Serialization.Json
 {
-  // Reuse a single resolver to avoid per-call allocations; preserves explicitly specified names
-  // via [JsonProperty("...")] while applying camelCase to others.
-  private static readonly IContractResolver s_CamelCasePreserveSpecifiedResolver =
-    new DefaultContractResolver
+  public static class ActorJsonSerializer
+  {
+    /// <summary>
+    /// Serializes an Actor (or any object/collection) to JSON string.
+    /// By default, properties are camelCase; explicit [JsonProperty("Resource")] is respected.
+    /// </summary>
+    public static string Serialize<T>(this T actor) where T : class
     {
-      NamingStrategy = new CamelCaseNamingStrategy
+      if (actor == null)
+        throw new ArgumentNullException(nameof(actor));
+
+      JsonSerializerSettings settings = new()
       {
-        ProcessDictionaryKeys = true,
-        OverrideSpecifiedNames = false
-      }
-    };
+        ContractResolver = new DefaultContractResolver
+        {
+          NamingStrategy = new CamelCaseNamingStrategy(
+            processDictionaryKeys: true,
+            overrideSpecifiedNames: false // Preserve explicit PascalCase like "Resource"/"Resources"
+          )
+        },
+        NullValueHandling = NullValueHandling.Ignore,
+        Formatting = Formatting.Indented
+      };
 
-  // Static settings for serialization to reduce allocations and centralize the naming policy.
-  private static readonly JsonSerializerSettings s_SerializeSettings = new()
-  {
-    ContractResolver = s_CamelCasePreserveSpecifiedResolver,
-    Formatting = Formatting.Indented
-  };
+      string json = JsonConvert.SerializeObject(actor, actor.GetType(), settings);
+      return json;
+    }
 
-  // Static settings for deserialization with the same naming policy.
-  private static readonly JsonSerializerSettings s_DeserializeSettings = new()
-  {
-    ContractResolver = s_CamelCasePreserveSpecifiedResolver
-  };
+    /// <summary>
+    /// Deserializes a JSON string into the specified Actor (or object) type.
+    /// </summary>
+    public static T? Deserialize<T>(this string json) where T : class
+    {
+      return (T?)Deserialize(json, typeof(T));
+    }
 
-  /// <summary>
-  /// Serializes an Actor (or derived) using camelCase while honoring explicitly specified names.
-  /// </summary>
-  public static string Serialize<T>(this T actor) where T : Actor?
-  {
-    if (actor == null)
-      throw new ArgumentNullException(nameof(actor));
+    /// <summary>
+    /// Deserializes a JSON string into an object of the given runtime type.
+    /// </summary>
+    public static object? Deserialize(this string json, Type type)
+    {
+      if (type == null) throw new ArgumentNullException(nameof(type));
 
-    return JsonConvert.SerializeObject(actor, actor.GetType(), s_SerializeSettings);
-  }
+      if (string.IsNullOrWhiteSpace(json))
+        throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
 
-  /// <summary>
-  /// Deserializes JSON into the given Actor-derived type using the configured naming policy.
-  /// </summary>
-  public static T? Deserialize<T>(this string json) where T : Actor
-  {
-    return (T?)Deserialize(json, typeof(T));
-  }
+      JsonSerializerSettings settings = new()
+      {
+        ContractResolver = new DefaultContractResolver
+        {
+          NamingStrategy = new CamelCaseNamingStrategy(
+            processDictionaryKeys: true,
+            overrideSpecifiedNames: false
+          )
+        },
+        NullValueHandling = NullValueHandling.Ignore
+      };
 
-  /// <summary>
-  /// Deserializes JSON into the given Actor-derived type using the configured naming policy.
-  /// </summary>
-  public static object? Deserialize(this string json, Type type)
-  {
-    if (!typeof(Actor).IsAssignableFrom(type))
-      throw new Exception($"Type {type.Name} must inherit from {nameof(Actor)}.");
-
-    if (string.IsNullOrWhiteSpace(json))
-      throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
-
-    return JsonConvert.DeserializeObject(json, type, s_DeserializeSettings);
+      return JsonConvert.DeserializeObject(json, type, settings);
+    }
   }
 }

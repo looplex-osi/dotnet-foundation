@@ -2,6 +2,9 @@ using System;
 using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 
 namespace Looplex.Foundation.Helpers;
 
@@ -78,5 +81,28 @@ public static class Objects
     }
 
     return null;
+  }
+  /// <summary>
+  /// Compute an MD5 hash of any object by serializing it into JSON.
+  /// Returns the hash encoded in Base64.
+  /// https://www.rfc-editor.org/rfc/rfc9110#field.etag)
+  /// </summary>
+  public static string ComputeMD5(this object resource)
+  {
+    if (resource == null) throw new ArgumentNullException(nameof(resource));
+
+    // Serialize with deterministic options
+    var options = new JsonSerializerOptions
+    {
+      PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+      WriteIndented = false
+    };
+    string json = JsonSerializer.Serialize(resource, options);
+
+    using var md5 = MD5.Create();
+    byte[] hashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(json));
+
+    // Base64 is compact and common for ETag usage
+    return Convert.ToBase64String(hashBytes);
   }
 }
