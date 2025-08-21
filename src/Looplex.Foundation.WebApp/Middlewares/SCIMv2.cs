@@ -31,11 +31,6 @@ public static class SCIMv2
   private static readonly ServiceProviderConfiguration ServiceProviderConfiguration = new();
 
   // === Envelopes to guarantee SCIM compliance: "Resources"/"Resource" with uppercase R ===
-  private sealed class ResourceEnvelope<T>
-  {
-    [JsonPropertyName("Resource")]
-    public T Item { get; set; } = default!;
-  }
 
   private sealed class ResourcesEnvelope<T>
   {
@@ -175,6 +170,17 @@ public static class SCIMv2
       // Keep your attribute pipeline
       var processed = jsource.ProcessAttributes(context).ToList();
 
+      foreach (var p in processed)
+      {
+        if (p["schemas"] == null)
+        {
+          var segment = context.Request.Path.Value?.Trim('/').Split('/').FirstOrDefault();
+          p["schemas"] = new JArray(
+            "urn:ietf:params:scim:schemas:core:2.0:Resource",
+            $"urn:looplex:params:scim:schemas:{segment}:2.0:{typeof(Tdata).Name}"
+          );
+        }
+      }
       // Convert processed JObject -> JsonElement to serialize envelope with System.Text.Json
       var items = new List<JsonElement>();
       foreach (var p in processed)
@@ -280,27 +286,9 @@ public static class SCIMv2
       context.Response.Headers.Location = relativeLocation;                       // Relative is OK
       context.Response.ContentType = "application/scim+json; charset=utf-8";      // SCIM media type
 
-      // ---- Compute ETag from the FINAL SCIM representation ----
-      // Canonical JSON for hashing: camelCase, compact, omit nulls (SCIM parity)
-      var etagJsonOptions = new JsonSerializerOptions
-      {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-      };
-
-      // Serialize the final body (after merging payload + server-generated fields)
-      string etagPayload = System.Text.Json.JsonSerializer.Serialize(scimBody, etagJsonOptions);
-
-      // Weak ETag only (NOT for cryptographic security) — RFC 9110 §8.8
-      string etagValue;
-      using (var md5 = MD5.Create())
-      {
-        etagValue = Convert.ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(etagPayload)));
-      }
-
-      // Set ETag header and mirror it into meta.version to keep both in sync
-      context.Response.Headers.ETag = $"W/\"{etagValue}\"";                        // RFC 7644 §3.14; RFC 9110 §8.8
+      // ---- Compute ETag from the FINAL SCIM representation (weak ETag) ----
+      var etagValue = scimBody.ComputeMD5();
+      context.Response.Headers.ETag = $"W/\"{etagValue}\"";
       if (scimBody["meta"] is JsonObject metaObj)
       {
         metaObj["version"] = $"W/\"{etagValue}\"";
@@ -367,6 +355,28 @@ public static class SCIMv2
       // [SCIMv2 Attributes Parameter](https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.5)
       var processed = new[] { jobj }.ProcessAttributes(context).First();
 
+      if (processed["schemas"] == null)
+      {
+        var segment = context.Request.Path.Value?.Trim('/').Split('/').FirstOrDefault();
+        processed["schemas"] = new JArray(
+          "urn:ietf:params:scim:schemas:core:2.0:Resource",
+          $"urn:looplex:params:scim:schemas:{segment}:2.0:{typeof(Tdata).Name}"
+        );
+      }
+
+      // Compute ETag from Resouce
+      var elementForEtag = JsonDocument
+        .Parse(processed.ToString(Newtonsoft.Json.Formatting.None))
+        .RootElement.Clone();
+
+      var etagValue = elementForEtag.ComputeMD5(); 
+
+      // ETag (weak)
+      context.Response.Headers.ETag = $"W/\"{etagValue}\"";
+      if (processed["meta"] is JObject metaJ)
+      {
+        metaJ["version"] = $"W/\"{etagValue}\"";
+      }
       // Envelope with PascalCase top-level key "Resource".
       // Note: SCIM single-resource responses are commonly bare resources; this envelope is an implementation choice.
       // [SCIMv2 Resource Retrieval](https://www.rfc-editor.org/rfc/rfc7644#section-3.4.1)
@@ -490,7 +500,7 @@ public static class SCIMv2
   public static IEndpointRouteBuilder UseBulk(this IEndpointRouteBuilder app, string prefix = "/Bulk",
     bool authorize = true)
   {
-    app.MapGet(
+    app.MapPost(
       prefix,
       async context =>
       {
@@ -501,7 +511,7 @@ public static class SCIMv2
         using StreamReader reader = new(context.Request.Body);
         var json = await reader.ReadToEndAsync(cancellationToken);
 
-        var request = json.Deserialize<BulkRequest>();
+        var request = JsonSerializerFoundation.Deserialize<BulkRequest>(json);
         if (request == null)
           throw new Exception($"Could not deserialize {nameof(BulkRequest)}");
 
