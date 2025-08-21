@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 using Looplex.Foundation.Entities;
 
@@ -66,7 +67,9 @@ public class ServiceProviderConfiguration : Actor
   /// </summary>
   public Sort? Sort { get; set; }
 
-  [JsonIgnore] public virtual List<ResourceMap> Map { get; private set; } = new();
+  [Newtonsoft.Json.JsonIgnore]
+  [System.Text.Json.Serialization.JsonIgnore]
+  public virtual List<ResourceMap> Map { get; private set; } = new();
 }
 
 public class AuthenticationScheme
