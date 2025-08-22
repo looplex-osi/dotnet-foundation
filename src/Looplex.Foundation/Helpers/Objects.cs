@@ -2,6 +2,12 @@ using System;
 using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+using Looplex.Foundation.Serialization.Json;
 
 namespace Looplex.Foundation.Helpers;
 
@@ -78,5 +84,27 @@ public static class Objects
     }
 
     return null;
+  }
+  /// <summary>
+  /// Weak ETag from a final SCIM JsonNode (apply same canonization).
+  /// </summary>
+  public static string ComputeMD5(this JsonNode node)
+  {
+    if (node is null) throw new ArgumentNullException(nameof(node));
+    // Re-serialize to enforce canonical options (camelCase, compact, omit nulls)
+    string canonicalJson = JsonSerializerFoundation.Serialize(node, omitNulls: true, compact: true);
+    using var md5 = MD5.Create();
+    return Convert.ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(canonicalJson)));
+  }
+
+  /// <summary>
+  /// Weak ETag from a JsonElement (re-serialize with canonicals options).
+  /// </summary>
+  public static string ComputeMD5(this JsonElement element)
+  {
+    // Re-serialize to canonical JSON to avoid depending on raw text formatting
+    string canonicalJson = JsonSerializerFoundation.Serialize(element, omitNulls: true, compact: true);
+    using var md5 = MD5.Create();
+    return Convert.ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(canonicalJson)));
   }
 }

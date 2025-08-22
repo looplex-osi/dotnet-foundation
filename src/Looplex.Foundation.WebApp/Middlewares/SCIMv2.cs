@@ -1,5 +1,11 @@
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
+using Looplex.Foundation.Helpers;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
@@ -20,30 +26,37 @@ using Newtonsoft.Json.Serialization;
 
 namespace Looplex.Foundation.WebApp.Middlewares;
 
-/// <summary>
-/// SCIM v2 endpoint wiring for Looplex Foundation. Exposes Users, Groups and API Keys plus Bulk operations,
-/// and enforces response casing (Resources envelope + camelCase items).
-/// </summary>
 public static class SCIMv2
 {
   private static readonly ServiceProviderConfiguration ServiceProviderConfiguration = new();
 
-  /// <summary>
-  /// Json.NET settings used to create per-call serializers that force camelCase on item properties,
-  /// even when entities specify [JsonProperty]. Kept as settings (not a shared JsonSerializer) for thread safety.
-  /// </summary>
-  private static readonly JsonSerializerSettings CamelCaseItemSerializerSettings =
-    new JsonSerializerSettings
+  // === Envelopes to guarantee SCIM compliance: "Resources"/"Resource" with uppercase R ===
+
+  private sealed class ResourcesEnvelope<T>
+  {
+    // SCIM requires the top-level "Resources" key (uppercase R)
+    [JsonPropertyName("Resources")]
+    public IList<T> Items { get; set; } = new List<T>();
+
+    // SCIM ListResponse MUST include this schemas value
+    // RFC 7644 §3.4.2.2 / §3.4.2.4
+    [JsonPropertyName("schemas")]
+    public string[] Schemas { get; set; } = new[]
     {
-      ContractResolver = new DefaultContractResolver
-      {
-        NamingStrategy = new CamelCaseNamingStrategy
-        {
-          ProcessDictionaryKeys = true,
-          OverrideSpecifiedNames = true // force camelCase on item properties even if [JsonProperty] is present
-        }
-      }
+    "urn:ietf:params:scim:api:messages:2.0:ListResponse"
     };
+
+    // These names are already camelCase by default, but we pin them explicitly.
+    [JsonPropertyName("totalResults")]
+    public long TotalResults { get; set; }
+
+    [JsonPropertyName("startIndex")]
+    public long StartIndex { get; set; }
+
+    [JsonPropertyName("itemsPerPage")]
+    public long ItemsPerPage { get; set; }
+
+  }
 
   public static IServiceCollection AddSCIMv2(this IServiceCollection services)
   {
@@ -83,10 +96,8 @@ public static class SCIMv2
   }
 
   /// <summary>
-  /// Registers the /Users, /Groups, /Api-Keys and /Bulk routes.
+  /// Registers /Users, /Groups, /Bulk routes.
   /// </summary>
-  /// <param name="app">Endpoint route builder.</param>
-  /// <param name="authorize">Whether to require authorization on the mapped routes.</param>
   public static IEndpointRouteBuilder UseSCIMv2(this IEndpointRouteBuilder app, bool authorize = true)
   {
     app.UseSCIMv2<User, User, Users>("/Users", authorize);
@@ -98,17 +109,6 @@ public static class SCIMv2
     return app;
   }
 
-  /// <summary>
-  /// Registers SCIM v2 routes for a given resource type at the provided prefix,
-  /// wiring Query/Create/Retrieve/Replace/Update/Delete with the configured casing rules.
-  /// </summary>
-  /// <typeparam name="Tmeta">Resource type used in list responses (metadata projection).</typeparam>
-  /// <typeparam name="Tdata">Resource type used for single-item operations and payloads.</typeparam>
-  /// <typeparam name="Tsvc">Concrete SCIM service handling the resource operations.</typeparam>
-  /// <param name="app">Endpoint route builder.</param>
-  /// <param name="prefix">URL prefix (e.g., "/Users").</param>
-  /// <param name="authorize">Whether to require authorization on the mapped routes.</param>
-  /// <returns>The route builder.</returns>
   public static IEndpointRouteBuilder UseSCIMv2<Tmeta, Tdata, Tsvc>(this IEndpointRouteBuilder app, string prefix,
     bool authorize = true)
     where Tmeta : Resource, new()
@@ -127,12 +127,12 @@ public static class SCIMv2
       CancellationToken cancellationToken = context.RequestAborted;
       var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
-      // SCIMv2 Filtering (RFC 7644 §3.4.2.2)
+      // [SCIMv2 Filtering](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
       string? filter = null;
       if (context.Request.Query.TryGetValue("filter", out var filterStr))
         filter = filterStr;
 
-      // SCIMv2 Sorting (RFC 7644 §3.4.2.3)
+      // [SCIMv2 Sorting](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.3)
       string? sortBy = null;
       string? sortOrder = null;
       if (context.Request.Query.TryGetValue("sortBy", out var sortByStr))
@@ -140,43 +140,67 @@ public static class SCIMv2
       if (context.Request.Query.TryGetValue("sortOrder", out var sortOrderStr))
         sortOrder = sortOrderStr;
 
-      // SCIMv2 Pagination (RFC 7644 §3.4.2.4)
+      // [SCIMv2 Pagination](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.4)
       int startIndex = 1;
       int count = 12;
 
-      if (context.Request.Query.TryGetValue("count", out var countStr) &&
-          int.TryParse(countStr, out var parsedCount))  
+      // startIndex
+      if (context.Request.Query.TryGetValue("startIndex", out var si) &&
+          int.TryParse(si, out var parsedSi) && parsedSi >= 1)
       {
-        count = parsedCount;
-
-      }
-      if (context.Request.Query.TryGetValue("startIndex", out var startIndexStr) &&
-          int.TryParse(startIndexStr, out var parsedStart))
-      {
-        startIndex = parsedStart;
+        startIndex = parsedSi;
       }
 
-      ListResponse<Tmeta> result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
+      // count with clamp
+      if (context.Request.Query.TryGetValue("count", out var c) &&
+          int.TryParse(c, out var parsedCount))
+      {
+        var cfg = context.RequestServices.GetRequiredService<ServiceProviderConfiguration>();
+        var max = cfg.Filter?.MaxResults > 0 ? cfg.Filter.MaxResults : 200;
+        count = (int)Math.Clamp(parsedCount, 0, max);
+      }
 
-      // Create per-call JsonSerializer and materialize items enforcing camelCase; ignore potential null entries.
-      var serializer = JsonSerializer.Create(CamelCaseItemSerializerSettings);
+      var result = await svc.Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
 
-      // Treat null Resources as empty, then filter null elements -> defensively
-      var resources = result.Resources ?? Enumerable.Empty<Tmeta>();
+      // Materialize each resource as camelCase JSON string via our serializer
+      var jsource = result.Resources
+        .Select(r => JObject.Parse(JsonSerializerFoundation.Serialize(r)))
+        .ToList();
 
-      var objects = resources
-        .Where(r => r != null)
-        .Select(r => JObject.FromObject(r!, serializer));
+      // Keep your attribute pipeline
+      var processed = jsource.ProcessAttributes(context).ToList();
 
-      var processedResult = new ListResponse<JObject>
+      foreach (var p in processed)
+      {
+        if (p["schemas"] == null)
+        {
+          var segment = context.Request.Path.Value?.Trim('/').Split('/').FirstOrDefault();
+          p["schemas"] = new JArray(
+            "urn:ietf:params:scim:schemas:core:2.0:Resource",
+            $"urn:looplex:params:scim:schemas:{segment}:2.0:{typeof(Tdata).Name}"
+          );
+        }
+      }
+      // Convert processed JObject -> JsonElement to serialize envelope with System.Text.Json
+      var items = new List<JsonElement>();
+      foreach (var p in processed)
+      {
+        using var doc = JsonDocument.Parse(p.ToString(Newtonsoft.Json.Formatting.None));
+        items.Add(doc.RootElement.Clone());
+      }
+
+      // SCIM ListResponse envelope (includes required "schemas")
+      var envelope = new ResourcesEnvelope<JsonElement>
       {
         StartIndex = result.StartIndex,
         ItemsPerPage = result.ItemsPerPage,
-        Resources = objects.ProcessAttributes(context).ToList(),
-        TotalResults = result.TotalResults
+        TotalResults = result.TotalResults,
+        Items = items
       };
-      string json = processedResult.Serialize();
-      context.Response.ContentType = "application/json; charset=utf-8";
+
+      // Serialize with omitNulls=true for SCIM parity
+      string json = JsonSerializerFoundation.Serialize(envelope, omitNulls: true);
+      context.Response.ContentType = "application/scim+json; charset=utf-8";
       await context.Response.WriteAsync(json, cancellationToken);
     });
     if (authorize)
@@ -186,26 +210,112 @@ public static class SCIMv2
 
     #region Create (POST /)
 
+    // [SCIMv2 Create](https://datatracker.ietf.org/doc/html/rfc7644#section-3.3)
+    // [SCIMv2 Representation: id, meta](https://datatracker.ietf.org/doc/html/rfc7644#section-3.1)
+    // [SCIMv2 Content-Type](https://datatracker.ietf.org/doc/html/rfc7644#section-3)
+    // [HTTP Semantics — 201 Created](https://www.rfc-editor.org/rfc/rfc9110#name-201-created)
+    // [HTTP ETag (Weak)](https://www.rfc-editor.org/rfc/rfc9110#field.etag)
     map = group.MapPost("/", async context =>
     {
       CancellationToken cancellationToken = context.RequestAborted;
       var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
-      using StreamReader reader = new(context.Request.Body);
+      using var reader = new StreamReader(context.Request.Body);
       string json = await reader.ReadToEndAsync(cancellationToken);
       Tdata? resource = json.Deserialize<Tdata>();
 
       if (resource == null)
         throw new Exception($"Could not deserialize {typeof(Tdata).Name}");
 
+      // Persist and obtain server-generated UUID
       Guid id = await svc.Create(resource, cancellationToken);
-      context.Response.StatusCode = (int)HttpStatusCode.Created;
-      context.Response.Headers.Location = $"{context.Request.Path.Value}/{id}";
+
+      // Build absolute and relative locations (SCIM meta.location SHOULD be absolute)
+      var relativeLocation = $"{context.Request.Path.Value}/{id}";
+      var absoluteLocation = $"{context.Request.Scheme}://{context.Request.Host}{relativeLocation}";
+
+      // Minimal SCIM resource payload (schemas + id + meta)
+      var now = DateTimeOffset.UtcNow;
+      var resourceObject = context.Request.Path.Value?.Trim('/').Split('/').Last();
+
+      var scimBody = new JsonObject
+      {
+        // Core "Resource" schema for custom resources
+        // [SCIMv2 Core Schema Identifier](https://datatracker.ietf.org/doc/html/rfc7643#section-3)
+        // Custom extension schema defined by Looplex (RFC 7643 §6 — schema extension).
+        ["schemas"] = new JsonArray(
+          "urn:ietf:params:scim:schemas:core:2.0:Resource",
+          $"urn:looplex:params:scim:schemas:{resourceObject}:2.0:{typeof(Tdata).Name}"
+        ),
+
+        ["id"] = id.ToString(), // MUST be stable, non-reassignable
+
+        // meta fields per SCIM representation (resourceType, created, lastModified, location)
+        ["meta"] = new JsonObject
+        {
+          ["resourceType"] = typeof(Tdata).Name, // Prefer a stable literal like "Policy" if applicable
+          ["created"] = now.ToString("o"),
+          ["lastModified"] = now.ToString("o"),
+          ["location"] = absoluteLocation
+          // Do NOT set "version" yet; it must reflect the final representation (see ETag block below)
+        }
+      };
+
+      // Serialize SCIM resource response
+      // [SCIMv2 Representation — Attribute presence vs. null](https://datatracker.ietf.org/doc/html/rfc7644#section-3.1)
+      // Attributes with null values MUST be omitted from the representation
+      var scimJsonOptions = new JsonSerializerOptions
+      {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull // omit nulls for SCIM parity
+      };
+
+      // Merge payload attributes into SCIM root (RFC 7644 requires attributes at the top-level)
+      // [SCIMv2 Attribute Representation](https://datatracker.ietf.org/doc/html/rfc7644#section-3.1)
+      var payload = System.Text.Json.JsonSerializer.SerializeToNode(resource, scimJsonOptions)!.AsObject();
+      foreach (var kv in payload)
+      {
+        // Do not overwrite reserved SCIM fields
+        if (kv.Key is "id" or "meta" or "schemas") continue;
+        scimBody[kv.Key] = kv.Value?.DeepClone();
+      }
+
+      // Prepare HTTP response (single place)
+      context.Response.StatusCode = StatusCodes.Status201Created;                 // RFC 9110 §10.2.2
+      context.Response.Headers.Location = relativeLocation;                       // Relative is OK
+      context.Response.ContentType = "application/scim+json; charset=utf-8";      // SCIM media type
+
+      // ---- Compute ETag from the FINAL SCIM representation (weak ETag) ----
+      var etagValue = scimBody.ComputeMD5();
+      context.Response.Headers.ETag = $"W/\"{etagValue}\"";
+      if (scimBody["meta"] is JsonObject metaObj)
+      {
+        metaObj["version"] = $"W/\"{etagValue}\"";
+      }
+
+      // ---- Write response body ----
+      // Pretty output for readability; still omit nulls for SCIM parity
+      var outputOptions = new JsonSerializerOptions
+      {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+      };
+
+      await System.Text.Json.JsonSerializer.SerializeAsync(
+        context.Response.Body,
+        scimBody,
+        outputOptions,
+        cancellationToken);
     });
+
     if (authorize)
       map.RequireAuthorization();
 
     #endregion
+
+
 
     #region Retrieve (GET /:id)
 
@@ -214,24 +324,78 @@ public static class SCIMv2
       CancellationToken cancellationToken = context.RequestAborted;
       var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
-      Tdata? result = await svc.Retrieve(id, cancellationToken);
+      var result = await svc.Retrieve(id, cancellationToken);
 
-      if (result == null)
+      if (result is null)
       {
-        context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+        // [HTTP Semantics — 404 Not Found](https://www.rfc-editor.org/rfc/rfc9110#name-404-not-found)
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
       }
-      else
+
+      // Newtonsoft-only pipeline (no System.Text.Json round-trips).
+      // [SCIM Representation — omit null attributes](https://www.rfc-editor.org/rfc/rfc7644#section-3.1)
+      var settings = new JsonSerializerSettings
       {
-        var serializer = JsonSerializer.Create(CamelCaseItemSerializerSettings);
-        JObject jItem = JObject.FromObject(result, serializer);
-        context.Response.ContentType = "application/json; charset=utf-8";
-        await context.Response.WriteAsync(jItem.ToString(Formatting.Indented), cancellationToken);
+        ContractResolver = new DefaultContractResolver
+        {
+          NamingStrategy = new CamelCaseNamingStrategy(
+            processDictionaryKeys: true,
+            overrideSpecifiedNames: false // Preserve explicit PascalCase keys when specified
+          )
+        },
+        NullValueHandling = NullValueHandling.Ignore // Omit nulls for SCIM parity
+      };
+      var serializer = Newtonsoft.Json.JsonSerializer.Create(settings);
+
+      // Domain -> JObject
+      var jobj = (JObject)JToken.FromObject(result, serializer);
+
+      // Apply 'attributes' and 'excludedAttributes' if supplied by the client.
+      // [SCIMv2 Attributes Parameter](https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2.5)
+      var processed = new[] { jobj }.ProcessAttributes(context).First();
+
+      if (processed["schemas"] == null)
+      {
+        var segment = context.Request.Path.Value?.Trim('/').Split('/').FirstOrDefault();
+        processed["schemas"] = new JArray(
+          "urn:ietf:params:scim:schemas:core:2.0:Resource",
+          $"urn:looplex:params:scim:schemas:{segment}:2.0:{typeof(Tdata).Name}"
+        );
       }
+
+      // Compute ETag from Resouce
+      var elementForEtag = JsonDocument
+        .Parse(processed.ToString(Newtonsoft.Json.Formatting.None))
+        .RootElement.Clone();
+
+      var etagValue = elementForEtag.ComputeMD5(); 
+
+      // ETag (weak)
+      context.Response.Headers.ETag = $"W/\"{etagValue}\"";
+      if (processed["meta"] is JObject metaJ)
+      {
+        metaJ["version"] = $"W/\"{etagValue}\"";
+      }
+      // Envelope with PascalCase top-level key "Resource".
+      // Note: SCIM single-resource responses are commonly bare resources; this envelope is an implementation choice.
+      // [SCIMv2 Resource Retrieval](https://www.rfc-editor.org/rfc/rfc7644#section-3.4.1)
+      var envelope = new JObject
+      {
+        ["Resource"] = processed
+      };
+
+      // Write response using SCIM media type.
+      // [SCIMv2 Media Type](https://www.rfc-editor.org/rfc/rfc7644#section-3)
+      context.Response.ContentType = "application/scim+json; charset=utf-8";
+      string json = envelope.ToString(Formatting.None); // or Formatting.Indented if desired
+      await context.Response.WriteAsync(json, cancellationToken);
     });
     if (authorize)
       map.RequireAuthorization();
 
     #endregion
+
 
     #region Replace (PUT /:id)
 
@@ -285,7 +449,7 @@ public static class SCIMv2
       }
       else
       {
-        // JSON Patch (RFC 6902 §3)
+        // [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902#section-3)
         using StreamReader reader = new(context.Request.Body);
         string json = await reader.ReadToEndAsync(cancellationToken);
         JArray patches = JArray.Parse(json);
@@ -333,16 +497,10 @@ public static class SCIMv2
     return app;
   }
 
-  /// <summary>
-  /// Registers SCIM Bulk operation handler at the given prefix.
-  /// </summary>
-  /// <param name="app">Endpoint route builder.</param>
-  /// <param name="prefix">URL prefix, defaults to "/Bulk".</param>
-  /// <param name="authorize">Whether to require authorization on the mapped route.</param>
   public static IEndpointRouteBuilder UseBulk(this IEndpointRouteBuilder app, string prefix = "/Bulk",
     bool authorize = true)
   {
-    app.MapGet(
+    app.MapPost(
       prefix,
       async context =>
       {
@@ -353,13 +511,13 @@ public static class SCIMv2
         using StreamReader reader = new(context.Request.Body);
         var json = await reader.ReadToEndAsync(cancellationToken);
 
-        var request = json.Deserialize<BulkRequest>();
+        var request = JsonSerializerFoundation.Deserialize<BulkRequest>(json);
         if (request == null)
           throw new Exception($"Could not deserialize {nameof(BulkRequest)}");
 
         var result = await service.Execute(request, cancellationToken);
 
-        context.Response.ContentType = "application/json; charset=utf-8";
+        context.Response.ContentType = "application/scim+json; charset=utf-8";
         context.Response.StatusCode = (int)HttpStatusCode.OK;
         await context.Response.WriteAsync(result.Serialize(), cancellationToken);
       });
