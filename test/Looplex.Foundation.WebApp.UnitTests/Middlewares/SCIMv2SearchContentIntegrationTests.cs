@@ -384,7 +384,7 @@ public class SCIMv2SearchContentIntegrationTests
     Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
     
     // Debug: print the actual content to understand what's being returned
-    Console.WriteLine($"Response content: {content}");
+    // Response content: {content}
     
     Assert.IsTrue(content.Contains("startIndex") || content.Contains("StartIndex"), "Should contain startIndex");
     Assert.IsTrue(content.Contains("itemsPerPage") || content.Contains("ItemsPerPage"), "Should contain itemsPerPage");

@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -54,9 +55,9 @@ public static class SCIMv2
     services.AddSingleton(ServiceProviderConfiguration);
     
     // Register SearchContent services for SCIM filter processing
-    services.AddScoped<IFilterParser, EnhancedScimFilterParser>();
-    services.AddScoped<ISqlPredicateGenerator, SqlPredicateGenerator>();
-    services.AddScoped<ISearchContentService, SearchContentService>();
+    services.TryAddScoped<IFilterParser, EnhancedScimFilterParser>();
+    services.TryAddScoped<ISqlPredicateGenerator, SqlPredicateGenerator>();
+    services.TryAddScoped<ISearchContentService, SearchContentService>();
     services.AddScoped<Bulks>(sp =>
     {
       PluginLoader loader = new();

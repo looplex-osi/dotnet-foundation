@@ -21,14 +21,18 @@ public class SearchContentService : ISearchContentService
 {
     private readonly IFilterParser _parser;
     private readonly ISqlPredicateGenerator _sqlGenerator;
+    
+    // Static instances for better performance when using default constructor
+    private static readonly IFilterParser DefaultParser = new EnhancedScimFilterParser();
+    private static readonly ISqlPredicateGenerator DefaultSqlGenerator = new SqlPredicateGenerator();
 
     /// <summary>
     /// Default constructor using enhanced parser
     /// </summary>
     public SearchContentService()
     {
-        _parser = new EnhancedScimFilterParser();
-        _sqlGenerator = new SqlPredicateGenerator();
+        _parser = DefaultParser;
+        _sqlGenerator = DefaultSqlGenerator;
     }
 
     /// <summary>

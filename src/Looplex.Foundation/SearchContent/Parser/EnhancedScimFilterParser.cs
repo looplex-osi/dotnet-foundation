@@ -25,6 +25,9 @@ public class EnhancedScimFilterParser : IFilterParser
     private readonly Dictionary<string, ComparisonOperator> _comparisonOperators;
     private readonly Dictionary<string, BinaryOperator> _logicalOperators;
     
+    // Static compiled regex for better performance
+    private static readonly Regex AttributePatternRegex = new(@"^[a-zA-Z][a-zA-Z0-9_\.]*[a-zA-Z0-9_]$", RegexOptions.Compiled);
+    
     public EnhancedScimFilterParser()
     {
         _comparisonOperators = new Dictionary<string, ComparisonOperator>(StringComparer.OrdinalIgnoreCase)
@@ -397,8 +400,7 @@ public class EnhancedScimFilterParser : IFilterParser
             // Regular attribute name validation
             // Must start with a letter and contain only letters, numbers, dots, and underscores
             // Cannot end with a dot
-            var attributePattern = @"^[a-zA-Z][a-zA-Z0-9_\.]*[a-zA-Z0-9_]$";
-            if (!Regex.IsMatch(value, attributePattern))
+            if (!AttributePatternRegex.IsMatch(value))
                 return false;
         }
 
