@@ -45,8 +45,8 @@ public class BasicTests
         Assert.IsNotNull(result);
         Assert.IsTrue(result.HasConditions);
         Assert.IsTrue(result.Sql.Contains("name_givenName"));
-        // SQL: {result.Sql}
-        // Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}
+        System.Console.WriteLine($"SQL: {result.Sql}");
+        System.Console.WriteLine($"Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}");
     }
 
     [TestMethod]
@@ -62,8 +62,8 @@ public class BasicTests
         Assert.IsNotNull(result);
         Assert.IsTrue(result.HasConditions);
         Assert.IsTrue(result.Sql.Contains("userName"));
-        // SQL: {result.Sql}
-        // Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}
+        System.Console.WriteLine($"SQL: {result.Sql}");
+        System.Console.WriteLine($"Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}");
     }
 
     [TestMethod]
@@ -79,8 +79,8 @@ public class BasicTests
         Assert.IsNotNull(result);
         Assert.IsTrue(result.HasConditions);
         Assert.IsTrue(result.Sql.Contains("IS NULL"));
-        // SQL: {result.Sql}
-        // Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}
+        System.Console.WriteLine($"SQL: {result.Sql}");
+        System.Console.WriteLine($"Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}");
     }
 
     [TestMethod]
@@ -96,8 +96,8 @@ public class BasicTests
         Assert.IsNotNull(result);
         Assert.IsTrue(result.HasConditions);
         Assert.IsTrue(result.Sql.Contains("NOT"));
-        // SQL: {result.Sql}
-        // Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}
+        System.Console.WriteLine($"SQL: {result.Sql}");
+        System.Console.WriteLine($"Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}");
     }
 
     [TestMethod]
@@ -113,8 +113,8 @@ public class BasicTests
         Assert.IsNotNull(result);
         Assert.IsTrue(result.HasConditions);
         Assert.AreEqual(5, result.Parameters.Count);
-        // SQL: {result.Sql}
-        // Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}
+        System.Console.WriteLine($"SQL: {result.Sql}");
+        System.Console.WriteLine($"Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}");
     }
 
     [TestMethod]
@@ -144,8 +144,8 @@ public class BasicTests
             
             Assert.IsTrue(normalizedSql.Contains(normalizedExpected), 
                 $"Failed for filter: {scimFilter}. Expected: {expectedSql}, Got: {result.Sql}");
-            // Filter: {scimFilter}
-            // SQL: {result.Sql}
+            System.Console.WriteLine($"Filter: {scimFilter}");
+            System.Console.WriteLine($"SQL: {result.Sql}");
         }
     }
 
@@ -192,8 +192,8 @@ public class BasicTests
             
             Assert.IsTrue(normalizedSql.Contains(normalizedExpected), 
                 $"Failed for filter: {scimFilter}. Expected: {expectedSql}, Got: {result.Sql}");
-            // Filter: {scimFilter}
-            // SQL: {result.Sql}
+            System.Console.WriteLine($"Filter: {scimFilter}");
+            System.Console.WriteLine($"SQL: {result.Sql}");
         }
     }
 }

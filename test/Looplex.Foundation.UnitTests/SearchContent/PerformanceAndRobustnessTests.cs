@@ -187,11 +187,6 @@ public class PerformanceAndRobustnessTests
     public void Parse_ResourceCleanup_ShouldNotLeakResources()
     {
         // Arrange
-        if (!OperatingSystem.IsWindows())
-        {
-            Assert.Inconclusive("HandleCount is only available on Windows.");
-            return;
-        }
         var initialHandles = Process.GetCurrentProcess().HandleCount;
         var filters = GenerateResourceTestFilters(1000);
 
@@ -320,8 +315,8 @@ public class PerformanceAndRobustnessTests
     [TestMethod]
     public void Parse_ScalabilityTest_ShouldScaleLinearly()
     {
-        // Arrange - Test different scales with more reasonable values
-        var scales = new[] { 10, 50, 100, 200 };
+        // Arrange - Test different scales
+        var scales = new[] { 100, 500, 1000, 2000 };
         var scaleResults = new Dictionary<int, long>();
 
         foreach (var scale in scales)
@@ -338,12 +333,6 @@ public class PerformanceAndRobustnessTests
 
             stopwatch.Stop();
             scaleResults[scale] = stopwatch.ElapsedMilliseconds;
-            
-            // Ensure we have measurable time for small scales
-            if (scale <= 50 && scaleResults[scale] < 1)
-            {
-                scaleResults[scale] = 1; // Minimum measurable time
-            }
         }
 
         // Assert - Should scale reasonably (not exponentially)
@@ -352,18 +341,7 @@ public class PerformanceAndRobustnessTests
         {
             var scaleRatio = (double)scales[i] / scales[i - 1];
             var timeRatio = (double)scaleResults[scales[i]] / scaleResults[scales[i - 1]];
-            
-            // Avoid division by zero and handle edge cases
-            if (scaleResults[scales[i - 1]] > 0 && scaleRatio > 0)
-            {
-                var ratio = timeRatio / scaleRatio;
-                
-                // Handle Infinity and NaN values
-                if (!double.IsInfinity(ratio) && !double.IsNaN(ratio))
-                {
-                    ratios.Add(ratio);
-                }
-            }
+            ratios.Add(timeRatio / scaleRatio);
         }
 
         // Time increase should be roughly proportional to scale increase
@@ -371,9 +349,6 @@ public class PerformanceAndRobustnessTests
         {
             Assert.IsTrue(ratio < 2.0, $"Scalability ratio {ratio:F2} exceeds 2.0, indicating poor scaling");
         }
-        
-        // Ensure we have at least some valid ratios to test
-        Assert.IsTrue(ratios.Count > 0, "No valid scalability ratios could be calculated");
     }
 
     [TestMethod]
@@ -405,13 +380,9 @@ public class PerformanceAndRobustnessTests
             var scaleRatio = (double)scales[i] / scales[i - 1];
             var memoryRatio = (double)memoryResults[scales[i]] / memoryResults[scales[i - 1]];
             
-            // Handle edge cases where memory usage might be very small
-            if (memoryResults[scales[i - 1]] > 0 && !double.IsInfinity(memoryRatio) && !double.IsNaN(memoryRatio))
-            {
-                // Memory increase should not be more than 3x the scale increase
-                Assert.IsTrue(memoryRatio < scaleRatio * 3, 
-                    $"Memory scaling ratio {memoryRatio:F2} exceeds {scaleRatio * 3:F2}");
-            }
+            // Memory increase should not be more than 3x the scale increase
+            Assert.IsTrue(memoryRatio < scaleRatio * 3, 
+                $"Memory scaling ratio {memoryRatio:F2} exceeds {scaleRatio * 3:F2}");
         }
     }
 
@@ -449,15 +420,7 @@ public class PerformanceAndRobustnessTests
             }
             
             stopwatch.Stop();
-            var elapsedTime = stopwatch.ElapsedMilliseconds;
-            
-            // Ensure we have measurable time
-            if (elapsedTime < 1)
-            {
-                elapsedTime = 1; // Minimum measurable time
-            }
-            
-            results.Add(elapsedTime);
+            results.Add(stopwatch.ElapsedMilliseconds);
         }
 
         // Assert - All configurations should perform reasonably
@@ -468,25 +431,9 @@ public class PerformanceAndRobustnessTests
         // No configuration should be significantly slower than others
         var maxTime = results.Max();
         var minTime = results.Min();
-        
-        // Handle edge case where minTime might be 0
-        if (minTime > 0)
-        {
-            var timeRatio = (double)maxTime / minTime;
-            
-            // Handle Infinity and NaN values
-            if (!double.IsInfinity(timeRatio) && !double.IsNaN(timeRatio))
-            {
-                Assert.IsTrue(timeRatio < 15.0, 
-                    $"Configuration performance ratio {timeRatio:F2} exceeds 15.0");
-            }
-        }
-        else
-        {
-            // If minTime is 0, ensure maxTime is also reasonable
-            Assert.IsTrue(maxTime < 100, 
-                $"Maximum configuration processing time {maxTime}ms exceeds 100ms threshold");
-        }
+        var timeRatio = (double)maxTime / minTime;
+        Assert.IsTrue(timeRatio < 6.0, 
+            $"Configuration performance ratio {timeRatio:F2} exceeds 6.0");
     }
 
     #endregion
