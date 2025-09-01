@@ -54,21 +54,7 @@ public class LiteralValueNode : IAstNode
         return visitor.VisitLiteralValue(this);
     }
 
-    /// <summary>
-    /// Get the value as a string for SQL generation
-    /// </summary>
-    public string GetSqlValue()
-    {
-        return Type switch
-        {
-            LiteralType.String => $"'{Value?.ToString()?.Replace("'", "''")}'",
-            LiteralType.Integer => Value?.ToString() ?? "NULL",
-            LiteralType.Decimal => Value?.ToString() ?? "NULL",
-            LiteralType.Boolean => (bool)(Value ?? false) ? "1" : "0",
-            LiteralType.Null => "NULL",
-            _ => throw new ArgumentException($"Unsupported literal type: {Type}")
-        };
-    }
+
 
     /// <summary>
     /// Check if this is a null value

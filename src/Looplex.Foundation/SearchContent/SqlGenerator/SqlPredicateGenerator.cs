@@ -224,6 +224,9 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
         return $"@{parameterName}";
     }
 
+    /// <summary>
+    /// Generate SQL field name from AST identifier (AST PURE - SQL logic moved from AST to generator)
+    /// </summary>
     private string GetSqlFieldName(IdentifierNode field)
     {
         var fieldName = field.Name;
@@ -469,6 +472,9 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
         return $"{fieldName} LIKE @{parameterName}";
     }
 
+    /// <summary>
+    /// Extract parameter value from AST node (AST PURE - no SQL logic in AST)
+    /// </summary>
     private object? GetParameterValue(LiteralValueNode? valueNode)
     {
         if (valueNode == null) 

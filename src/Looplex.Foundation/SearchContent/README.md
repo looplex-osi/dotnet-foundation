@@ -181,6 +181,111 @@ Recursion Protection Layer
 - **IdentifierNode**: Attribute names with schema/sub-attribute support
 - **LiteralValueNode**: String, number, boolean, null values
 
+### AST Purity Architecture
+
+The AST (Abstract Syntax Tree) is designed to be **pure** - containing only structural information about the SCIM filter expression without any SQL-specific logic:
+
+#### ✅ **AST PURE Design Principles**
+
+1. **Separation of Concerns**: AST contains only SCIM structure, SQL logic is in `SqlPredicateGenerator`
+2. **Technology Agnostic**: Same AST can generate SQL, MongoDB, Elasticsearch, etc.
+3. **Testability**: AST can be tested independently of SQL generation
+4. **Maintainability**: SQL changes don't affect AST structure
+5. **Reusability**: AST can be used for multiple output formats
+
+#### 🔄 **Before vs After (AST Purity)**
+
+**❌ Before (AST Contaminated):**
+```csharp
+public class LiteralValueNode : IAstNode
+{
+    public string GetSqlValue() // <- SQL logic in AST
+    {
+        return Type switch
+        {
+            LiteralType.String => $"'{Value?.ToString()?.Replace("'", "''")}'",
+            // ...
+        };
+    }
+}
+
+public class IdentifierNode : IAstNode
+{
+    public string GetSqlFieldName() // <- SQL logic in AST
+    {
+        var fieldName = Name;
+        if (!string.IsNullOrEmpty(SubAttribute))
+            fieldName = $"{fieldName}_{SubAttribute}";
+        return fieldName;
+    }
+}
+```
+
+**✅ After (AST Pure):**
+```csharp
+public class LiteralValueNode : IAstNode
+{
+    // Only structural data - no SQL logic
+    public object? Value { get; }
+    public LiteralType Type { get; }
+    // No GetSqlValue() - moved to SqlPredicateGenerator
+}
+
+public class IdentifierNode : IAstNode
+{
+    // Only structural data - no SQL logic
+    public string Name { get; }
+    public string? SubAttribute { get; }
+    public string? SchemaPrefix { get; }
+    // No GetSqlFieldName() - moved to SqlPredicateGenerator
+}
+```
+
+#### 🎯 **SQL Logic in SqlPredicateGenerator**
+
+All SQL-specific logic is now properly encapsulated in the `SqlPredicateGenerator`:
+
+```csharp
+public class SqlPredicateGenerator : ISqlPredicateGenerator
+{
+    /// <summary>
+    /// Extract parameter value from AST node (AST PURE - no SQL logic in AST)
+    /// </summary>
+    private object? GetParameterValue(LiteralValueNode? valueNode)
+    {
+        // SQL logic moved from AST to generator
+        return valueNode?.Type switch
+        {
+            LiteralType.String => valueNode.Value?.ToString(),
+            LiteralType.Integer => valueNode.Value,
+            LiteralType.Boolean => valueNode.Value,
+            LiteralType.Null => null,
+            _ => valueNode?.Value?.ToString()
+        };
+    }
+
+    /// <summary>
+    /// Generate SQL field name from AST identifier (AST PURE - SQL logic moved from AST to generator)
+    /// </summary>
+    private string GetSqlFieldName(IdentifierNode field)
+    {
+        // All SQL field mapping logic here, not in AST
+        var fieldName = field.Name;
+        
+        // Apply field mapping, table aliases, sub-attribute conversion
+        // All SQL-specific logic properly encapsulated
+    }
+}
+```
+
+#### 🚀 **Benefits of AST Purity**
+
+1. **Flexibility**: Same AST can generate multiple output formats
+2. **Testability**: AST structure can be tested independently
+3. **Maintainability**: SQL changes don't require AST modifications
+4. **Extensibility**: Easy to add new output generators (MongoDB, Elasticsearch)
+5. **Clean Architecture**: Clear separation between parsing and generation
+
 ## Usage Examples
 
 ### 1. Basic SCIM Operations
@@ -757,6 +862,7 @@ var sql = result.Sql;
 - Stored procedure compatibility
 - Enhanced security with parameterized queries
 - Value Path Filters support
+- **AST Purity Architecture**: Clean separation between AST structure and SQL generation logic
 
 #### Security Enhancements
 - **DoS Protection**: Maximum filter length of 10,000 characters
@@ -779,6 +885,13 @@ var sql = result.Sql;
 - `SqlPredicateResult` with parameters support
 - Stored procedure compatibility methods
 - Enhanced error handling with security-specific exceptions
+
+#### Architecture Improvements
+- **AST Purity**: Removed SQL-specific logic from AST nodes (`GetSqlValue()`, `GetSqlFieldName()`)
+- **Separation of Concerns**: SQL generation logic properly encapsulated in `SqlPredicateGenerator`
+- **Technology Agnostic**: AST can now generate multiple output formats (SQL, MongoDB, Elasticsearch)
+- **Enhanced Testability**: AST structure can be tested independently of SQL generation
+- **Improved Maintainability**: SQL changes don't require AST modifications
 
 ### Version 1.x (Legacy)
 

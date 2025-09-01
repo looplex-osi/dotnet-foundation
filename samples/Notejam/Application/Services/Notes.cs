@@ -16,6 +16,8 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
+using Newtonsoft.Json.Linq;
+
 namespace Looplex.Samples.Application.Services;
 
 public class Notes : SCIMv2<Note, Note>
@@ -158,9 +160,9 @@ public class Notes : SCIMv2<Note, Note>
 
   #endregion
 
-  #region Update
+  #region Replace
 
-  public override async Task<bool> Update(Guid id, Note resource, string? fields, CancellationToken cancellationToken)
+  public override async Task<bool> Replace(Guid id, Note resource, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
@@ -179,7 +181,44 @@ public class Notes : SCIMv2<Note, Note>
 
     if (!ctx.SkipDefaultAction)
     {
-      var command = new UpdateResource<Note>(ctx.Roles["Id"], ctx.Roles["Note"]);
+      var command = new ReplaceResource<Note>(ctx.Roles["Id"], ctx.Roles["Note"]);
+
+      var rows = await _mediator!.Send(command, cancellationToken);
+
+      ctx.Result = rows > 0;
+    }
+
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+    return (bool)ctx.Result;
+  }
+
+  #endregion
+
+  #region Update
+
+  public override async Task<bool> Update(Guid id, Note resource, JArray patches, CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
+
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    string resourceName = nameof(Note).ToLower();
+    ctx.Roles["Id"] = id;
+    ctx.Roles["Note"] = resource;
+    ctx.Roles["Patches"] = patches;
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
+    {
+      var command = new UpdateResource<Note>(ctx.Roles["Id"], ctx.Roles["Note"], ctx.Roles["Patches"]);
 
       var rows = await _mediator!.Send(command, cancellationToken);
 

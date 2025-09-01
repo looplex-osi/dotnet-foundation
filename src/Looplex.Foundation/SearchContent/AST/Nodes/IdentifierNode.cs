@@ -81,21 +81,7 @@ public class IdentifierNode : IAstNode
                (parts.Count > 1 && !string.IsNullOrEmpty(SubAttribute) ? "." + SubAttribute : "");
     }
 
-    /// <summary>
-    /// Get the SQL field name for database queries
-    /// </summary>
-    public string GetSqlFieldName()
-    {
-        var fieldName = Name;
-        
-        // Handle sub-attributes (e.g., name.givenName -> name_givenName)
-        if (!string.IsNullOrEmpty(SubAttribute))
-        {
-            fieldName = $"{fieldName}_{SubAttribute}";
-        }
-        
-        return fieldName;
-    }
+
 
     public override string ToString()
     {
