@@ -411,11 +411,11 @@ public class SecurityTests
         // Arrange - Character set attacks
         var characterSetAttacks = new[]
         {
-            "userName eq \"' OR '1'='1\"", // Null byte injection
-            "userName eq \"' OR '1'='1\"", // Control characters
-            "userName eq \"' OR '1'='1\"", // Extended ASCII
-            "userName eq \"' OR '1'='1\"", // UTF-8 BOM
-            "userName eq \"' OR '1'='1\"", // Zero-width characters
+            "userName eq \"john\u0000doe\"",      // Null byte
+            "userName eq \"line1\u0001line2\"",   // Control char
+            "userName eq \"caf\u00E9\"",          // Extended Latin
+            "userName eq \"\uFEFFjohn\"",         // BOM
+            "userName eq \"john\u200Bdoe\"",      // Zero-width space
         };
 
         foreach (var filter in characterSetAttacks)
@@ -436,8 +436,7 @@ public class SecurityTests
         // Arrange - Recursion attacks
         var recursionAttacks = new[]
         {
-                         "userName eq \"' OR (SELECT COUNT(*) FROM Users WHERE userName = 'admin') > 0 --\"",
-                         "userName eq \"' OR (SELECT COUNT(*) FROM Users WHERE userName = 'admin') > 0 --\""
+            "userName eq \"' OR (SELECT COUNT(*) FROM Users WHERE userName = 'admin') > 0 --\""
         };
 
         foreach (var filter in recursionAttacks)
