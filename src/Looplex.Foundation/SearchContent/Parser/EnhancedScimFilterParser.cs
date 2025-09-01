@@ -115,7 +115,17 @@ public class EnhancedScimFilterParser : IFilterParser
             var c = expression[i];
             if (escaped) { escaped = false; continue; }
             if (c == '\\') { escaped = true; continue; }
-            if (c == '"') inQuotes = !inQuotes;
+            if (c == '"') 
+            {
+                // Check for triple quotes (invalid)
+                if (i + 2 < expression.Length && 
+                    expression[i + 1] == '"' && 
+                    expression[i + 2] == '"')
+                {
+                    throw new FilterParseException($"Triple quotes not allowed at position {i}", i);
+                }
+                inQuotes = !inQuotes;
+            }
         }
         if (inQuotes)
             throw new FilterParseException("Unmatched quotes in filter expression");
@@ -209,6 +219,7 @@ public class EnhancedScimFilterParser : IFilterParser
                 switch (expression[i + 1])
                 {
                     case '"': sb.Append('"'); break;
+                    case '\'': sb.Append('\''); break; // Allow escaped single quote
                     case '\\': sb.Append('\\'); break;
                     case '/': sb.Append('/'); break;
                     case 'b': sb.Append('\b'); break;
