@@ -1,73 +1,149 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.EntityFrameworkCore;
-using System.Text;
+using System.Reflection;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using Looplex.Foundation.Adapters;
+using Looplex.Foundation.Helpers;
+using Looplex.Foundation.Ports;
+using Looplex.Foundation.WebApp.Middlewares;
+using Looplex.OpenForExtension.Abstractions.Plugins;
+using Looplex.OpenForExtension.Loader;
+using Looplex.Samples.Application;
+using Looplex.Samples.Application.Services;
+using Looplex.Samples.Domain.Entities;
+using Looplex.Samples.Infra;
+using Looplex.Samples.Infra.CommandHandlers;
+using Looplex.Samples.Infra.QueryHandlers;
+using Looplex.Samples.Infra.Repositories;
+using MediatR;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Newtonsoft.Json;
+using Polly;
+using Polly.Extensions.Http;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace Looplex.Samples.WebApp;
 
-// Load configuration from config.env file
-var configPath = Path.Combine(builder.Environment.ContentRootPath, "config.env");
-if (File.Exists(configPath))
+public static class Program
 {
-    foreach (var line in File.ReadAllLines(configPath))
+    public static void Main(string[] args)
     {
-        if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
-            continue;
-            
-        var parts = line.Split('=', 2);
-        if (parts.Length == 2)
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+        builder.Services.AddHttpClient("Default")
+            .AddPolicyHandler(GetRetryPolicy());
+
+        builder.Services.AddTransient(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Default"));
+
+        builder.Services.AddHealthChecks()
+            .AddCheck<HealthCheck>("Default");
+
+        // Load configuration from config.env file
+        var configEnvSettings = new Dictionary<string, string?>();
+        foreach (var item in Files.LoadEnv("config.env"))
         {
-            builder.Configuration[parts[0].Trim()] = parts[1].Trim();
+            Environment.SetEnvironmentVariable(item.Key, item.Value);
+            configEnvSettings[item.Key] = item.Value;
         }
+
+        // Load sensitive configuration from config.env file
+        // Public configuration can be set here, but sensitive data should be in config.env
+        Dictionary<string, string?> inMemorySettings = new()
+        {
+            { "UseInMemoryDatabase", "false" },
+            { "InMemoryConnectionString", "Data Source=:memory:" },
+            { "UseRealDatabase", "true" }
+        };
+        
+        // Add config.env settings to configuration
+        builder.Configuration.AddInMemoryCollection(configEnvSettings);
+        builder.Configuration.AddInMemoryCollection(inMemorySettings);
+        
+        // Add database connection string
+        builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
+        builder.Services.AddSingleton<IDbConnections, DbConnections>();
+        // Simplified configuration for demonstration - without Azure Key Vault
+        builder.Services.AddSingleton<ISecretsService>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<AzureSecretsService>>();
+            return new AzureSecretsService(null!, Policy.NoOpAsync<string>(), logger);
+        });
+        builder.Services.AddSingleton<IDbConnections, DbConnections>();
+        builder.Services.AddSCIMv2();
+
+        // Register SearchContentService for SCIM filter processing
+        builder.Services.AddScoped<Looplex.Foundation.SearchContent.ISearchContentService, Looplex.Foundation.SearchContent.SearchContentService>();
+        
+        // Register Repository Pattern
+        builder.Services.AddScoped<INoteRepository, Looplex.Samples.Infra.Repositories.NoteRepository>();
+        builder.Services.AddScoped<IPadRepository, Looplex.Samples.Infra.Repositories.PadRepository>();
+
+        builder.Services.AddScoped<Notes>(sp =>
+        {
+            PluginLoader loader = new();
+            IEnumerable<string> dlls = Directory.Exists("plugins")
+                ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+                : [];
+            IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+            var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+            var mediator = sp.GetRequiredService<IMediator>();
+            return new Notes(plugins, null, httpContextAccessor, mediator);
+        });
+
+        builder.Services.AddScoped<Pads>(sp =>
+        {
+            PluginLoader loader = new();
+            IEnumerable<string> dlls = Directory.Exists("plugins")
+                ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+                : [];
+            IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+            var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+            var mediator = sp.GetRequiredService<IMediator>();
+            return new Pads(plugins, null, httpContextAccessor, mediator);
+        });
+
+        builder.Services.AddMediatR(cfg =>
+            cfg.RegisterServicesFromAssembly(typeof(Looplex.Samples.Infra.CommandHandlers.UpdateNoteCommandHandler).Assembly));
+
+        WebApplication app = builder.Build();
+
+        app.MapHealthChecks("/health", new HealthCheckOptions
+            {
+                ResponseWriter = async (context, report) =>
+                {
+                    context.Response.ContentType = "application/json; charset=utf-8";
+                    string result = JsonConvert.SerializeObject(new
+                    {
+                        status = report.Status.ToString(),
+                        results = report.Entries.Select(e => new
+                        {
+                            key = e.Key,
+                            status = e.Value.Status.ToString(),
+                            description = e.Value.Description,
+                            data = e.Value.Data,
+                            exception = e.Value.Exception?.Message // Include exception details
+                        })
+                    });
+                    await context.Response.WriteAsync(result);
+                }
+            })
+            .AllowAnonymous();
+
+        app.UseSCIMv2();
+
+        // Map the Notes service to the /notes endpoint
+        app.UseSCIMv2<Note, Note, Notes>("/notes", authorize: false);
+        
+        // Map the Pads service to the /pads endpoint
+        app.UseSCIMv2<Pad, Pad, Pads>("/pads", authorize: false);
+
+        app.Run();
+    }
+
+    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError() // Handle transient errors (5xx, 408, etc.)
+            .WaitAndRetryAsync(3,
+                retryAttempt =>
+                    TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))); // Retry 3 times with exponential backoff
     }
 }
-
-// Add services to the container.
-builder.Services.AddControllers();
-
-// Configure authentication
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "https://localhost:7065",
-            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "https://localhost:7065",
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!"))
-        };
-    });
-
-// Configure CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
-
-// Configure database connection
-var connectionString = builder.Configuration["RoutingDatabaseConnectionString"] 
-    ?? "Data Source=:memory:"; // Safe default for demo
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
-// Add health check endpoint
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
-
-app.Run();
