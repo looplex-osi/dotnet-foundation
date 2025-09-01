@@ -1,0 +1,200 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Looplex.Foundation.SearchContent;
+
+namespace Looplex.Foundation.UnitTests.SearchContent;
+
+/// <summary>
+/// Basic tests to verify the enhanced SCIM filter parser implementation
+/// </summary>
+[TestClass]
+public class BasicTests
+{
+    private ISearchContentService _service = null!;
+
+    [TestInitialize]
+    public void Setup()
+    {
+        _service = new SearchContentService();
+    }
+
+    [TestMethod]
+    public void Parse_SimpleFilter_ShouldSucceed()
+    {
+        // Arrange
+        var filter = "userName eq \"john\"";
+
+        // Act
+        var result = _service.ConvertToSql(filter);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.HasConditions);
+        Assert.IsTrue(result.Sql.Contains("userName"));
+    }
+
+    [TestMethod]
+    public void Parse_SubAttribute_ShouldSucceed()
+    {
+        // Arrange - This was one of the failing scenarios
+        var filter = "name.givenName eq \"John\"";
+
+        // Act
+        var result = _service.ConvertToSql(filter);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.HasConditions);
+        Assert.IsTrue(result.Sql.Contains("name_givenName"));
+        // SQL: {result.Sql}
+        // Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}
+    }
+
+    [TestMethod]
+    public void Parse_SchemaPrefix_ShouldSucceed()
+    {
+        // Arrange - This was one of the failing scenarios
+        var filter = "urn:ietf:params:scim:schemas:core:2.0:User:userName eq \"john\"";
+
+        // Act
+        var result = _service.ConvertToSql(filter);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.HasConditions);
+        Assert.IsTrue(result.Sql.Contains("userName"));
+        // SQL: {result.Sql}
+        // Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}
+    }
+
+    [TestMethod]
+    public void Parse_NullValue_ShouldSucceed()
+    {
+        // Arrange - This was one of the failing scenarios
+        var filter = "manager eq null";
+
+        // Act
+        var result = _service.ConvertToSql(filter);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.HasConditions);
+        Assert.IsTrue(result.Sql.Contains("IS NULL"));
+        // SQL: {result.Sql}
+        // Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}
+    }
+
+    [TestMethod]
+    public void Parse_ComplexNot_ShouldSucceed()
+    {
+        // Arrange - This was one of the failing scenarios
+        var filter = "not (department eq \"HR\")";
+
+        // Act
+        var result = _service.ConvertToSql(filter);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.HasConditions);
+        Assert.IsTrue(result.Sql.Contains("NOT"));
+        // SQL: {result.Sql}
+        // Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}
+    }
+
+    [TestMethod]
+    public void Parse_LongExpression_ShouldSucceed()
+    {
+        // Arrange - This was one of the failing scenarios
+        var filter = "userName eq \"user1\" or userName eq \"user2\" or userName eq \"user3\" or userName eq \"user4\" or userName eq \"user5\"";
+
+        // Act
+        var result = _service.ConvertToSql(filter);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.HasConditions);
+        Assert.AreEqual(5, result.Parameters.Count);
+        // SQL: {result.Sql}
+        // Parameters: {string.Join(", ", result.Parameters.Select(p => $"{p.Key}={p.Value}"))}
+    }
+
+    [TestMethod]
+    public void Parse_NumericStringValues_ShouldNotQuoteNumbers()
+    {
+        // Arrange - Test cases that simulate enum conversions from Case Management
+        var testCases = new[]
+        {
+            ("Status eq \"1\"", "LOWER(Status) = LOWER(1)"), // "ATIVO" converted to "1"
+            ("Type eq \"3\"", "LOWER(Type) = LOWER(3)"), // "JUDICIAL_ESTADUAL" converted to "3"
+            ("Status ne \"2\"", "LOWER(Status) != LOWER(2)"), // "ARQUIVO_MORTO" converted to "2"
+            ("Status eq \"1\" and Type eq \"3\"", "LOWER(Status) = LOWER(1) AND LOWER(Type) = LOWER(3)")
+        };
+
+        foreach (var (scimFilter, expectedSql) in testCases)
+        {
+            // Act - Use the stored procedure version to test inline SQL generation
+            var result = ((SearchContentService)_service).ConvertToSqlForStoredProcedure(scimFilter);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.HasConditions);
+            
+            // Check if SQL contains the expected pattern, accounting for optional parentheses
+            var normalizedSql = result.Sql.Replace("(", "").Replace(")", "");
+            var normalizedExpected = expectedSql.Replace("(", "").Replace(")", "");
+            
+            Assert.IsTrue(normalizedSql.Contains(normalizedExpected), 
+                $"Failed for filter: {scimFilter}. Expected: {expectedSql}, Got: {result.Sql}");
+            // Filter: {scimFilter}
+            // SQL: {result.Sql}
+        }
+    }
+
+    [TestMethod]
+    public void Parse_AllEnumTypes_ShouldWorkCorrectly()
+    {
+        // Arrange - Test all three enum types that Case Management uses
+        var enumTestCases = new[]
+        {
+            // Status enum (SituacaoDoProcesso)
+            ("Status eq \"1\"", "LOWER(Status) = LOWER(1)"), // ATIVO
+            ("Status eq \"2\"", "LOWER(Status) = LOWER(2)"), // ARQUIVO_MORTO
+            ("Status eq \"3\"", "LOWER(Status) = LOWER(3)"), // ENCERRADO
+            
+            // Type enum (RamosJudicial) 
+            ("Type eq \"1\"", "LOWER(Type) = LOWER(1)"), // ADMINISTRATIVO
+            ("Type eq \"3\"", "LOWER(Type) = LOWER(3)"), // JUDICIAL_ESTADUAL
+            ("Type eq \"4\"", "LOWER(Type) = LOWER(4)"), // JUDICIAL_FEDERAL
+            ("Type eq \"5\"", "LOWER(Type) = LOWER(5)"), // JUDICIAL_TRABALHISTA
+            
+            // SubType enum (ClasseProcesso)
+            ("SubType eq \"1\"", "LOWER(SubType) = LOWER(1)"), // CASO
+            ("SubType eq \"2\"", "LOWER(SubType) = LOWER(2)"), // SUBCASO
+            ("SubType eq \"3\"", "LOWER(SubType) = LOWER(3)"), // RECURSO
+            
+            // Combined queries
+            ("Status eq \"1\" and Type eq \"3\"", "LOWER(Status) = LOWER(1) AND LOWER(Type) = LOWER(3)"),
+            ("Type eq \"3\" and SubType eq \"1\"", "LOWER(Type) = LOWER(3) AND LOWER(SubType) = LOWER(1)"),
+            ("Status eq \"1\" and Type eq \"3\" and SubType eq \"1\"", "LOWER(Status) = LOWER(1) AND LOWER(Type) = LOWER(3) AND LOWER(SubType) = LOWER(1)")
+        };
+
+        foreach (var (scimFilter, expectedSql) in enumTestCases)
+        {
+            // Act - Use the stored procedure version to test inline SQL generation
+            var result = ((SearchContentService)_service).ConvertToSqlForStoredProcedure(scimFilter);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.HasConditions);
+            
+            // Check if SQL contains the expected pattern, accounting for optional parentheses
+            var normalizedSql = result.Sql.Replace("(", "").Replace(")", "");
+            var normalizedExpected = expectedSql.Replace("(", "").Replace(")", "");
+            
+            Assert.IsTrue(normalizedSql.Contains(normalizedExpected), 
+                $"Failed for filter: {scimFilter}. Expected: {expectedSql}, Got: {result.Sql}");
+            // Filter: {scimFilter}
+            // SQL: {result.Sql}
+        }
+    }
+}
+
