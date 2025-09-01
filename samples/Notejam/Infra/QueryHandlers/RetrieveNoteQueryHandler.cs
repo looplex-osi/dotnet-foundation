@@ -1,42 +1,40 @@
-using System.Data;
-using System.Data.Common;
-
-using Looplex.Foundation.Helpers;
 using Looplex.Foundation.SCIMv2.Queries;
-using Looplex.Samples.Application.Abstraction;
+using Looplex.Samples.Application;
 using Looplex.Samples.Domain.Entities;
-
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace Looplex.Samples.Infra.QueryHandlers
 {
-  public class RetrieveNoteQueryHandler(IDbConnections connections) : IRequestHandler<RetrieveResource<Note>, Note?>
+  public class RetrieveNoteQueryHandler(INoteRepository noteRepository, ILogger<RetrieveNoteQueryHandler> logger) 
+    : IRequestHandler<RetrieveResource<Note>, Note?>
   {
     public async Task<Note?> Handle(RetrieveResource<Note> request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
 
-      string resourceName = nameof(Note).ToLower();
-      string procName = $"USP_{resourceName}_retrieve";
-
-      var dbQuery = await connections.QueryConnection();
-      await dbQuery.OpenAsync(cancellationToken);
-      await using var command = dbQuery.CreateCommand();
-
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = procName;
-
-      command.Parameters.Add(Dbs.CreateParameter(command, "@uuid", request.Id, DbType.Guid));
-
-      Note? obj = null;
-      await using DbDataReader? reader = await command.ExecuteReaderAsync(cancellationToken);
-      if (await reader.ReadAsync(cancellationToken))
+      try
       {
-        obj = new Note();
-        // MapDataRecordToResource(reader, obj); TODO
-      }
+        logger.LogInformation("Retrieving note with ID: {NoteId}", request.Id);
 
-      return obj;
+        var note = await noteRepository.GetNoteByIdAsync(request.Id, cancellationToken);
+
+        if (note == null)
+        {
+          logger.LogWarning("Note not found with ID: {NoteId}", request.Id);
+        }
+        else
+        {
+          logger.LogInformation("Note retrieved successfully: {NoteId}", request.Id);
+        }
+
+        return note;
+      }
+      catch (Exception ex)
+      {
+        logger.LogError(ex, "Error retrieving note with ID: {NoteId}", request.Id);
+        throw new InvalidOperationException($"Failed to retrieve note: {ex.Message}", ex);
+      }
     }
   }
 }

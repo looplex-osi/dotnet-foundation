@@ -14,16 +14,15 @@
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="Looplex.OpenForExtension.Loader" Version="1.1.8" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
-    <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
+    <PackageReference Include="xunit" Version="2.6.6" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.6" />
     <PackageReference Include="NSubstitute" Version="5.3.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
-  </ItemGroup>
+
 
   <ItemGroup>
     <None Update="rbac\model.ini">
@@ -38,7 +37,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Notejam\Notejam.csproj" />
+    <ProjectReference Include="..\Application\Application.csproj" />
+    <ProjectReference Include="..\Infra\Infra.csproj" />
+    <ProjectReference Include="..\Domain\Domain.csproj" />
+    <ProjectReference Include="..\..\Notejam.WebApp\Notejam.WebApp.csproj" />
+    <ProjectReference Include="..\..\..\src\Looplex.Foundation\Looplex.Foundation.csproj" />
+    <ProjectReference Include="..\..\..\src\Looplex.Foundation.WebApp\Looplex.Foundation.WebApp.csproj" />
+  </ItemGroup>
+
+  <!-- Exclude temp_skip folder from compilation -->
+  <ItemGroup>
+    <Compile Remove="temp_skip\**" />
   </ItemGroup>
 
 </Project>
