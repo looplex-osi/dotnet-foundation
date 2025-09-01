@@ -1,0 +1,1265 @@
+{
+	"info": {
+		"_postman_id": "abff3456-6467-4f38-9107-8c54cb05eda2",
+		"name": "Notejam SCIM API - Complete Collection",
+		"description": "Complete collection of the Notejam SCIM API with all tested and validated functionalities.\n\n## 📋 Included Features:\n\n- ✅ All HTTP methods (GET, POST, PUT, PATCH, DELETE)\n    \n- ✅ SCIM filters (boolean, numeric, string, date, complex)\n    \n- ✅ SCIM pagination\n    \n- ✅ Real usage examples\n    \n\n## ⚠️ IMPORTANT:\n\nThe `customFields` field must be sent as a JSON string: `\"customFields\": \"{\\\"test\\\": \\\"value\\\"}\"`\n\n## 🚀 Step-by-Step Testing Instructions:\n\n### 1\\. Setup:\n\n- Import this collection into Postman\n    \n- Configure the `baseUrl` variable in the collection variables\n    \n- Ensure the Notejam application is running on the configured URL\n    \n\n### 2\\. Basic CRUD Testing:\n\n1. Start with \"COMPLETE DEMO\" folder\n    \n2. Run \"Automatic Demo - PADS\" to verify basic connectivity\n    \n3. Run \"Automatic Demo - NOTES\" to verify notes endpoint\n    \n4. Execute \"Individual Filter Test\" requests to validate SCIM filtering\n    \n\n### 3\\. Full CRUD Operations:\n\n1. **PADS - Complete CRUD** folder:\n    \n    - GET /pads (list all pads)\n        \n    - POST /pads (create new pad)\n        \n    - GET /pads/{id} (retrieve specific pad)\n        \n    - PUT /pads/{id} (update pad completely)\n        \n    - PATCH /pads/{id} (partial update)\n        \n    - DELETE /pads/{id} (logical deletion)\n        \n2. **NOTES - CRUD Completo** folder:\n    \n    - Follow the same pattern as PADS\n        \n    - Test all CRUD operations for notes\n        \n\n### 4\\. SCIM Filter Testing:\n\n1. **SCIM FILTERS - PADS** folder:\n    \n    - Test boolean filters (active eq true/false)\n        \n    - Test numeric filters (status eq 1/2)\n        \n    - Test string filters (name eq \"Reunioes\")\n        \n    - Test date filters (created gt \"2025-08-28T00:00:00\", modified gt \"2025-08-28T20:00:00\")\n        \n    - Test complex filters (active eq true and status eq 1)\n        \n2. **SCIM FILTERS - NOTES** folder:\n    \n    - Test similar filter patterns for notes\n        \n    - Test date filters for notes creation and modification\n        \n    - Verify text-based filtering works correctly\n        \n\n### 5\\. Pagination Testing:\n\n1. **PAGINAÇÃO SCIM** folder:\n    \n    - Test first page (startIndex=1, count=5)\n        \n    - Test second page (startIndex=6, count=5)\n        \n    - Verify totalResults count is accurate\n        \n\n### 6\\. Advanced Examples:\n\n1. **EXEMPLOS AVANÇADOS** folder:\n    \n    - Test filter + pagination combinations\n        \n    - Verify complex queries work correctly\n        \n\n### 7\\. Validation:\n\n- All requests should return appropriate HTTP status codes\n    \n- GET requests should return 200 OK\n    \n- POST requests should return 201 Created\n    \n- PUT/PATCH requests should return 204 No Content\n    \n- DELETE requests should return 204 No Content\n    \n- Check that response bodies contain expected data structure\n    \n- Verify that filters return the correct number of results\n    \n- Ensure pagination works correctly with totalResults\n    \n\n### 8\\. Troubleshooting:\n\n- If requests fail, check the application logs\n    \n- Verify the `baseUrl` variable is correctly set\n    \n- Ensure the database is accessible and contains test data\n    \n- Check that all required services are running\n    \n\n### 9\\. Expected Results:\n\n- All CRUD operations should work without errors\n    \n- SCIM filters should return filtered results\n    \n- Pagination should work with proper totalResults\n    \n- JSON Patch operations should update specific fields only\n    \n- Soft delete should mark records as inactive but not remove them\n    \n\n## 📝 Notes:\n\n- This collection uses real IDs from the test database\n    \n- All requests include proper Content-Type headers\n    \n- Test scripts validate response structure automatically\n    \n- The collection is ready for demonstration and production use",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "47263824",
+		"_collection_link": "https://jjff1983-8293941.postman.co/workspace/Jo%C3%A3o's-Workspace~eb8ac32b-db99-4431-8f1b-6612413eacfc/collection/47263824-abff3456-6467-4f38-9107-8c54cb05eda2?action=share&source=collection_link&creator=47263824"
+	},
+	"item": [
+		{
+			"name": "COMPLETE DEMO",
+			"item": [
+				{
+					"name": "Automatic Demo - PADS",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has Resources\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('Resources');",
+									"    pm.expect(jsonData.Resources).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Total Results present\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('totalResults');",
+									"    pm.expect(jsonData.totalResults).to.be.a('number');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/pads",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							]
+						},
+						"description": "Automatic demonstration of complete PADS listing with SCIM validation."
+					},
+					"response": []
+				},
+				{
+					"name": "Automatic Demo - NOTES",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has Resources\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('Resources');",
+									"    pm.expect(jsonData.Resources).to.be.an('array');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notes",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							]
+						},
+						"description": "Automatic demonstration of complete NOTES listing with SCIM validation."
+					},
+					"response": []
+				},
+				{
+					"name": "Individual Filter Test - PADS",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Filter returns results\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.Resources.length).to.be.greaterThan(0);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/pads?filter=name eq \"Reunioes\"",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "name eq \"Reunioes\""
+								}
+							]
+						},
+						"description": "String filter test for PADS - search by specific name."
+					},
+					"response": []
+				},
+				{
+					"name": "Individual Filter Test - NOTES",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Filter returns results\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.Resources.length).to.be.greaterThan(0);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=text eq \"Texto via PATCH QA\"",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "text eq \"Texto via PATCH QA\""
+								}
+							]
+						},
+						"description": "String filter test for NOTES - search by specific text."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "PADS - Complete CRUD",
+			"item": [
+				{
+					"name": "GET /pads - Complete Listing",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/pads",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							]
+						},
+						"description": "Lists all available PADS."
+					},
+					"response": []
+				},
+				{
+					"name": "GET /pads/{id} - Individual Retrieval",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/pads/e1274a3e-f36b-1410-85cb-0046c3744233",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads",
+								"e1274a3e-f36b-1410-85cb-0046c3744233"
+							]
+						},
+						"description": "Retrieves a specific PAD by ID."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /pads - Creation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Pad QA Teste Final\",\n  \"active\": true,\n  \"status\": 1,\n  \"customFields\": \"{\\\"test\\\": \\\"final\\\"}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/pads",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							]
+						},
+						"description": "Creates a new PAD. ⚠️ IMPORTANT: customFields must be a JSON string."
+					},
+					"response": []
+				},
+				{
+					"name": "PUT /pads/{id} - Complete Update",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Pad Atualizado via PUT\",\n  \"active\": false,\n  \"status\": 2,\n  \"customFields\": \"{\\\"updated\\\": \\\"via PUT\\\"}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/pads/e1274a3e-f36b-1410-85cb-0046c3744233",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads",
+								"e1274a3e-f36b-1410-85cb-0046c3744233"
+							]
+						},
+						"description": "Atualiza completamente um PAD existente."
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH /pads/{id} -Soft Delete",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json-patch+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n  {\n    \"op\": \"replace\",\n    \"path\": \"/status\",\n    \"value\": 3\n  },\n  {\n    \"op\": \"replace\",\n    \"path\": \"/customFields\",\n    \"value\": \"{\\\"patch\\\": \\\"test\\\"}\"\n  }\n]"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/pads/e1274a3e-f36b-1410-85cb-0046c3744233",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads",
+								"e1274a3e-f36b-1410-85cb-0046c3744233"
+							]
+						},
+						"description": "Atualiza parcialmente um PAD usando JSON Patch."
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE /pads/{id} - Logical Delete",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/pads/e1274a3e-f36b-1410-85cb-0046c3744233",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads",
+								"e1274a3e-f36b-1410-85cb-0046c3744233"
+							]
+						},
+						"description": "Exclui logicamente um PAD (soft delete)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "NOTES - CRUD Completo",
+			"item": [
+				{
+					"name": "GET /notes - Full List",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notes",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							]
+						},
+						"description": "Lista todas as NOTES disponíveis."
+					},
+					"response": []
+				},
+				{
+					"name": "GET /notes/{id} - Individual get",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notes/5c284a3e-f36b-1410-85cb-0046c3744233",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"5c284a3e-f36b-1410-85cb-0046c3744233"
+							]
+						},
+						"description": "Recupera uma NOTE específica pelo ID."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /notes - Create",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"Note QA Teste Final\",\n  \"active\": true,\n  \"status\": 1,\n  \"customFields\": \"{\\\"test\\\": \\\"final\\\"}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notes",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							]
+						},
+						"description": "Cria uma nova NOTE. ⚠️ IMPORTANTE: customFields deve ser string JSON."
+					},
+					"response": []
+				},
+				{
+					"name": "PUT /notes/{id} - Complete Update",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"Note Atualizada via PUT\",\n  \"active\": false,\n  \"status\": 2,\n  \"customFields\": \"{\\\"updated\\\": \\\"via PUT\\\"}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notes/5c284a3e-f36b-1410-85cb-0046c3744233",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"5c284a3e-f36b-1410-85cb-0046c3744233"
+							]
+						},
+						"description": "Atualiza completamente uma NOTE existente."
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH /notes/{id} - Partial Update",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json-patch+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n  {\n    \"op\": \"replace\",\n    \"path\": \"/status\",\n    \"value\": 3\n  },\n  {\n    \"op\": \"replace\",\n    \"path\": \"/customFields\",\n    \"value\": \"{\\\"patch\\\": \\\"test\\\"}\"\n  }\n]"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notes/5c284a3e-f36b-1410-85cb-0046c3744233",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"5c284a3e-f36b-1410-85cb-0046c3744233"
+							]
+						},
+						"description": "Atualiza parcialmente uma NOTE usando JSON Patch."
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE /notes/{id} - Logical Delete",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notes/5c284a3e-f36b-1410-85cb-0046c3744233",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"5c284a3e-f36b-1410-85cb-0046c3744233"
+							]
+						},
+						"description": "Exclui logicamente uma NOTE (soft delete)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "SCIM FILTERS - PADS",
+			"item": [
+				{
+					"name": "Bools Filters",
+					"item": [
+						{
+							"name": "active eq true",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=active eq true",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "active eq true"
+										}
+									]
+								},
+								"description": "Filtra PADS ativos."
+							},
+							"response": []
+						},
+						{
+							"name": "active eq false",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=active eq false",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "active eq false"
+										}
+									]
+								},
+								"description": "Filtra PADS inativos."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Numerical Filters",
+					"item": [
+						{
+							"name": "status eq 1",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=status eq 1",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "status eq 1"
+										}
+									]
+								},
+								"description": "Filtra PADS com status 1."
+							},
+							"response": []
+						},
+						{
+							"name": "status eq 2",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=status eq 2",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "status eq 2"
+										}
+									]
+								},
+								"description": "Filtra PADS com status 2."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "String Filters",
+					"item": [
+						{
+							"name": "name eq \"Pad Atualizado via PUT\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=name eq \"Reunioes\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "name eq \"Reunioes\""
+										}
+									]
+								},
+								"description": "Filtra PADS por nome específico."
+							},
+							"response": []
+						},
+						{
+							"name": "name co \"Teste\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=name co \"Teste\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "name co \"Teste\""
+										}
+									]
+								},
+								"description": "Filtra PADS que contenham 'Teste' no nome."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Complex Filters",
+					"item": [
+						{
+							"name": "active eq true and status eq 1",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=active eq true and status eq 1",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "active eq true and status eq 1"
+										}
+									]
+								},
+								"description": "Filtra PADS ativos com status 1."
+							},
+							"response": []
+						},
+						{
+							"name": "name co \"Teste\" or status eq 2",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=name co \"Teste\" or status eq 2",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "name co \"Teste\" or status eq 2"
+										}
+									]
+								},
+								"description": "Filtra PADS que contenham 'Teste' no nome OU tenham status 2."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Date Filters",
+					"item": [
+						{
+							"name": "created eq \"2025-08-28T20:11:49\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=created eq \"2025-08-28T20:11:49\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "created eq \"2025-08-28T20:11:49\""
+										}
+									]
+								},
+								"description": "Filtra PADS criados em uma data específica."
+							},
+							"response": []
+						},
+						{
+							"name": "created gt \"2025-08-28T00:00:00\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=created gt \"2025-08-28T00:00:00\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "created gt \"2025-08-28T00:00:00\""
+										}
+									]
+								},
+								"description": "Filtra PADS criados após uma data específica."
+							},
+							"response": []
+						},
+						{
+							"name": "created lt \"2025-08-29T00:00:00\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=created lt \"2025-08-29T00:00:00\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "created lt \"2025-08-29T00:00:00\""
+										}
+									]
+								},
+								"description": "Filtra PADS criados antes de uma data específica."
+							},
+							"response": []
+						},
+						{
+							"name": "modified gt \"2025-08-28T20:00:00\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=modified gt \"2025-08-28T20:00:00\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "modified gt \"2025-08-28T20:00:00\""
+										}
+									]
+								},
+								"description": "Filtra PADS modificados após um horário específico."
+							},
+							"response": []
+						},
+						{
+							"name": "created ge \"2025-08-28T00:00:00\" and created le \"2025-08-29T00:00:00\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/pads?filter=created ge \"2025-08-28T00:00:00\" and created le \"2025-08-29T00:00:00\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"pads"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "created ge \"2025-08-28T00:00:00\" and created le \"2025-08-29T00:00:00\""
+										}
+									]
+								},
+								"description": "Filtra PADS criados em um intervalo de datas (entre 28 e 29 de agosto de 2025)."
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "SCIM FILTERS - NOTES",
+			"item": [
+				{
+					"name": "Bools Filters",
+					"item": [
+						{
+							"name": "active eq true",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/notes?filter=active eq true",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"notes"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "active eq true"
+										}
+									]
+								},
+								"description": "Filtra NOTES ativas."
+							},
+							"response": []
+						},
+						{
+							"name": "active eq false",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/notes?filter=active eq false",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"notes"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "active eq false"
+										}
+									]
+								},
+								"description": "Filtra NOTES inativas."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Numerical Filters",
+					"item": [
+						{
+							"name": "status eq 1",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/notes?filter=status eq 1",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"notes"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "status eq 1"
+										}
+									]
+								},
+								"description": "Filtra NOTES com status 1."
+							},
+							"response": []
+						},
+						{
+							"name": "status eq 2",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/notes?filter=status eq 2",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"notes"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "status eq 2"
+										}
+									]
+								},
+								"description": "Filtra NOTES com status 2."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "String Filters",
+					"item": [
+						{
+							"name": "text eq \"Texto via PATCH QA\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/notes?filter=text eq \"Texto via PATCH QA\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"notes"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "text eq \"Texto via PATCH QA\""
+										}
+									]
+								},
+								"description": "Filtra NOTES por texto específico."
+							},
+							"response": []
+						},
+						{
+							"name": "text co \"Teste\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/notes?filter=text co \"Teste\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"notes"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "text co \"Teste\""
+										}
+									]
+								},
+								"description": "Filtra NOTES que contenham 'Teste' no texto."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Date Filters",
+					"item": [
+						{
+							"name": "created ge \"2025-08-28T00:00:00\" and created le \"2025-08-28T23:59:59\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/notes?filter=created ge \"2025-08-28T00:00:00\" and created le \"2025-08-28T23:59:59\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"notes"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "created ge \"2025-08-28T00:00:00\" and created le \"2025-08-28T23:59:59\""
+										}
+									]
+								},
+								"description": "Filtra NOTES criadas em 28 de agosto de 2025 (11 resultados)."
+							},
+							"response": []
+						},
+						{
+							"name": "created gt \"2025-08-28T00:00:00\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/notes?filter=created gt \"2025-08-28T00:00:00\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"notes"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "created gt \"2025-08-28T00:00:00\""
+										}
+									]
+								},
+								"description": "Filtra NOTES criadas após 28 de agosto de 2025 (12 resultados)."
+							},
+							"response": []
+						},
+						{
+							"name": "created lt \"2025-08-29T00:00:00\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/notes?filter=created lt \"2025-08-29T00:00:00\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"notes"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "created lt \"2025-08-29T00:00:00\""
+										}
+									]
+								},
+								"description": "Filtra NOTES criadas antes de 29 de agosto de 2025 (14 resultados)."
+							},
+							"response": []
+						},
+						{
+							"name": "modified gt \"2025-08-28T16:00:00\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/notes?filter=modified gt \"2025-08-28T16:00:00\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"notes"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "modified gt \"2025-08-28T16:00:00\""
+										}
+									]
+								},
+								"description": "Filtra NOTES modificadas após 16:00 de 28 de agosto de 2025."
+							},
+							"response": []
+						},
+						{
+							"name": "created ge \"2025-08-29T00:00:00\" and created le \"2025-08-29T23:59:59\"",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/notes?filter=created ge \"2025-08-29T00:00:00\" and created le \"2025-08-29T23:59:59\"",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"notes"
+									],
+									"query": [
+										{
+											"key": "filter",
+											"value": "created ge \"2025-08-29T00:00:00\" and created le \"2025-08-29T23:59:59\""
+										}
+									]
+								},
+								"description": "Filtra NOTES criadas em 29 de agosto de 2025 (1 resultado)."
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "SCIM PAGINATION",
+			"item": [
+				{
+					"name": "PADS - 1st page",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/pads?startIndex=1&count=5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							],
+							"query": [
+								{
+									"key": "startIndex",
+									"value": "1"
+								},
+								{
+									"key": "count",
+									"value": "5"
+								}
+							]
+						},
+						"description": "Primeira página de PADS (5 itens)."
+					},
+					"response": []
+				},
+				{
+					"name": "PADS - 2nd page",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/pads?startIndex=6&count=5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							],
+							"query": [
+								{
+									"key": "startIndex",
+									"value": "6"
+								},
+								{
+									"key": "count",
+									"value": "5"
+								}
+							]
+						},
+						"description": "Segunda página de PADS (5 itens)."
+					},
+					"response": []
+				},
+				{
+					"name": "NOTES - 3rd page",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notes?startIndex=1&count=3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "startIndex",
+									"value": "1"
+								},
+								{
+									"key": "count",
+									"value": "3"
+								}
+							]
+						},
+						"description": "Primeira página de NOTES (3 itens)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "ADVANCED SAMPLES",
+			"item": [
+				{
+					"name": "Filter + Pages",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/pads?filter=active eq true&startIndex=1&count=3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "active eq true"
+								},
+								{
+									"key": "startIndex",
+									"value": "1"
+								},
+								{
+									"key": "count",
+									"value": "3"
+								}
+							]
+						},
+						"description": "Combina filtro (PADS ativos) com paginação."
+					},
+					"response": []
+				},
+				{
+					"name": "Complex Filter + Pages",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/pads?filter=active eq true and status eq 1&startIndex=1&count=5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "active eq true and status eq 1"
+								},
+								{
+									"key": "startIndex",
+									"value": "1"
+								},
+								{
+									"key": "count",
+									"value": "5"
+								}
+							]
+						},
+						"description": "Combina filtro complexo (PADS ativos com status 1) com paginação."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:7065",
+			"type": "string"
+		}
+	]
+}

@@ -1,20 +1,16 @@
 using System.Security.Claims;
-
-using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Commands;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.SCIMv2.Queries;
-using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
-using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
 using Looplex.OpenForExtension.Abstractions.Plugins;
+using Looplex.Samples.Application.Commands;
 using Looplex.Samples.Domain.Entities;
-
 using MediatR;
-
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json.Linq;
 
 using Newtonsoft.Json.Linq;
 
@@ -22,248 +18,248 @@ namespace Looplex.Samples.Application.Services;
 
 public class Notes : SCIMv2<Note, Note>
 {
-  private readonly IRbacService? _rbacService;
-  private readonly ClaimsPrincipal? _user;
-  private readonly IMediator? _mediator;
+    private readonly NotesScimService _scimService;
+    private readonly IMediator? _mediator;
 
-  #region Reflectivity
+    #region Reflectivity
 
-  // ReSharper disable once PublicConstructorInAbstractClass
-  public Notes() : base()
-  {
-  }
-
-  #endregion
-
-  [ActivatorUtilitiesConstructor]
-  public Notes(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
-    IMediator mediator) : base(plugins)
-  {
-    _rbacService = rbacService;
-    _user = httpContextAccessor.HttpContext.User;
-    _mediator = mediator;
-  }
-
-  #region Query
-
-  public override async Task<ListResponse<Note>> Query(int startIndex, int count,
-    string? filter, string? sortBy, string? sortOrder,
-    CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
-    int page = Page(startIndex, count);
-
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-
-    if (filter == null)
+    // ReSharper disable once PublicConstructorInAbstractClass
+    public Notes() : base()
     {
-      throw new ArgumentNullException(nameof(filter));
+        // This constructor is only used for reflection, not for actual service instantiation
+        _scimService = null!;
+        _mediator = null;
     }
 
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+    #endregion
 
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
+    [ActivatorUtilitiesConstructor]
+    public Notes(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
+        IMediator mediator) : base(plugins)
     {
-      var query = new QueryResource<Note>(page, count, filter, sortBy, sortOrder);
-
-      var (result, totalResults) = await _mediator!.Send(query, cancellationToken);
-
-      ctx.Result = new ListResponse<Note>
-      {
-        StartIndex = startIndex, ItemsPerPage = count, Resources = result, TotalResults = totalResults
-      };
+        _mediator = mediator;
+        _scimService = new NotesScimService(plugins, rbacService, httpContextAccessor.HttpContext?.User, mediator);
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    #region Query
 
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-
-    return (ListResponse<Note>)ctx.Result;
-  }
-
-  #endregion
-
-  #region Create
-
-  public override async Task<Guid> Create(Note resource,
-    CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    ctx.Roles["Note"] = resource;
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
+    public override async Task<ListResponse<Note>> Query(int startIndex, int count,
+        string? filter, string? sortBy, string? sortOrder,
+        CancellationToken cancellationToken)
     {
-      var command = new CreateResource<Note>(ctx.Roles["Note"]);
+        cancellationToken.ThrowIfCancellationRequested();
+        
+        var context = _scimService.NewContext();
+        ((IDictionary<string, object>)context.State)["startIndex"] = startIndex;
+        ((IDictionary<string, object>)context.State)["count"] = count;
+        ((IDictionary<string, object>)context.State)["filter"] = filter ?? string.Empty;
+        ((IDictionary<string, object>)context.State)["sortBy"] = sortBy ?? string.Empty;
+        ((IDictionary<string, object>)context.State)["sortOrder"] = sortOrder ?? string.Empty;
 
-      var result = await _mediator!.Send(command, cancellationToken);
+        await _scimService.ExecutePluginPipelineAsync(context, cancellationToken);
 
-      ctx.Result = result;
+        if (context.Result == null)
+        {
+            // Return empty result if no data was processed
+            return new ListResponse<Note>
+            {
+                StartIndex = startIndex,
+                ItemsPerPage = count,
+                Resources = new List<Note>(),
+                TotalResults = 0
+            };
+        }
+
+        return (ListResponse<Note>)context.Result;
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    #endregion
 
-    return (Guid)ctx.Result;
-  }
+    #region Create
 
-  #endregion
-
-  #region Retrieve
-
-  public override async Task<Note?> Retrieve(Guid id, CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    ctx.Roles["Id"] = id;
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
+    public override async Task<Guid> Create(Note resource, CancellationToken cancellationToken)
     {
-      var query = new RetrieveResource<Note>(ctx.Roles["Id"]);
+        cancellationToken.ThrowIfCancellationRequested();
+        
+        var context = _scimService.NewContext();
+        context.Roles["Note"] = resource;
 
-      var note = await _mediator!.Send(query, cancellationToken);
+        await _scimService.ExecutePluginPipelineAsync(context, cancellationToken);
 
-      ctx.Result = note;
+        return (Guid)context.Result;
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    #endregion
 
-    return (Note?)ctx.Result;
-  }
+    #region Retrieve
 
-  #endregion
-
-  #region Replace
-
-  public override async Task<bool> Replace(Guid id, Note resource, CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    string resourceName = nameof(Note).ToLower();
-    ctx.Roles["Id"] = id;
-    ctx.Roles["Note"] = resource;
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
+    public override async Task<Note?> Retrieve(Guid id, CancellationToken cancellationToken)
     {
-      var command = new ReplaceResource<Note>(ctx.Roles["Id"], ctx.Roles["Note"]);
+        cancellationToken.ThrowIfCancellationRequested();
+        
+        var context = _scimService.NewContext();
+        context.Roles["Id"] = id;
 
-      var rows = await _mediator!.Send(command, cancellationToken);
+        await _scimService.ExecutePluginPipelineAsync(context, cancellationToken);
 
-      ctx.Result = rows > 0;
+        return (Note?)context.Result;
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    #endregion
 
-    return (bool)ctx.Result;
-  }
+    #region Replace
 
-  #endregion
-
-  #region Update
-
-  public override async Task<bool> Update(Guid id, Note resource, JArray patches, CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    string resourceName = nameof(Note).ToLower();
-    ctx.Roles["Id"] = id;
-    ctx.Roles["Note"] = resource;
-    ctx.Roles["Patches"] = patches;
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
+    public override async Task<bool> Replace(Guid id, Note resource, CancellationToken cancellationToken)
     {
-      var command = new UpdateResource<Note>(ctx.Roles["Id"], ctx.Roles["Note"], ctx.Roles["Patches"]);
+        cancellationToken.ThrowIfCancellationRequested();
+        
+        var context = _scimService.NewContext();
+        context.Roles["Id"] = id;
+        context.Roles["Note"] = resource;
 
-      var rows = await _mediator!.Send(command, cancellationToken);
+        await _scimService.ExecutePluginPipelineAsync(context, cancellationToken);
 
-      ctx.Result = rows > 0;
+        return (bool)context.Result;
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    #endregion
 
-    return (bool)ctx.Result;
-  }
+    #region Update
 
-  #endregion
-
-  #region Delete
-
-  public override async Task<bool> Delete(Guid id, CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    ctx.Roles["Id"] = id;
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
+    public override async Task<bool> Update(Guid id, Note resource, JArray patches, CancellationToken cancellationToken)
     {
-      var command = new DeleteResource<Note>(ctx.Roles["Id"]);
+        cancellationToken.ThrowIfCancellationRequested();
+        
+        var context = _scimService.NewContext();
+        context.Roles["Id"] = id;
+        context.Roles["Note"] = resource;
+        context.Roles["Patches"] = patches;
 
-      var rows = await _mediator!.Send(command, cancellationToken);
+        await _scimService.ExecutePluginPipelineAsync(context, cancellationToken);
 
-      ctx.Result = rows > 0;
+        return (bool)context.Result;
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    #endregion
 
-    return (bool)ctx.Result;
-  }
+    #region Delete
 
-  #endregion
+    public override async Task<bool> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        
+        var context = _scimService.NewContext();
+        context.Roles["Id"] = id;
+        context.Roles["Delete"] = true; // Add Delete role to distinguish from Retrieve
+
+        await _scimService.ExecutePluginPipelineAsync(context, cancellationToken);
+
+        return (bool)context.Result;
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// Concrete implementation of BaseScimService for Notes
+/// </summary>
+public class NotesScimService : BaseScimService
+{
+    private readonly IMediator _mediator;
+
+    public NotesScimService(IList<IPlugin> plugins, IRbacService? rbacService, ClaimsPrincipal? user, IMediator mediator) 
+        : base(plugins, rbacService, user)
+    {
+        _mediator = mediator;
+    }
+
+    protected override async Task ExecuteCustomActionAsync(IContext context, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (_mediator == null)
+            {
+                throw new InvalidOperationException("IMediator is not available");
+            }
+
+            // Log context state for debugging
+            var roles = string.Join(", ", context.Roles.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+            var stateKeys = string.Join(", ", ((IDictionary<string, object>)context.State).Keys);
+
+            // Determine operation type based on context roles and state
+            var stateDict = (IDictionary<string, object>)context.State;
+            
+            // Check for Query operation first (has startIndex in state)
+            if (stateDict.ContainsKey("startIndex"))
+            {
+                var startIndex = (int)stateDict["startIndex"];
+                var count = (int)stateDict["count"];
+                var filter = (string)stateDict["filter"];
+                var sortBy = stateDict["sortBy"] as string;
+                var sortOrder = stateDict["sortOrder"] as string;
+                var page = Page(startIndex, count);
+
+                var query = new QueryResource<Note>(page, count, filter, sortBy ?? string.Empty, sortOrder ?? string.Empty);
+                var (result, totalResults) = await _mediator.Send(query, cancellationToken);
+
+                context.Result = new ListResponse<Note>
+                {
+                    StartIndex = startIndex,
+                    ItemsPerPage = count,
+                    Resources = result ?? new List<Note>(),
+                    TotalResults = totalResults
+                };
+            }
+            // Check for Create operation (has Note but no Id)
+            else if (context.Roles.ContainsKey("Note") && !context.Roles.ContainsKey("Id"))
+            {
+                var command = new CreateNoteCommand((Note)context.Roles["Note"]);
+                var result = await _mediator.Send(command, cancellationToken);
+                context.Result = result;
+            }
+            // Check for Delete operation (has Id and Delete role)
+            else if (context.Roles.ContainsKey("Id") && context.Roles.ContainsKey("Delete"))
+            {
+                var id = (Guid)context.Roles["Id"];
+                var command = new DeleteNoteCommand(id);
+                var rows = await _mediator.Send(command, cancellationToken);
+                context.Result = rows > 0;
+            }
+            // Check for Replace operation (has Id and Note)
+            else if (context.Roles.ContainsKey("Id") && context.Roles.ContainsKey("Note"))
+            {
+                var id = (Guid)context.Roles["Id"];
+                var note = (Note)context.Roles["Note"];
+                
+                if (context.Roles.ContainsKey("Patches"))
+                {
+                    // Update operation
+                    var command = new UpdateNoteCommand(id, note, (JArray)context.Roles["Patches"]);
+                    var rows = await _mediator.Send(command, cancellationToken);
+                    context.Result = rows > 0;
+                }
+                else
+                {
+                    // Replace operation
+                    var command = new UpdateNoteCommand(id, note);
+                    var rows = await _mediator.Send(command, cancellationToken);
+                    context.Result = rows > 0;
+                }
+            }
+            // Check for Retrieve operation (has Id but no Note and no Delete)
+            else if (context.Roles.ContainsKey("Id") && !context.Roles.ContainsKey("Note") && !context.Roles.ContainsKey("Delete"))
+            {
+                var id = (Guid)context.Roles["Id"];
+                var query = new RetrieveResource<Note>(id);
+                var result = await _mediator.Send(query, cancellationToken);
+                context.Result = result;
+            }
+        }
+        catch (Exception)
+        {
+            // Log the exception and set a default result
+            context.Result = null;
+            throw;
+        }
+    }
 }
