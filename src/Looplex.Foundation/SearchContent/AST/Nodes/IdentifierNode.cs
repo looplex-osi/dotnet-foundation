@@ -67,18 +67,8 @@ public class IdentifierNode : IAstNode
     /// </summary>
     public string GetFullPath()
     {
-        var parts = new List<string>();
-        
-        if (!string.IsNullOrEmpty(SchemaPrefix))
-            parts.Add(SchemaPrefix);
-            
-        parts.Add(Name);
-        
-        if (!string.IsNullOrEmpty(SubAttribute))
-            parts.Add(SubAttribute);
-            
-        return string.Join(":", parts.Take(parts.Count - 1)) + 
-               (parts.Count > 1 && !string.IsNullOrEmpty(SubAttribute) ? "." + SubAttribute : "");
+        var basePath = string.IsNullOrEmpty(SchemaPrefix) ? Name : $"{SchemaPrefix}:{Name}";
+        return string.IsNullOrEmpty(SubAttribute) ? basePath : $"{basePath}.{SubAttribute}";
     }
 
 

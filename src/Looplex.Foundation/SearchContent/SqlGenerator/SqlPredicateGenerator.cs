@@ -53,7 +53,7 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
             return new SqlPredicateResult
             {
                 Sql = sql,
-                Parameters = _parameters
+                Parameters = new Dictionary<string, object?>(_parameters)
             };
         }
     }
@@ -116,27 +116,82 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
         var parameterName = GetNextParameterName();
         
         // Handle Value Path Filter EXISTS queries specially
-        if (fieldName.StartsWith("EXISTS"))
+        if (fieldName.StartsWith("EXISTS", StringComparison.OrdinalIgnoreCase))
         {
-            // For Value Path Filters, we need to add the value condition to the EXISTS query
             var vpfValueNode = node.Value as LiteralValueNode;
-            var vpfValue = GetParameterValue(vpfValueNode);
-            
-            // Extract the base EXISTS query (without the closing parenthesis)
-            var baseExists = fieldName.Substring(0, fieldName.LastIndexOf(')'));
-            
-            // Add the value condition based on the operator
-            var valueCondition = node.Operator switch
+            var rawValue = GetParameterValue(vpfValueNode);
+
+            // Strip the closing ')' to append additional predicate
+            var closeIdx = fieldName.LastIndexOf(')');
+            var baseExists = closeIdx >= 0
+                ? fieldName.Substring(0, closeIdx)
+                : fieldName;
+
+            // Try to extract the table alias used inside EXISTS (defaults to 'i')
+            var alias = ExtractExistsAlias(fieldName) ?? "i";
+            var columnExpr = _options.CaseSensitive
+                ? $"{alias}.dsValor"
+                : $"LOWER({alias}.dsValor)";
+
+            if (_options.UseParameters)
             {
-                ComparisonOperator.Equal => $" AND i.dsValor = '{vpfValue}'",
-                ComparisonOperator.NotEqual => $" AND i.dsValor != '{vpfValue}'",
-                ComparisonOperator.Contains => $" AND i.dsValor LIKE '%{vpfValue}%'",
-                ComparisonOperator.StartsWith => $" AND i.dsValor LIKE '{vpfValue}%'",
-                ComparisonOperator.EndsWith => $" AND i.dsValor LIKE '%{vpfValue}'",
-                _ => throw new ArgumentException($"Unsupported operator for Value Path Filter: {node.Operator}")
-            };
-            
-            return baseExists + valueCondition + ")";
+                var paramName = GetNextParameterName();
+                object? paramVal = rawValue;
+                if (paramVal is string s)
+                {
+                    paramVal = node.Operator switch
+                    {
+                        ComparisonOperator.Contains    => $"%{s}%",
+                        ComparisonOperator.StartsWith   => $"{s}%",
+                        ComparisonOperator.EndsWith     => $"%{s}",
+                        _                               => s
+                    };
+                }
+                lock (_lockObject) { _parameters[paramName] = paramVal; }
+
+                var rhs = _options.CaseSensitive
+                    ? $"@{paramName}"
+                    : $"LOWER(@{paramName})";
+                var op = node.Operator switch
+                {
+                    ComparisonOperator.Equal       => "=",
+                    ComparisonOperator.NotEqual    => "!=",
+                    ComparisonOperator.Contains    => "LIKE",
+                    ComparisonOperator.StartsWith   => "LIKE",
+                    ComparisonOperator.EndsWith     => "LIKE",
+                    _                               => throw new ArgumentException($"Unsupported operator for Value Path Filter: {node.Operator}")
+                };
+                return $"{baseExists} AND {columnExpr} {op} {rhs})";
+            }
+            else
+            {
+                var inlined = rawValue;
+                if (inlined is string s)
+                {
+                    inlined = node.Operator switch
+                    {
+                        ComparisonOperator.Contains    => $"%{s}%",
+                        ComparisonOperator.StartsWith   => $"{s}%",
+                        ComparisonOperator.EndsWith     => $"%{s}",
+                        _                               => s
+                    };
+                }
+                var rhs = EscapeValue(inlined);
+                if (!_options.CaseSensitive)
+                {
+                    rhs = $"LOWER({rhs})";
+                }
+                var op = node.Operator switch
+                {
+                    ComparisonOperator.Equal       => "=",
+                    ComparisonOperator.NotEqual    => "!=",
+                    ComparisonOperator.Contains    => "LIKE",
+                    ComparisonOperator.StartsWith   => "LIKE",
+                    ComparisonOperator.EndsWith     => "LIKE",
+                    _                               => throw new ArgumentException($"Unsupported operator for Value Path Filter: {node.Operator}")
+                };
+                return $"{baseExists} AND {columnExpr} {op} {rhs})";
+            }
         }
         
         // Handle present operator specially
@@ -535,6 +590,19 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
             return $"LOWER({fieldName}) LIKE LOWER({escapedValue})";
         }
         return $"{fieldName} LIKE {escapedValue}";
+    }
+
+    private static string? ExtractExistsAlias(string existsSql)
+    {
+        const string marker = "FROM TIdentidade ";
+        var idx = existsSql.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (idx < 0) return null;
+        idx += marker.Length;
+        // alias ends at first whitespace or ')'
+        var end = existsSql.IndexOfAny(new[] { ' ', ')', '\n', '\r', '\t' }, idx);
+        end = end < 0 ? existsSql.Length : end;
+        var alias = existsSql.Substring(idx, end - idx).Trim();
+        return string.IsNullOrEmpty(alias) ? null : alias;
     }
 
     private string GenerateInlineEndsWithExpression(string fieldName, object? value)

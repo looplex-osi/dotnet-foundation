@@ -187,6 +187,11 @@ public class PerformanceAndRobustnessTests
     public void Parse_ResourceCleanup_ShouldNotLeakResources()
     {
         // Arrange
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Inconclusive("HandleCount is only available on Windows.");
+            return;
+        }
         var initialHandles = Process.GetCurrentProcess().HandleCount;
         var filters = GenerateResourceTestFilters(1000);
 

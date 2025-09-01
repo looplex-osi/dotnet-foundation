@@ -69,6 +69,8 @@ public class SearchContentService : ISearchContentService
     {
         if (string.IsNullOrWhiteSpace(scimFilter))
             throw new FilterParseException("SCIM filter cannot be null or empty", 0);
+        if (fieldMapping is null)
+            throw new ArgumentNullException(nameof(fieldMapping));
 
         var ast = _parser.Parse(scimFilter);
         return _sqlGenerator.GeneratePredicate(ast, fieldMapping);
@@ -78,6 +80,8 @@ public class SearchContentService : ISearchContentService
     {
         if (string.IsNullOrWhiteSpace(scimFilter))
             throw new FilterParseException("SCIM filter cannot be null or empty", 0);
+        if (string.IsNullOrWhiteSpace(tableAlias))
+            throw new ArgumentException("Table alias cannot be null or whitespace.", nameof(tableAlias));
 
         var ast = _parser.Parse(scimFilter);
         return _sqlGenerator.GeneratePredicate(ast, tableAlias);
@@ -123,6 +127,8 @@ public class SearchContentService : ISearchContentService
     {
         if (string.IsNullOrWhiteSpace(scimFilter))
             throw new FilterParseException("SCIM filter cannot be null or empty", 0);
+        if (fieldMapping is null)
+            throw new ArgumentNullException(nameof(fieldMapping));
 
         var options = new SqlGenerationOptions
         {

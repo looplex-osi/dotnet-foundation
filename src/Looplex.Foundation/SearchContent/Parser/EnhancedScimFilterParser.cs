@@ -77,23 +77,25 @@ public class EnhancedScimFilterParser : IFilterParser
     private void ValidateParenthesesBalance(string expression)
     {
         var stack = new Stack<int>();
-        
+        bool inQuotes = false;
         for (int i = 0; i < expression.Length; i++)
         {
-            if (expression[i] == '(')
+            var c = expression[i];
+            // Toggle only on unescaped quotes
+            if (c == '"' && (i == 0 || expression[i - 1] != '\\'))
             {
-                stack.Push(i);
+                inQuotes = !inQuotes;
+                continue;
             }
-            else if (expression[i] == ')')
+            if (inQuotes) continue;
+            if (c == '(') stack.Push(i);
+            else if (c == ')')
             {
                 if (stack.Count == 0)
-                {
                     throw new FilterParseException($"Unmatched closing parenthesis at position {i}", i);
-                }
                 stack.Pop();
             }
         }
-        
         if (stack.Count > 0)
         {
             var firstUnmatched = stack.Pop();
@@ -106,16 +108,15 @@ public class EnhancedScimFilterParser : IFilterParser
     /// </summary>
     private void ValidateQuoteBalance(string expression)
     {
-        var quoteCount = 0;
-        var inQuotes = false;
-        
+        bool inQuotes = false;
+        bool escaped = false;
         for (int i = 0; i < expression.Length; i++)
         {
-            if (expression[i] == '"')
+            var c = expression[i];
+            if (escaped) { escaped = false; continue; }
+            if (c == '\\') { escaped = true; continue; }
+            if (c == '"') 
             {
-                quoteCount++;
-                inQuotes = !inQuotes;
-                
                 // Check for triple quotes (invalid)
                 if (i + 2 < expression.Length && 
                     expression[i + 1] == '"' && 
@@ -123,13 +124,11 @@ public class EnhancedScimFilterParser : IFilterParser
                 {
                     throw new FilterParseException($"Triple quotes not allowed at position {i}", i);
                 }
+                inQuotes = !inQuotes;
             }
         }
-        
-        if (quoteCount % 2 != 0)
-        {
+        if (inQuotes)
             throw new FilterParseException("Unmatched quotes in filter expression");
-        }
     }
 
     public bool TryParse(string filterExpression, out IAstNode? astNode)
@@ -220,6 +219,7 @@ public class EnhancedScimFilterParser : IFilterParser
                 switch (expression[i + 1])
                 {
                     case '"': sb.Append('"'); break;
+                    case '\'': sb.Append('\''); break; // Allow escaped single quote
                     case '\\': sb.Append('\\'); break;
                     case '/': sb.Append('/'); break;
                     case 'b': sb.Append('\b'); break;
@@ -269,37 +269,60 @@ public class EnhancedScimFilterParser : IFilterParser
                 var attributeName = sb.ToString();
                 sb.Clear();
                 
-                // Read the entire Value Path Filter
+                // Read the entire Value Path Filter (quote-aware)
                 var bracketCount = 0;
+                var inQuotes = false;
+                var escaped = false;
                 var valuePathFilter = new StringBuilder();
-                
                 while (i < expression.Length)
                 {
-                    valuePathFilter.Append(expression[i]);
-                    
-                    if (expression[i] == '[')
-                        bracketCount++;
-                    else if (expression[i] == ']')
+                    var c = expression[i];
+                    valuePathFilter.Append(c);
+
+                    // Handle escape sequences so we don't toggle inQuotes on an escaped quote
+                    if (!escaped && c == '\\')
                     {
-                        bracketCount--;
-                        if (bracketCount == 0)
+                        escaped = true;
+                        i++;
+                        continue;
+                    }
+
+                    // Toggle quote state when seeing an unescaped double-quote
+                    if (!escaped && c == '"')
+                        inQuotes = !inQuotes;
+
+                    // Only count brackets when not inside a string literal
+                    if (!inQuotes)
+                    {
+                        if (c == '[')
                         {
-                            i++;
-                            // Check for .Value or similar sub-attribute
-                            if (i < expression.Length && expression[i] == '.')
+                            bracketCount++;
+                        }
+                        else if (c == ']')
+                        {
+                            bracketCount--;
+                            if (bracketCount == 0)
                             {
-                                valuePathFilter.Append(expression[i]);
                                 i++;
-                                while (i < expression.Length && 
-                                       (char.IsLetterOrDigit(expression[i]) || expression[i] == '_'))
+                                // Optionally capture a single sub-attribute segment (e.g., ".Value")
+                                if (i < expression.Length && expression[i] == '.')
                                 {
-                                    valuePathFilter.Append(expression[i]);
+                                    valuePathFilter.Append('.');
                                     i++;
+                                    while (i < expression.Length &&
+                                           (char.IsLetterOrDigit(expression[i]) || expression[i] == '_'))
+                                    {
+                                        valuePathFilter.Append(expression[i]);
+                                        i++;
+                                    }
                                 }
+                                break;
                             }
-                            break;
                         }
                     }
+
+                    // Reset escape flag and advance
+                    escaped = false;
                     i++;
                 }
                 
@@ -505,10 +528,10 @@ internal class TokenParser
         if (CurrentToken?.Type == TokenType.Not)
         {
             Advance(); // Skip "not"
-            var operand = ParsePrimaryExpression();
+            // Allow chaining: not not A  => NOT (NOT A)
+            var operand = ParseNotExpression();
             return new UnaryExpressionNode(operand, UnaryOperator.Not);
         }
-        
         return ParsePrimaryExpression();
     }
 

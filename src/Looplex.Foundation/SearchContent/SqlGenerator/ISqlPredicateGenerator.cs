@@ -57,7 +57,7 @@ public class SqlPredicateResult
     /// <summary>
     /// SQL parameters to prevent injection attacks
     /// </summary>
-    public Dictionary<string, object?> Parameters { get; set; } = new();
+    public System.Collections.Generic.IReadOnlyDictionary<string, object?> Parameters { get; set; } = new System.Collections.Generic.Dictionary<string, object?>();
 
     /// <summary>
     /// Check if the result contains any conditions
@@ -78,7 +78,7 @@ public class SqlGenerationOptions
     /// <summary>
     /// Custom mapping from SCIM attributes to SQL column names
     /// </summary>
-    public Dictionary<string, string> FieldMapping { get; set; } = new();
+    public Dictionary<string, string> FieldMapping { get; set; } = new(System.StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Table alias to prefix column names
