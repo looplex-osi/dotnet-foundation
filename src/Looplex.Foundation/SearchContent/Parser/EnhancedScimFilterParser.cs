@@ -26,7 +26,8 @@ public class EnhancedScimFilterParser : IFilterParser
     private readonly Dictionary<string, BinaryOperator> _logicalOperators;
     
     // Static compiled regex for better performance
-    private static readonly Regex AttributePatternRegex = new(@"^[a-zA-Z][a-zA-Z0-9_\.]*[a-zA-Z0-9_]$", RegexOptions.Compiled);
+    // Must start with a letter; may contain letters, digits, underscores, and dots; cannot end with a dot
+    private static readonly Regex AttributePatternRegex = new(@"^[a-zA-Z](?:[a-zA-Z0-9_\.]*[a-zA-Z0-9_])?$", RegexOptions.Compiled);
     
     public EnhancedScimFilterParser()
     {
@@ -255,9 +256,9 @@ public class EnhancedScimFilterParser : IFilterParser
         // Check for Value Path Filter syntax: identities[condition].Value
         if (i < expression.Length && char.IsLetter(expression[i]))
         {
-            // Read attribute name
+            // Read attribute name (support URN prefixes)
             while (i < expression.Length && 
-                   (char.IsLetterOrDigit(expression[i]) || expression[i] == '_' || expression[i] == '.'))
+                   (char.IsLetterOrDigit(expression[i]) || expression[i] == '_' || expression[i] == '.' || expression[i] == ':'))
             {
                 sb.Append(expression[i]);
                 i++;
@@ -324,6 +325,12 @@ public class EnhancedScimFilterParser : IFilterParser
                     // Reset escape flag and advance
                     escaped = false;
                     i++;
+                }
+
+                // If we exited the loop without closing all brackets, fail fast with a precise error.
+                if (bracketCount != 0)
+                {
+                    throw new FilterParseException($"Unterminated value path filter starting at position {startIndex}", startIndex);
                 }
                 
                 return (new Token(TokenType.ValuePathFilter, $"{attributeName}{valuePathFilter}", startIndex), i);
@@ -684,9 +691,13 @@ internal class TokenParser
                 var numberValue = CurrentToken.Value;
                 Advance();
                 
-                if (decimal.TryParse(numberValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var decimalVal))
+                if (decimal.TryParse(numberValue, 
+                                     NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+                                     CultureInfo.InvariantCulture,
+                                     out var decimalVal))
                 {
-                    if (decimalVal == Math.Floor(decimalVal))
+                    var isInteger = decimal.Truncate(decimalVal) == decimalVal;
+                    if (isInteger && decimalVal >= int.MinValue && decimalVal <= int.MaxValue)
                         return new LiteralValueNode((int)decimalVal, LiteralType.Integer);
                     return new LiteralValueNode(decimalVal, LiteralType.Decimal);
                 }

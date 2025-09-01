@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Text;
 
-using Antlr4.Runtime;
-
-using Looplex.Foundation.SCIMv2.Antlr;
-using Looplex.Foundation.SCIMv2.Entities;
+using Looplex.Foundation.SearchContent;
+using Looplex.Foundation.SearchContent.SqlGenerator;
 
 namespace Looplex.Foundation.Helpers;
 
@@ -27,19 +25,24 @@ public static class Strings
   public static string? ToSqlPredicate(this string? filters, IDictionary<string, string>? attrMap = null,
     HashSet<string>? allowedAttr = null)
   {
-    string? result = null;
+    if (string.IsNullOrEmpty(filters))
+      return null;
 
-    if (!string.IsNullOrEmpty(filters))
+    try
     {
-      var inputStream = new AntlrInputStream(filters);
-      var lexer = new ScimFilterLexer(inputStream);
-      var tokens = new CommonTokenStream(lexer);
-      var parser = new ScimFilterParser(tokens);
-      var tree = parser.parse();
-      var visitor = new SCIMv2ToSQLVisitor { AttributeMapper = attrMap, AllowedAttributes = allowedAttr};
-      result = visitor.Visit(tree);
+      var service = new SearchContentService();
+      var options = new SqlGenerationOptions
+      {
+        FieldMapping = attrMap != null ? new Dictionary<string, string>(attrMap) : new Dictionary<string, string>()
+      };
+      
+      var result = service.ConvertToSql(filters, options);
+      return result.Sql;
     }
-
-    return result;
+    catch
+    {
+      // Return null on parsing errors for backward compatibility
+      return null;
+    }
   }
 }

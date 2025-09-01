@@ -396,32 +396,67 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
             _ => condition.op
         };
         
-        // Format value
-        var sqlValue = condition.op.ToLower() switch
+        // Use parameters to prevent SQL injection
+        if (_options.UseParameters)
         {
-            "co" => $"'%{condition.value}%'",
-            "sw" => $"'{condition.value}%'",
-            "ew" => $"'%{condition.value}'",
-            _ => $"'{condition.value}'"
-        };
-        
-        // Generate EXISTS subquery
-        var existsQuery = $"EXISTS (SELECT 1 FROM TIdentidade {tableAlias} WHERE {tableAlias}.cdProcesso = p.cdProcesso AND {tableAlias}.{columnName} {sqlOperator} {sqlValue}";
-        
-        // Add sub-attribute condition if specified
-        if (!string.IsNullOrEmpty(subAttribute))
-        {
-            var subColumnName = subAttribute.ToLower() switch
+            var paramName = GetNextParameterName();
+            var paramValue = condition.op.ToLower() switch
             {
-                "value" => "dsValor",
-                "id" => "id",
-                _ => subAttribute
+                "co" => $"%{condition.value}%",
+                "sw" => $"{condition.value}%",
+                "ew" => $"%{condition.value}",
+                _ => condition.value
             };
-            existsQuery += $" AND {tableAlias}.{subColumnName} IS NOT NULL";
+            
+            lock (_lockObject) { _parameters[paramName] = paramValue; }
+            
+            // Generate EXISTS subquery with parameter
+            var existsQuery = $"EXISTS (SELECT 1 FROM TIdentidade {tableAlias} WHERE {tableAlias}.cdProcesso = p.cdProcesso AND {tableAlias}.{columnName} {sqlOperator} @{paramName}";
+            
+            // Add sub-attribute condition if specified
+            if (!string.IsNullOrEmpty(subAttribute))
+            {
+                var subColumnName = subAttribute.ToLower() switch
+                {
+                    "value" => "dsValor",
+                    "id" => "id",
+                    _ => subAttribute
+                };
+                existsQuery += $" AND {tableAlias}.{subColumnName} IS NOT NULL";
+            }
+            
+            existsQuery += ")";
+            return existsQuery;
         }
-        
-        existsQuery += ")";
-        return existsQuery;
+        else
+        {
+            // Escape value for inline SQL (less secure, but maintains backward compatibility)
+            var escapedValue = EscapeValue(condition.op.ToLower() switch
+            {
+                "co" => $"%{condition.value}%",
+                "sw" => $"{condition.value}%",
+                "ew" => $"%{condition.value}",
+                _ => condition.value
+            });
+            
+            // Generate EXISTS subquery with escaped value
+            var existsQuery = $"EXISTS (SELECT 1 FROM TIdentidade {tableAlias} WHERE {tableAlias}.cdProcesso = p.cdProcesso AND {tableAlias}.{columnName} {sqlOperator} {escapedValue}";
+            
+            // Add sub-attribute condition if specified
+            if (!string.IsNullOrEmpty(subAttribute))
+            {
+                var subColumnName = subAttribute.ToLower() switch
+                {
+                    "value" => "dsValor",
+                    "id" => "id",
+                    _ => subAttribute
+                };
+                existsQuery += $" AND {tableAlias}.{subColumnName} IS NOT NULL";
+            }
+            
+            existsQuery += ")";
+            return existsQuery;
+        }
     }
 
     private string GenerateEqualExpression(string fieldName, string parameterName, object? value)
@@ -634,9 +669,9 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
                 return intValue.ToString();
             }
             
-            if (decimal.TryParse(stringValue, out var decimalValue))
+            if (decimal.TryParse(stringValue, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var decimalValue))
             {
-                return decimalValue.ToString();
+                return decimalValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
             }
 
             if (_options.EscapeStrings)
