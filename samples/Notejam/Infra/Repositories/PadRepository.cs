@@ -1,5 +1,4 @@
 using System.Data;
-using Microsoft.Data.SqlClient;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.SCIMv2.Queries;
@@ -85,15 +84,8 @@ public class PadRepository : IPadRepository
             
             var baseQuery = BuildBaseQuery();
             var finalQuery = ApplyScimFilter(baseQuery, filter, command);
-            
-            // SECURITY: Use parameterized queries for pagination
-            var offset = (page - 1) * pageSize;
-            finalQuery += $" ORDER BY p.{PadConfiguration.Database.UpdatedColumn} DESC OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY";
+            finalQuery += $" ORDER BY p.{PadConfiguration.Database.UpdatedColumn} DESC OFFSET {(page - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
             command.CommandText = finalQuery;
-            
-            // Add pagination parameters
-            command.Parameters.Add(new SqlParameter("@offset", SqlDbType.Int) { Value = offset });
-            command.Parameters.Add(new SqlParameter("@pageSize", SqlDbType.Int) { Value = pageSize });
             
 
 
@@ -490,6 +482,14 @@ public class PadRepository : IPadRepository
         var service = new Looplex.Foundation.SearchContent.SearchContentService();
         var result = service.ConvertToSql(filter, options);
         
-        return (result.Sql, result.Parameters ?? new Dictionary<string, object?>());
+        var parameters = new Dictionary<string, object>();
+        if (result.Parameters != null)
+        {
+            foreach (var kvp in result.Parameters)
+            {
+                parameters[kvp.Key] = kvp.Value ?? string.Empty;
+            }
+        }
+        return (result.Sql, parameters);
     }
 }

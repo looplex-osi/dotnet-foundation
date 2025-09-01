@@ -113,13 +113,6 @@ public abstract class BaseScimService
     /// </summary>
     protected static int Page(int startIndex, int count)
     {
-        // Prevent division by zero and negative inputs
-        if (count <= 0)
-            throw new ArgumentException("Count must be greater than zero", nameof(count));
-        
-        if (startIndex < 1)
-            return 1;
-            
         return (startIndex - 1) / count + 1;
     }
 
