@@ -1,4 +1,5 @@
 using System.Data;
+using Microsoft.Data.SqlClient;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.SCIMv2.Queries;
 using Looplex.Samples.Application;
@@ -62,8 +63,15 @@ public class NoteRepository(IDbConnections connections, ILogger<NoteRepository> 
             
             var baseQuery = BuildBaseQuery();
             var finalQuery = ApplyScimFilter(baseQuery, filter, command);
-            finalQuery += $" ORDER BY n.{NoteConfiguration.Database.UpdatedColumn} DESC OFFSET {(page - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
+            
+            // SECURITY: Use parameterized queries for pagination
+            var offset = (page - 1) * pageSize;
+            finalQuery += $" ORDER BY n.{NoteConfiguration.Database.UpdatedColumn} DESC OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY";
             command.CommandText = finalQuery;
+            
+            // Add pagination parameters
+            command.Parameters.Add(new SqlParameter("@offset", SqlDbType.Int) { Value = offset });
+            command.Parameters.Add(new SqlParameter("@pageSize", SqlDbType.Int) { Value = pageSize });
             
 
             foreach (IDbDataParameter param in command.Parameters)

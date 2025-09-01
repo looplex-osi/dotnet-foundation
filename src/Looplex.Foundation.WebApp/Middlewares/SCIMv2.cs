@@ -139,15 +139,30 @@ public static class SCIMv2
       // SCIMv2 Filtering (RFC 7644 �3.4.2.2)
       string? filter = null;
       if (context.Request.Query.TryGetValue("filter", out var filterStr))
+      {
+        // SECURITY: Validate filter length to prevent DoS
+        if (filterStr.ToString().Length > 10000)
+          throw new ArgumentException("Filter expression too long (maximum 10000 characters)");
         filter = filterStr;
+      }
 
       // SCIMv2 Sorting (RFC 7644 �3.4.2.3)
       string? sortBy = null;
       string? sortOrder = null;
       if (context.Request.Query.TryGetValue("sortBy", out var sortByStr))
+      {
+        // SECURITY: Validate sortBy length and content
+        if (sortByStr.ToString().Length > 100)
+          throw new ArgumentException("SortBy parameter too long (maximum 100 characters)");
         sortBy = sortByStr;
+      }
       if (context.Request.Query.TryGetValue("sortOrder", out var sortOrderStr))
+      {
+        // SECURITY: Validate sortOrder values
+        if (sortOrderStr != "ascending" && sortOrderStr != "descending")
+          throw new ArgumentException("SortOrder must be 'ascending' or 'descending'");
         sortOrder = sortOrderStr;
+      }
 
       // SCIMv2 Pagination (RFC 7644 �3.4.2.4)
       int startIndex = 1;
@@ -156,12 +171,17 @@ public static class SCIMv2
       if (context.Request.Query.TryGetValue("count", out var countStr) &&
           int.TryParse(countStr, out var parsedCount))  
       {
+        // SECURITY: Validate count range
+        if (parsedCount < 1 || parsedCount > 1000)
+          throw new ArgumentException("Count must be between 1 and 1000");
         count = parsedCount;
-
       }
       if (context.Request.Query.TryGetValue("startIndex", out var startIndexStr) &&
           int.TryParse(startIndexStr, out var parsedStart))
       {
+        // SECURITY: Validate startIndex range
+        if (parsedStart < 1)
+          throw new ArgumentException("StartIndex must be greater than 0");
         startIndex = parsedStart;
       }
 

@@ -121,20 +121,33 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
             // For Value Path Filters, we need to add the value condition to the EXISTS query
             var vpfValueNode = node.Value as LiteralValueNode;
             var vpfValue = GetParameterValue(vpfValueNode);
+            var vpfParameterName = GetNextParameterName();
             
             // Extract the base EXISTS query (without the closing parenthesis)
             var baseExists = fieldName.Substring(0, fieldName.LastIndexOf(')'));
             
-            // Add the value condition based on the operator
+            // Add the value condition based on the operator - SECURITY: Use parameterized queries
             var valueCondition = node.Operator switch
             {
-                ComparisonOperator.Equal => $" AND i.dsValor = '{vpfValue}'",
-                ComparisonOperator.NotEqual => $" AND i.dsValor != '{vpfValue}'",
-                ComparisonOperator.Contains => $" AND i.dsValor LIKE '%{vpfValue}%'",
-                ComparisonOperator.StartsWith => $" AND i.dsValor LIKE '{vpfValue}%'",
-                ComparisonOperator.EndsWith => $" AND i.dsValor LIKE '%{vpfValue}'",
+                ComparisonOperator.Equal => $" AND i.dsValor = @{vpfParameterName}",
+                ComparisonOperator.NotEqual => $" AND i.dsValor != @{vpfParameterName}",
+                ComparisonOperator.Contains => $" AND i.dsValor LIKE @{vpfParameterName}",
+                ComparisonOperator.StartsWith => $" AND i.dsValor LIKE @{vpfParameterName}",
+                ComparisonOperator.EndsWith => $" AND i.dsValor LIKE @{vpfParameterName}",
                 _ => throw new ArgumentException($"Unsupported operator for Value Path Filter: {node.Operator}")
             };
+            
+            // Add parameter for Value Path Filter value
+            lock (_lockObject)
+            {
+                _parameters[vpfParameterName] = node.Operator switch
+                {
+                    ComparisonOperator.Contains => $"%{vpfValue}%",
+                    ComparisonOperator.StartsWith => $"{vpfValue}%",
+                    ComparisonOperator.EndsWith => $"%{vpfValue}",
+                    _ => vpfValue
+                };
+            }
             
             return baseExists + valueCondition + ")";
         }
@@ -341,13 +354,16 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
             _ => condition.op
         };
         
-        // Format value
+        // SECURITY: Escape value to prevent SQL injection
+        var escapedValue = condition.value.Replace("'", "''");
+        
+        // Format value with proper escaping
         var sqlValue = condition.op.ToLower() switch
         {
-            "co" => $"'%{condition.value}%'",
-            "sw" => $"'{condition.value}%'",
-            "ew" => $"'%{condition.value}'",
-            _ => $"'{condition.value}'"
+            "co" => $"'%{escapedValue}%'",
+            "sw" => $"'{escapedValue}%'",
+            "ew" => $"'%{escapedValue}'",
+            _ => $"'{escapedValue}'"
         };
         
         // Generate EXISTS subquery
@@ -571,13 +587,10 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
                 return decimalValue.ToString();
             }
 
-            if (_options.EscapeStrings)
-            {
-                // Escape single quotes by doubling them
-                var escaped = stringValue.Replace("'", "''");
-                return $"'{escaped}'";
-            }
-            return $"'{stringValue}'";
+            // SECURITY: Always escape strings to prevent SQL injection
+            // Escape single quotes by doubling them
+            var escaped = stringValue.Replace("'", "''");
+            return $"'{escaped}'";
         }
 
         if (value is bool boolValue)

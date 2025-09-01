@@ -12,8 +12,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 
-using Newtonsoft.Json.Linq;
-
 namespace Looplex.Samples.Application.Services;
 
 public class Notes : SCIMv2<Note, Note>
