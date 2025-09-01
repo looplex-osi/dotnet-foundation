@@ -341,7 +341,28 @@ public class PerformanceAndRobustnessTests
         {
             var scaleRatio = (double)scales[i] / scales[i - 1];
             var timeRatio = (double)scaleResults[scales[i]] / scaleResults[scales[i - 1]];
-            ratios.Add(timeRatio / scaleRatio);
+            
+            // Handle edge cases where time is very small
+            if (scaleResults[scales[i - 1]] == 0)
+            {
+                // If previous time was 0, check if current time is reasonable
+                Assert.IsTrue(scaleResults[scales[i]] < 1000, 
+                    $"Time for scale {scales[i]} ({scaleResults[scales[i]]}ms) is unexpectedly high");
+                continue;
+            }
+            
+            var ratio = timeRatio / scaleRatio;
+            
+            // Skip ratio calculation if it would result in infinity
+            if (double.IsInfinity(ratio) || double.IsNaN(ratio))
+            {
+                // Just verify that the current time is reasonable
+                Assert.IsTrue(scaleResults[scales[i]] < 1000, 
+                    $"Time for scale {scales[i]} ({scaleResults[scales[i]]}ms) is unexpectedly high");
+                continue;
+            }
+            
+            ratios.Add(ratio);
         }
 
         // Time increase should be roughly proportional to scale increase
