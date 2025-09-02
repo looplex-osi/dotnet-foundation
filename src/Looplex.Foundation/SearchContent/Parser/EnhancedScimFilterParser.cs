@@ -537,7 +537,10 @@ internal class TokenParser
     public IAstNode ParseExpression()
     {
         _recursionDepth = 0;
-        return ParseOrExpression();
+        var expr = ParseOrExpression();
+        if (CurrentToken != null)
+            throw new FilterParseException($"Unexpected token '{CurrentToken.Value}' at position {CurrentPosition}", CurrentPosition);
+        return expr;
     }
 
     private IAstNode ParseOrExpression()
