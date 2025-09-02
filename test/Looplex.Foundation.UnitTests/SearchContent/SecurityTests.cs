@@ -618,6 +618,73 @@ public class SecurityTests
 
     #endregion
 
+    #region Trailing Token Validation Tests
+
+    [TestMethod]
+    public void Parse_TrailingTokens_ShouldBeRejected()
+    {
+        // Arrange - Filters with trailing tokens that should be rejected
+        var trailingTokenFilters = new[]
+        {
+            "userName eq \"john\" garbage",
+            "userName eq \"john\" and department eq \"IT\" extra",
+            "userName eq \"john\" or",
+            "userName eq \"john\" and",
+            "userName eq \"john\" not",
+            "userName eq \"john\" eq",
+            "userName eq \"john\" ne",
+            "userName eq \"john\" co",
+            "userName eq \"john\" sw",
+            "userName eq \"john\" ew",
+            "userName eq \"john\" gt",
+            "userName eq \"john\" lt",
+            "userName eq \"john\" ge",
+            "userName eq \"john\" le",
+            "userName eq \"john\" pr",
+            "userName eq \"john\" (",
+            "userName eq \"john\" )",
+            "userName eq \"john\" \"extra\"",
+            "userName eq \"john\" 123",
+            "userName eq \"john\" true",
+            "userName eq \"john\" false",
+            "userName eq \"john\" null"
+        };
+
+        foreach (var filter in trailingTokenFilters)
+        {
+            // Act & Assert - Should reject filters with trailing tokens
+            Assert.ThrowsException<FilterParseException>(() => _service.ConvertToSql(filter),
+                $"Should reject filter with trailing tokens: {filter}");
+        }
+    }
+
+    [TestMethod]
+    public void Parse_ValidFilters_ShouldNotRejectTrailingTokens()
+    {
+        // Arrange - Valid filters that should be accepted
+        var validFilters = new[]
+        {
+            "userName eq \"john\"",
+            "userName eq \"john\" and department eq \"IT\"",
+            "userName eq \"john\" or department eq \"IT\"",
+            "not userName eq \"john\"",
+            "userName eq \"john\" and (department eq \"IT\" or role eq \"admin\")",
+            "(userName eq \"john\" and department eq \"IT\") or (role eq \"admin\" and active eq true)"
+        };
+
+        foreach (var filter in validFilters)
+        {
+            // Act
+            var result = _service.ConvertToSql(filter);
+
+            // Assert - Should accept valid filters
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.HasConditions);
+        }
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static string BuildDeeplyNestedExpression(int depth)
