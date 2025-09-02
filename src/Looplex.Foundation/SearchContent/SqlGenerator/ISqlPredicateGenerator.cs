@@ -88,7 +88,7 @@ public class SqlGenerationOptions
     /// <summary>
     /// Whether to use case-sensitive string comparisons
     /// </summary>
-    public bool CaseSensitive { get; set; } = false;
+    public bool CaseSensitive { get; set; } = true;
 
     /// <summary>
     /// Parameter prefix for generated parameter names

@@ -58,18 +58,55 @@ public class EnhancedScimFilterParser : IFilterParser
             throw new FilterParseException("Filter expression cannot be null or empty");
 
         // Validate input length to prevent DoS
-        if (filterExpression.Length > 10000)
-            throw new FilterParseException("Filter expression too long (maximum 10000 characters)");
+        if (filterExpression.Length > 5000)
+            throw new FilterParseException("Filter expression too long (maximum 5000 characters)");
 
-        // Validate parentheses balance
+        // Validate parentheses balance with depth limit
         ValidateParenthesesBalance(filterExpression);
-        
+
         // Validate quote balance
         ValidateQuoteBalance(filterExpression);
-        
+
+        // Validate nesting depth to prevent DoS
+        ValidateNestingDepth(filterExpression);
+
         var tokens = Tokenize(filterExpression);
+
+        // Validate token count to prevent DoS
+        if (tokens.Count > 1000)
+            throw new FilterParseException("Filter expression too complex (maximum 1000 tokens)");
+
         var parser = new TokenParser(tokens, _comparisonOperators, _logicalOperators);
         return parser.ParseExpression();
+    }
+
+    /// <summary>
+    /// Validates nesting depth to prevent DoS attacks
+    /// </summary>
+    private void ValidateNestingDepth(string expression)
+    {
+        var maxDepth = 50;
+        var currentDepth = 0;
+
+        for (int i = 0; i < expression.Length; i++)
+        {
+            if (expression[i] == '(')
+            {
+                currentDepth++;
+                if (currentDepth > maxDepth)
+                {
+                    throw new FilterParseException($"Nesting depth too high (maximum {maxDepth} levels)", i);
+                }
+            }
+            else if (expression[i] == ')')
+            {
+                currentDepth--;
+                if (currentDepth < 0)
+                {
+                    throw new FilterParseException($"Unmatched closing parenthesis at position {i}", i);
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -484,6 +521,8 @@ internal class TokenParser
     private readonly Dictionary<string, ComparisonOperator> _comparisonOperators;
     private readonly Dictionary<string, BinaryOperator> _logicalOperators;
     private int _position;
+    private int _recursionDepth = 0;
+    private const int MAX_RECURSION_DEPTH = 100;
 
     public TokenParser(List<Token> tokens, 
                       Dictionary<string, ComparisonOperator> comparisonOperators,
@@ -497,66 +536,119 @@ internal class TokenParser
 
     public IAstNode ParseExpression()
     {
+        _recursionDepth = 0;
         return ParseOrExpression();
     }
 
     private IAstNode ParseOrExpression()
     {
-        var left = ParseAndExpression();
-        
-        while (CurrentToken?.Type == TokenType.LogicalOperator && 
-               CurrentToken.Value.Equals("or", StringComparison.OrdinalIgnoreCase))
+        // Check recursion depth to prevent stack overflow
+        if (++_recursionDepth > MAX_RECURSION_DEPTH)
         {
-            Advance(); // Skip "or"
-            var right = ParseAndExpression();
-            left = new BinaryExpressionNode(left, right, BinaryOperator.Or);
+            throw new FilterParseException($"Maximum recursion depth ({MAX_RECURSION_DEPTH}) exceeded. Expression too complex.");
         }
-        
-        return left;
+
+        try
+        {
+            var left = ParseAndExpression();
+            
+            while (CurrentToken?.Type == TokenType.LogicalOperator && 
+                   CurrentToken.Value.Equals("or", StringComparison.OrdinalIgnoreCase))
+            {
+                Advance(); // Skip "or"
+                var right = ParseAndExpression();
+                left = new BinaryExpressionNode(left, right, BinaryOperator.Or);
+            }
+            
+            return left;
+        }
+        finally
+        {
+            _recursionDepth--;
+        }
     }
 
     private IAstNode ParseAndExpression()
     {
-        var left = ParseNotExpression();
-        
-        while (CurrentToken?.Type == TokenType.LogicalOperator && 
-               CurrentToken.Value.Equals("and", StringComparison.OrdinalIgnoreCase))
+        // Check recursion depth to prevent stack overflow
+        if (++_recursionDepth > MAX_RECURSION_DEPTH)
         {
-            Advance(); // Skip "and"
-            var right = ParseNotExpression();
-            left = new BinaryExpressionNode(left, right, BinaryOperator.And);
+            throw new FilterParseException($"Maximum recursion depth ({MAX_RECURSION_DEPTH}) exceeded. Expression too complex.");
         }
-        
-        return left;
+
+        try
+        {
+            var left = ParseNotExpression();
+            
+            while (CurrentToken?.Type == TokenType.LogicalOperator && 
+                   CurrentToken.Value.Equals("and", StringComparison.OrdinalIgnoreCase))
+            {
+                Advance(); // Skip "and"
+                var right = ParseNotExpression();
+                left = new BinaryExpressionNode(left, right, BinaryOperator.And);
+            }
+            
+            return left;
+        }
+        finally
+        {
+            _recursionDepth--;
+        }
     }
 
     private IAstNode ParseNotExpression()
     {
-        if (CurrentToken?.Type == TokenType.Not)
+        // Check recursion depth to prevent stack overflow
+        if (++_recursionDepth > MAX_RECURSION_DEPTH)
         {
-            Advance(); // Skip "not"
-            // Allow chaining: not not A  => NOT (NOT A)
-            var operand = ParseNotExpression();
-            return new UnaryExpressionNode(operand, UnaryOperator.Not);
+            throw new FilterParseException($"Maximum recursion depth ({MAX_RECURSION_DEPTH}) exceeded. Expression too complex.");
         }
-        return ParsePrimaryExpression();
+
+        try
+        {
+            if (CurrentToken?.Type == TokenType.Not)
+            {
+                Advance(); // Skip "not"
+                // Allow chaining: not not A  => NOT (NOT A)
+                var operand = ParseNotExpression();
+                return new UnaryExpressionNode(operand, UnaryOperator.Not);
+            }
+            return ParsePrimaryExpression();
+        }
+        finally
+        {
+            _recursionDepth--;
+        }
     }
 
     private IAstNode ParsePrimaryExpression()
     {
-        if (CurrentToken?.Type == TokenType.LeftParen)
+        // Check recursion depth to prevent stack overflow
+        if (++_recursionDepth > MAX_RECURSION_DEPTH)
         {
-            Advance(); // Skip "("
-            var expression = ParseOrExpression();
-            
-            if (CurrentToken?.Type != TokenType.RightParen)
-                throw new FilterParseException($"Expected ')' at position {CurrentPosition}");
-                
-            Advance(); // Skip ")"
-            return new ParenthesizedExpressionNode(expression);
+            throw new FilterParseException($"Maximum recursion depth ({MAX_RECURSION_DEPTH}) exceeded. Expression too complex.");
         }
-        
-        return ParseComparison();
+
+        try
+        {
+            if (CurrentToken?.Type == TokenType.LeftParen)
+            {
+                Advance(); // Skip "("
+                var expression = ParseOrExpression();
+                
+                if (CurrentToken?.Type != TokenType.RightParen)
+                    throw new FilterParseException($"Expected ')' at position {CurrentPosition}");
+                    
+                Advance(); // Skip ")"
+                return new ParenthesizedExpressionNode(expression);
+            }
+            
+            return ParseComparison();
+        }
+        finally
+        {
+            _recursionDepth--;
+        }
     }
 
     private IAstNode ParseComparison()

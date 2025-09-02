@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Looplex.Foundation.SearchContent;
 using Looplex.Foundation.SearchContent.SqlGenerator;
+using Looplex.Foundation.SearchContent.Parser;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -145,43 +146,39 @@ public class PerformanceAndRobustnessTests
 
     [TestMethod]
     [Timeout(60000)] // 60 seconds timeout
-    public void Parse_StressTest_ShouldHandleExtremeConditions()
+    public void Parse_StressTest_ShouldRejectExtremeConditions()
     {
-        // Arrange - Extreme stress conditions (reduced complexity to prevent stack overflow)
+        // Arrange - Extreme stress conditions that should be rejected
         var extremeFilters = new[]
         {
-            // Very long expressions (reduced from 5000 to 100)
-            string.Join(" and ", Enumerable.Range(1, 100).Select(i => $"field{i} eq \"value{i}\"")),
+            // Very long expressions (should be rejected)
+            string.Join(" and ", Enumerable.Range(1, 2000).Select(i => $"field{i} eq \"value{i}\"")),
             
-            // Deep nesting (reduced from 1000 to 50)
-            BuildDeeplyNestedExpression(50),
+            // Deep nesting (should be rejected)
+            BuildDeeplyNestedExpression(100),
             
-            // Many OR conditions (reduced from 5000 to 100)
-            string.Join(" or ", Enumerable.Range(1, 100).Select(i => $"field{i} eq \"value{i}\"")),
+            // Many OR conditions (should be rejected)
+            string.Join(" or ", Enumerable.Range(1, 2000).Select(i => $"field{i} eq \"value{i}\"")),
             
-            // Complex mixed expressions (reduced from 1000 to 100)
-            BuildComplexMixedExpression(100)
+            // Complex mixed expressions (should be rejected)
+            BuildComplexMixedExpression(200)
         };
 
-        var stopwatch = Stopwatch.StartNew();
-        var results = new List<SqlPredicateResult>();
-
-        // Act - Process extreme filters
+        // Act & Assert - Should be rejected by protection mechanisms
         foreach (var filter in extremeFilters)
         {
-            var result = _service.ConvertToSql(filter);
-            results.Add(result);
+            try
+            {
+                _service.ConvertToSql(filter);
+                Assert.Fail($"Extreme condition should be rejected: {filter.Substring(0, Math.Min(50, filter.Length))}...");
+            }
+            catch (Exception ex)
+            {
+                // Any exception is acceptable - the protection mechanisms are working
+                Assert.IsTrue(ex is FilterParseException || ex is InvalidOperationException, 
+                    $"Expected FilterParseException or InvalidOperationException, but got {ex.GetType().Name}: {ex.Message}");
+            }
         }
-
-        stopwatch.Stop();
-
-        // Assert - Should handle extreme conditions
-        Assert.AreEqual(4, results.Count);
-        Assert.IsTrue(results.All(r => r.HasConditions));
-        
-        // Should complete within reasonable time
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 30000, 
-            $"Stress test took {stopwatch.ElapsedMilliseconds}ms, expected < 30000ms");
     }
 
     [TestMethod]
