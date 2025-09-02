@@ -178,6 +178,10 @@ namespace Looplex.Foundation.SCIMv2.Queries
         /// <summary>
         /// Converts a SCIM filter expression to a SQL WHERE clause string with schema mapping.
         /// This method maintains backward compatibility with existing client applications.
+        /// 
+        /// Backward compatibility behavior:
+        /// - When schemaMapping is provided: Generates inline SQL for stored procedures (UseParameters = false)
+        /// - When schemaMapping is null: Generates parameterized SQL for direct execution (UseParameters = true)
         /// </summary>
         /// <param name="filter">The SCIM filter expression to convert</param>
         /// <param name="schemaMapping">Dictionary mapping SCIM attribute names to database column names</param>
@@ -191,7 +195,9 @@ namespace Looplex.Foundation.SCIMv2.Queries
             {
                 var options = new SqlGenerationOptions
                 {
-                    FieldMapping = schemaMapping ?? new Dictionary<string, string>()
+                    FieldMapping = schemaMapping ?? new Dictionary<string, string>(),
+                    UseParameters = schemaMapping == null, // Use parameters only when no schemaMapping (direct execution)
+                    EscapeStrings = true
                 };
                 
                 var service = new SearchContentService();
