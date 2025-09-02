@@ -19,8 +19,8 @@ namespace Notejam.Tests.Unit
             // Act
             var (sqlPredicate, parameters) = filter.ToSqlPredicateWithParameters(schemaMapping);
 
-            // Assert
-            Assert.Contains("LOWER(p.name) = LOWER(@p1)", sqlPredicate);
+            // Assert - Case-sensitive comparison (no LOWER function)
+            Assert.Contains("p.name = @p1", sqlPredicate);
             Assert.Contains("p1=TestPad", string.Join(", ", parameters.Select(p => $"{p.Key}={p.Value}")));
         }
 
@@ -49,8 +49,8 @@ namespace Notejam.Tests.Unit
             // Act
             var (sqlPredicate, parameters) = filter.ToSqlPredicateWithParameters(schemaMapping);
 
-            // Assert
-            Assert.Contains("LOWER(p.name) = LOWER(@p1)", sqlPredicate);
+            // Assert - Case-sensitive comparison (no LOWER function)
+            Assert.Contains("p.name = @p1", sqlPredicate);
             Assert.Contains("p.active = @p2", sqlPredicate);
             Assert.Contains("AND", sqlPredicate);
             Assert.Equal(2, parameters.Count);
@@ -81,8 +81,8 @@ namespace Notejam.Tests.Unit
             // Act
             var (sqlPredicate, parameters) = filter.ToSqlPredicateWithParameters(schemaMapping);
 
-            // Assert
-            Assert.Contains("LOWER(p.name) LIKE LOWER(@p1)", sqlPredicate);
+            // Assert - Case-sensitive comparison (no LOWER function)
+            Assert.Contains("p.name LIKE @p1", sqlPredicate);
             Assert.Contains("p1=%test%", string.Join(", ", parameters.Select(p => $"{p.Key}={p.Value}")));
         }
 
@@ -97,5 +97,21 @@ namespace Notejam.Tests.Unit
             Assert.Throws<InvalidOperationException>(() => 
                 invalidFilter.ToSqlPredicateWithParameters(schemaMapping));
         }
+
+        #region Edge Cases Tests
+
+        [Theory]
+        [InlineData("   ")]
+        public void ScimFilter_WhitespaceFilter_ShouldThrowArgumentException(string filter)
+        {
+            // Arrange
+            var schemaMapping = PadConfiguration.ScimMappings.AttributeToColumn;
+            
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => 
+                filter.ToSqlPredicateWithParameters(schemaMapping));
+        }
+
+        #endregion
     }
 }
