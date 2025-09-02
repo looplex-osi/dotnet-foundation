@@ -718,5 +718,48 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Queries
             Assert.IsFalse(result.Contains("'test'"), "Should not contain inline values");
             Assert.IsFalse(result.Contains("'active'"), "Should not contain inline values");
         }
+
+        [TestMethod]
+        public void ToSqlPredicateWithParameters_NullLiteral_PreservesNull()
+        {
+            // Arrange - Test null literal preservation
+            var filter = "manager eq null";
+
+            // Act
+            var result = filter.ToSqlPredicateWithParameters();
+
+
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.Sql.StartsWith("WHERE ", StringComparison.OrdinalIgnoreCase));
+            
+            // For null literals, SQL should use IS NULL (no parameters needed)
+            Assert.IsTrue(result.Sql.Contains("IS NULL"), "Should use IS NULL for null literals");
+            Assert.AreEqual(0, result.Parameters.Count, "No parameters needed for IS NULL");
+        }
+
+        [TestMethod]
+        public void ToSqlPredicateWithParameters_StringLiteral_DoesNotConvertToNull()
+        {
+            // Arrange - Test that string literals are not converted to null
+            var filter = "name eq \"John\"";
+
+            // Act
+            var result = filter.ToSqlPredicateWithParameters();
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.Sql.StartsWith("WHERE ", StringComparison.OrdinalIgnoreCase));
+            Assert.IsTrue(result.Parameters.Count > 0);
+            
+            // Should contain string value, not null
+            var hasStringValue = result.Parameters.Values.Any(v => v is string);
+            Assert.IsTrue(hasStringValue, "Parameters should contain string value");
+            
+            // Should not contain null values
+            var hasNullValue = result.Parameters.Values.Any(v => v == null);
+            Assert.IsFalse(hasNullValue, "Parameters should not contain null for string literal");
+        }
     }
 }
