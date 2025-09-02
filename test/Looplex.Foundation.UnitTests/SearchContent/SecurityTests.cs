@@ -460,64 +460,49 @@ public class SecurityTests
 
     [TestMethod]
     [Timeout(10000)] // 10 seconds timeout
-    public void Parse_DoSAttempts_ShouldCompleteWithinTimeout()
+    public void Parse_DoSAttempts_ShouldBeRejected()
     {
-        // Arrange - Denial of Service attempts
+        // Arrange - Denial of Service attempts that should be rejected
         var dosAttempts = new[]
         {
-                         // Very long strings (reduced to be under limit)
-             $"userName eq \"{new string('A', 5000)}\"",
-                         // Many nested parentheses (reduced to be under limit)
-             new string('(', 500) + "userName eq \"test\"" + new string(')', 500),
-                         // Many logical operators (reduced to be under limit)
-             string.Join(" and ", Enumerable.Range(1, 100).Select(i => $"userName{i} eq \"user{i}\"")),
-                         // Many OR conditions (reduced to be under limit)
-             string.Join(" or ", Enumerable.Range(1, 100).Select(i => $"userName{i} eq \"user{i}\""))
+            // Very long strings (should be rejected)
+            $"userName eq \"{new string('A', 6000)}\"",
+            // Many nested parentheses (should be rejected)
+            new string('(', 100) + "userName eq \"test\"" + new string(')', 100),
+            // Many logical operators (should be rejected)
+            string.Join(" and ", Enumerable.Range(1, 2000).Select(i => $"userName{i} eq \"user{i}\"")),
+            // Many OR conditions (should be rejected)
+            string.Join(" or ", Enumerable.Range(1, 2000).Select(i => $"userName{i} eq \"user{i}\""))
         };
 
         foreach (var filter in dosAttempts)
         {
-            // Act
-            var result = _service.ConvertToSql(filter);
-
-            // Assert - Should complete within reasonable time
-            Assert.IsNotNull(result);
-            Assert.IsTrue(result.HasConditions);
+            // Act & Assert - Should be rejected by DoS protection
+            Assert.ThrowsException<FilterParseException>(() => _service.ConvertToSql(filter), 
+                $"DoS attempt should be rejected: {filter.Substring(0, Math.Min(50, filter.Length))}...");
         }
     }
 
     [TestMethod]
-    public void Parse_MemoryExhaustionAttempts_ShouldNotExhaustMemory()
+    public void Parse_MemoryExhaustionAttempts_ShouldBeRejected()
     {
-        // Arrange - Memory exhaustion attempts
-        var initialMemory = GC.GetTotalMemory(true);
-        
+        // Arrange - Memory exhaustion attempts that should be rejected
         var memoryAttacks = new[]
         {
-                         // Large number of conditions (reduced to be under limit)
-             string.Join(" and ", Enumerable.Range(1, 100).Select(i => $"userName{i} eq \"user{i}\"")),
-                         // Large string literals (reduced to be under limit)
-             $"userName eq \"{new string('A', 100)}\"",
-            // Many nested expressions
+            // Large number of conditions (should be rejected)
+            string.Join(" and ", Enumerable.Range(1, 2000).Select(i => $"userName{i} eq \"user{i}\"")),
+            // Large string literals (should be rejected)
+            $"userName eq \"{new string('A', 6000)}\"",
+            // Many nested expressions (should be rejected)
             BuildDeeplyNestedExpression(100)
         };
 
         foreach (var filter in memoryAttacks)
         {
-            // Act
-            var result = _service.ConvertToSql(filter);
-
-            // Assert - Should not exhaust memory
-            Assert.IsNotNull(result);
-            Assert.IsTrue(result.HasConditions);
+            // Act & Assert - Should be rejected by protection mechanisms
+            Assert.ThrowsException<FilterParseException>(() => _service.ConvertToSql(filter), 
+                $"Memory exhaustion attempt should be rejected: {filter.Substring(0, Math.Min(50, filter.Length))}...");
         }
-
-        var finalMemory = GC.GetTotalMemory(true);
-        var memoryIncrease = finalMemory - initialMemory;
-        
-        // Should not increase more than 50MB
-        Assert.IsTrue(memoryIncrease < 50 * 1024 * 1024, 
-            $"Memory increase {memoryIncrease / (1024 * 1024)}MB exceeds 50MB threshold");
     }
 
     #endregion
