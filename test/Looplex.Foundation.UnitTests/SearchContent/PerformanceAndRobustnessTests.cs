@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace Looplex.Foundation.UnitTests.SearchContent;
 
@@ -187,6 +188,11 @@ public class PerformanceAndRobustnessTests
     public void Parse_ResourceCleanup_ShouldNotLeakResources()
     {
         // Arrange
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Inconclusive("HandleCount is Windows-only; skipping on non-Windows.");
+            return;
+        }
         var initialHandles = Process.GetCurrentProcess().HandleCount;
         var filters = GenerateResourceTestFilters(1000);
 

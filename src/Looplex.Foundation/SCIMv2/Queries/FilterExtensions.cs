@@ -83,7 +83,7 @@ namespace Looplex.Foundation.SCIMv2.Queries
                 {
                     foreach (var kvp in result.Parameters)
                     {
-                        parameters[kvp.Key] = kvp.Value ?? string.Empty;
+                        parameters[kvp.Key] = kvp.Value;
                     }
                 }
                 return (sanitizedSql, parameters);
@@ -244,7 +244,7 @@ namespace Looplex.Foundation.SCIMv2.Queries
                 {
                     foreach (var kvp in result.Parameters)
                     {
-                        parameters[kvp.Key] = kvp.Value ?? string.Empty;
+                        parameters[kvp.Key] = kvp.Value;
                     }
                 }
                 return (sanitizedSql, parameters);
@@ -301,7 +301,7 @@ namespace Looplex.Foundation.SCIMv2.Queries
                 {
                     foreach (var kvp in result.Parameters)
                     {
-                        parameters[kvp.Key] = kvp.Value ?? string.Empty;
+                        parameters[kvp.Key] = kvp.Value;
                     }
                 }
                 return (sanitizedSql, parameters);
