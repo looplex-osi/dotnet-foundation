@@ -17,6 +17,10 @@ public static class Strings
 
   /// <summary>
   /// Converts a SCIMv2 defined filters query param into a SQL predicate 
+  /// 
+  /// Backward compatibility behavior:
+  /// - When attrMap is provided: Generates inline SQL for stored procedures (UseParameters = false)
+  /// - When attrMap is null: Generates parameterized SQL for direct execution (UseParameters = true)
   /// </summary>
   /// <param name="filters"></param>
   /// <param name="attrMap"></param>
@@ -31,9 +35,13 @@ public static class Strings
     try
     {
       var service = new SearchContentService();
+      
+      // Detect stored procedure usage: when attrMap is provided, use inline SQL
       var options = new SqlGenerationOptions
       {
-        FieldMapping = attrMap != null ? new Dictionary<string, string>(attrMap) : new Dictionary<string, string>()
+        FieldMapping = attrMap != null ? new Dictionary<string, string>(attrMap) : new Dictionary<string, string>(),
+        UseParameters = attrMap == null, // Use parameters only when no attrMap (direct execution)
+        EscapeStrings = true
       };
       
       var result = service.ConvertToSql(filters, options);

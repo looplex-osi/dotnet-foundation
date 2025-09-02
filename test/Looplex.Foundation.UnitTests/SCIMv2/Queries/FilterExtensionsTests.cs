@@ -676,5 +676,47 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Queries
         }
 
         #endregion
+
+        [TestMethod]
+        public void ToSqlPredicate_WithSchemaMapping_ShouldGenerateInlineSqlForStoredProcedures()
+        {
+            // Arrange
+            var filter = "title co \"test\" and status eq \"active\"";
+            var schemaMapping = new Dictionary<string, string>
+            {
+                ["title"] = "p.dstitulo",
+                ["status"] = "p.nrSituacao"
+            };
+
+            // Act
+            string? result = filter.ToSqlPredicate(schemaMapping);
+
+            // Debug: Print the actual result
+            Console.WriteLine($"Generated SQL: {result}");
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.Contains("p.dstitulo"), "Should contain mapped column name");
+            Assert.IsTrue(result.Contains("p.nrSituacao"), "Should contain mapped column name");
+            Assert.IsFalse(result.Contains("@p"), "Should not contain parameter placeholders for stored procedures");
+            Assert.IsTrue(result.Contains("test"), "Should contain inline value");
+            Assert.IsTrue(result.Contains("active"), "Should contain inline value");
+        }
+
+        [TestMethod]
+        public void ToSqlPredicate_WithoutSchemaMapping_ShouldGenerateParameterizedSql()
+        {
+            // Arrange
+            var filter = "title co \"test\" and status eq \"active\"";
+
+            // Act
+            string? result = filter.ToSqlPredicate();
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.IsTrue(result.Contains("@p"), "Should contain parameter placeholders for direct execution");
+            Assert.IsFalse(result.Contains("'test'"), "Should not contain inline values");
+            Assert.IsFalse(result.Contains("'active'"), "Should not contain inline values");
+        }
     }
 }
