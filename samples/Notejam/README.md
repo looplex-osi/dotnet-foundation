@@ -1,10 +1,10 @@
 # Notejam - Complete Project Documentation
 
-## 📋 Project Overview
+## Project Overview
 
 Notejam is a comprehensive note-taking application that implements the SCIM v2.0 standard for API management. Built with .NET 8.0 and following Clean Architecture principles, it provides a robust REST API for managing pads and notes with advanced filtering, pagination, and search capabilities.
 
-### 🎯 Key Features
+### Key Features
 
 - **Complete CRUD Operations** for Pads and Notes
 - **SCIM v2.0 Compliant API** with full filter support
@@ -16,7 +16,7 @@ Notejam is a comprehensive note-taking application that implements the SCIM v2.0
 - **Comprehensive Test Suite** covering unit, integration, and end-to-end scenarios
 - **Performance and Security Testing** included
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 ### Clean Architecture Implementation
 
@@ -59,7 +59,7 @@ Notejam/
 - **XUnit** - Testing framework
 - **NSubstitute** - Mocking framework
 
-## 🗄️ Database Schema
+## Database Schema
 
 ### Pads Table
 ```sql
@@ -97,7 +97,7 @@ CREATE TABLE notes (
 );
 ```
 
-## 🌐 API Documentation
+## API Documentation
 
 ### Base URL
 ```
@@ -164,8 +164,8 @@ GET /notes?filter=active eq false
 
 # String filters
 GET /pads?filter=name eq "Test Pad"
-GET /pads?filter=name co "Teste"
-GET /notes?filter=text co "important"
+GET /pads?filter=name co "Test"
+GET /notes?filter=text co "Test"
 
 # Numeric filters
 GET /pads?filter=status eq 1
@@ -178,10 +178,10 @@ GET /pads?filter=status eq 2
 GET /pads?filter=active eq true and status eq 1
 
 # Multiple conditions with OR
-GET /pads?filter=name co "Teste" or status eq 2
+GET /pads?filter=name co "Test" or status eq 2
 
 # Complex combinations
-GET /pads?filter=(name sw "demo" or name ew "pad") and active eq true
+GET /pads?filter=(name sw "Test" or name ew "Pad") and active eq true
 ```
 
 **Date Filters:**
@@ -221,7 +221,7 @@ GET /pads?filter=active eq true and status eq 1&startIndex=1&count=5
 curl -X POST http://localhost:7065/pads \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Pad QA Teste Final",
+    "name": "Pad QA Test Final",
     "active": true,
     "status": 1,
     "customFields": "{\"test\": \"final\"}"
@@ -238,7 +238,7 @@ curl -X POST http://localhost:7065/pads \
 curl -X POST http://localhost:7065/notes \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "Note QA Teste Final",
+    "text": "Note QA Test Final",
     "active": true,
     "status": 1,
     "customFields": "{\"test\": \"final\"}"
@@ -257,7 +257,7 @@ curl -X POST http://localhost:7065/notes \
 curl -X PUT http://localhost:7065/pads/e1274a3e-f36b-1410-85cb-0046c3744233 \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Pad Atualizado via PUT",
+    "name": "Pad Updated via PUT",
     "active": false,
     "status": 2,
     "customFields": "{\"updated\": \"via PUT\"}"
@@ -313,7 +313,7 @@ curl "http://localhost:7065/pads?filter=active eq true"
 #### customFields Format
 The `customFields` field must be sent as a JSON string, not as an object:
 
-**❌ Incorrect:**
+**Incorrect:**
 ```json
 {
   "name": "Test Pad",
@@ -323,7 +323,7 @@ The `customFields` field must be sent as a JSON string, not as an object:
 }
 ```
 
-**✅ Correct:**
+**Correct:**
 ```json
 {
   "name": "Test Pad",
@@ -337,7 +337,7 @@ The `customFields` field must be sent as a JSON string, not as an object:
 - **PATCH Operations**: Use JSON Patch format (`application/json-patch+json`)
 - **DELETE Operations**: Perform logical deletion (soft delete), return `204 No Content`
 
-## 🧪 Testing Strategy
+## Testing Strategy
 
 ### Test Categories
 
@@ -407,32 +407,32 @@ dotnet test --verbosity detailed
 - **Concurrent operations**: May cause 500 errors under load (expected)
 - **Security tests**: May not implement all production security measures
 
-### ⚠️ Demo Warning System
+### Demo Warning System
 
 Tests that are expected to fail in the demo environment are marked with `[DemoWarning]` attributes:
 
-#### 🔒 Security Test Warnings
+#### Security Test Warnings
 - **Input Validation**: Demo has basic validation only
 - **SQL Injection Protection**: Limited protection in demo
 - **XSS Protection**: No content sanitization in demo
 - **Payload Size Limits**: No size restrictions in demo
 
-#### ⚡ Performance Test Warnings
+#### Performance Test Warnings
 - **High Concurrency**: Demo not optimized for concurrent load
 - **Response Time**: Basic performance characteristics only
 
-#### 🔄 Regression Test Warnings
+#### Regression Test Warnings
 - **CRUD Operations**: Incomplete DELETE operations in demo
 - **Error Recovery**: Basic error handling only
 - **Business Rules**: Limited validation in demo
 
-#### ✅ What Works Correctly
+#### What Works Correctly
 - **SCIM Filter Processing**: Full functionality via Looplex.Foundation.SearchContent
 - **SQL Generation**: Secure, thread-safe, recursion-protected
 - **Basic API Operations**: GET, POST, PUT work reliably
 - **Core Domain Logic**: Business rules implemented correctly
 
-## 🚀 Development Setup
+## Development Setup
 
 ### Prerequisites
 
@@ -499,7 +499,7 @@ dotnet run
 - Implement proper error handling
 - Follow SOLID principles
 
-## 📚 Additional Documentation
+## Additional Documentation
 
 ### Project-Specific Documentation
 - **`Notejam.WebApp/README.md`**: Web application details and API reference
@@ -512,7 +512,7 @@ dotnet run
 - **Looplex.Foundation.WebApp**: SCIM middleware documentation
 - **SCIM v2.0 Specification**: RFC 7644
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -535,7 +535,7 @@ The application uses environment-based configuration with support for:
 - **Production**: Optimized performance, minimal logging
 - **Testing**: Test-specific configurations
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -576,7 +576,7 @@ dotnet run --verbosity detailed
 curl http://localhost:7065/health
 ```
 
-## 🎯 Demo Application Context
+## Demo Application Context
 
 ### Important Notes
 This is a **demonstration application** designed to showcase SCIM v2.0 functionality and Looplex.Foundation.WebApp capabilities. As such:
@@ -593,7 +593,7 @@ This is a **demonstration application** designed to showcase SCIM v2.0 functiona
 - **Concurrent operations**: May cause 500 errors (expected behavior)
 - **Security tests**: May not implement all production security measures
 
-## 📈 Performance Considerations
+## Performance Considerations
 
 ### Optimization Features
 - Connection pooling for database access
@@ -607,7 +607,7 @@ This is a **demonstration application** designed to showcase SCIM v2.0 functiona
 - Error logging and monitoring
 - Application insights integration ready
 
-## 🔒 Security Considerations
+## Security Considerations
 
 ### Implemented Security
 - SQL injection protection through parameterized queries
@@ -622,7 +622,7 @@ This is a **demonstration application** designed to showcase SCIM v2.0 functiona
 - Request validation middleware
 - Security headers
 
-## 🚀 Deployment
+## Deployment
 
 ### Production Considerations
 
@@ -655,7 +655,7 @@ EXPOSE 7065
 ENTRYPOINT ["dotnet", "Notejam.WebApp.dll"]
 ```
 
-## 🤝 Contributing
+## Contributing
 
 ### Development Guidelines
 
