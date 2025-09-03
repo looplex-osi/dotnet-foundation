@@ -5,7 +5,7 @@ using Looplex.Samples.Application;
 namespace Notejam.Tests.Unit
 {
     /// <summary>
-    /// Testes unitários focados no processamento de filtros SCIM
+    /// Unit tests focused on SCIM filter processing
     /// </summary>
     public class ScimFilterTests
     {

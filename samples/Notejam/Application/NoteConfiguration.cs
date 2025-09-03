@@ -67,6 +67,11 @@ public static class NoteConfiguration
             { "active", $"n.{Database.ActiveColumn}" },
             { "status", $"n.{Database.StatusColumn}" },
             { "customFields", $"n.{Database.CustomFieldsColumn}" },
+            { "custom_fields", $"n.{Database.CustomFieldsColumn}" },
+            { "customFields.test", $"JSON_VALUE(n.{Database.CustomFieldsColumn}, '$.test')" },
+            { "custom_fields.test", $"JSON_VALUE(n.{Database.CustomFieldsColumn}, '$.test')" },
+            { "customFields.updated", $"JSON_VALUE(n.{Database.CustomFieldsColumn}, '$.updated')" },
+            { "custom_fields.updated", $"JSON_VALUE(n.{Database.CustomFieldsColumn}, '$.updated')" },
             { "created", $"n.{Database.CreatedColumn}" },
             { "modified", $"n.{Database.UpdatedColumn}" },
             

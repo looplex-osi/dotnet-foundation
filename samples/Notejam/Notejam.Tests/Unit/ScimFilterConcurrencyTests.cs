@@ -6,7 +6,7 @@ using Looplex.Samples.Application;
 namespace Notejam.Tests.Unit
 {
     /// <summary>
-    /// Testes de concorrência para processamento de filtros SCIM
+    /// Concurrency tests for SCIM filter processing
     /// </summary>
     public class ScimFilterConcurrencyTests
     {
