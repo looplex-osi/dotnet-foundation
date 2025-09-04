@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
+using Looplex.Foundation.WebApp.Helpers;
 using Looplex.Foundation.WebApp.Adapters;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
@@ -39,40 +40,13 @@ public static class OAuth2
 
     services.AddSingleton<IJwtService, JwtService>();
     services.AddScoped<AuthenticationsFactory>();
-    services.AddScoped<ClientServices>(sp =>
-    {
-      PluginLoader loader = new();
-      IEnumerable<string> dlls = Directory.Exists("plugins")
-        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : [];
-      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
-      var rbacService = sp.GetRequiredService<IRbacService>();
-      var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-      var mediator = sp.GetRequiredService<IMediator>();
-      return new ClientServices(plugins, rbacService, httpContextAccessor, mediator, configuration);
-    });
-    services.AddScoped<ClientCredentialsAuthentications>(sp =>
-    {
-      PluginLoader loader = new();
-      IEnumerable<string> dlls = Directory.Exists("plugins")
-        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : [];
-      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
-      var clientCredentials = sp.GetRequiredService<ClientServices>();
-      var jwtService = sp.GetRequiredService<IJwtService>();
-      return new ClientCredentialsAuthentications(plugins, configuration, clientCredentials, jwtService);
-    });
-    services.AddScoped<TokenExchangeAuthentications>(sp =>
-    {
-      PluginLoader loader = new();
-      IEnumerable<string> dlls = Directory.Exists("plugins")
-        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : [];
-      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
-      var jwtService = sp.GetRequiredService<IJwtService>();
-      var httpClient = sp.GetRequiredService<HttpClient>();
-      return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient);
-    });
+    // Initialize PluginManager to ensure plugins are loaded once
+    PluginManager.Instance.Initialize();
+    
+    // Use ScimServiceFactory to create services with shared plugins
+    services.AddScoped<ClientServices>(sp => ScimServiceFactory.CreateClientServices(sp));
+    services.AddScoped<ClientCredentialsAuthentications>(sp => ScimServiceFactory.CreateClientCredentialsAuthentications(sp));
+    services.AddScoped<TokenExchangeAuthentications>(sp => ScimServiceFactory.CreateTokenExchangeAuthentications(sp));
 
     return services;
   }

@@ -7,8 +7,9 @@ using Casbin;
 
 using Looplex.Foundation.Adapters;
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
-using Looplex.Foundation.Helpers;
+using Looplex.Foundation.WebApp.Helpers;
 using Looplex.Foundation.Ports;
+using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.Foundation.WebApp.Middlewares;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
@@ -84,13 +85,12 @@ public static class Program
     builder.Services.AddSCIMv2();
     builder.Services.AddAuthZ(InitRbacEnforcer());
 
+    // Initialize PluginManager to ensure plugins are loaded once
+    PluginManager.Instance.Initialize();
+    
     builder.Services.AddScoped<Notes>(sp =>
     {
-      PluginLoader loader = new();
-      IEnumerable<string> dlls = Directory.Exists("plugins")
-        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : [];
-      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+      var plugins = PluginManager.Instance.Plugins;
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
       var mediator = sp.GetRequiredService<IMediator>();

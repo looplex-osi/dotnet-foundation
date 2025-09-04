@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Casbin;
 
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
+using Looplex.Foundation.WebApp.Helpers;
 using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
@@ -105,10 +106,9 @@ public class NotejamTests
     var httpContext = new DefaultHttpContext() { User = user };
     mockHttpAccessor.HttpContext.Returns(httpContext);
 
-    PluginLoader loader = new();
-
-    IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
-    IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+    // Initialize PluginManager for testing
+    PluginManager.Instance.Initialize();
+    IList<IPlugin> plugins = PluginManager.Instance.Plugins;
 
     Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor);
 
