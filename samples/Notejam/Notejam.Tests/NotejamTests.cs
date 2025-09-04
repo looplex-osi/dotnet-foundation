@@ -22,10 +22,10 @@ namespace Looplex.Samples.Tests;
 [TestClass]
 public class NotejamTests
 {
-  [TestCleanup]
-  public void Cleanup()
+  [TestInitialize]
+  public void Setup()
   {
-    // Reset plugin state between tests
+    // Ensure fresh state before each test
     PluginManager.Instance.ReloadPlugins();
   }
 
@@ -116,6 +116,9 @@ public class NotejamTests
     // Initialize PluginManager for testing
     PluginManager.Instance.ReloadPlugins();
     IReadOnlyList<IPlugin> plugins = PluginManager.Instance.Plugins;
+    
+    // Guard for missing plugins to avoid opaque failures
+    Assert.IsTrue(plugins.Count > 0, "No plugins loaded. Ensure EPTracker.Plugin.dll is copied to the test 'plugins' directory.");
 
     Notejam notejam = new(plugins.ToList(), rbacSvc, mockHttpAccessor);
 

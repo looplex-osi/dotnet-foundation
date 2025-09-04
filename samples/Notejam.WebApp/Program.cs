@@ -94,7 +94,8 @@ public static class Program
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
       var mediator = sp.GetRequiredService<IMediator>();
-      return new Notes(plugins.ToList(), rbacService, httpContextAccessor, mediator);
+      // Create per-scope plugin instances to prevent cross-tenant contamination
+      return new Notes(plugins.Select(p => (IPlugin)Activator.CreateInstance(p.GetType())!).ToList(), rbacService, httpContextAccessor, mediator);
     });
 
     builder.Services.AddMediatR(cfg =>

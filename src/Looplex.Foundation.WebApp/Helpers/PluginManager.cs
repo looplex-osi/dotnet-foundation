@@ -81,19 +81,54 @@ public sealed class PluginManager
     /// <summary>
     /// Reloads plugins from the plugins directory.
     /// This method is thread-safe and can be used for hot reload scenarios.
+    /// Properly disposes old plugin instances to prevent resource leaks.
     /// </summary>
     public void ReloadPlugins()
     {
         lock (_lock)
         {
-            LoadPlugins();
+            // Load new set first
+            var pluginsDirectory = Path.Combine(AppContext.BaseDirectory, "plugins");
+            List<IPlugin> newList;
+            try
+            {
+                if (!Directory.Exists(pluginsDirectory))
+                {
+                    newList = new();
+                }
+                else
+                {
+                    // Ensure deterministic plugin load order for reproducible behavior/tests
+                    var dlls = Directory.GetFiles(pluginsDirectory, "*.dll")
+                                        .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                                        .ToArray();
+                    newList = _loader.LoadPlugins(dlls).ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                // TODO: Replace with proper logging when ILogger is available
+                Console.WriteLine($"Error loading plugins: {ex.Message}");
+                newList = new();
+            }
+
+            // Swap and dispose old instances to prevent resource leaks
+            var old = _plugins;
+            _plugins = newList;
             _isInitialized = true;
+            
+            // Dispose old plugin instances if they implement IDisposable
+            foreach (var plugin in old)
+            {
+                (plugin as IDisposable)?.Dispose();
+            }
         }
     }
 
     /// <summary>
     /// Loads plugins from the plugins directory.
     /// This method is called internally and is thread-safe.
+    /// Ensures deterministic plugin load order for reproducible behavior.
     /// </summary>
     private void LoadPlugins()
     {
@@ -107,7 +142,10 @@ public sealed class PluginManager
                 return;
             }
 
-            var dlls = Directory.GetFiles(pluginsDirectory, "*.dll");
+            // Ensure deterministic plugin load order for reproducible behavior/tests
+            var dlls = Directory.GetFiles(pluginsDirectory, "*.dll")
+                                .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                                .ToArray();
             _plugins = _loader.LoadPlugins(dlls).ToList();
         }
         catch (Exception ex)

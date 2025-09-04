@@ -31,67 +31,73 @@ namespace Looplex.Foundation.WebApp.Helpers;
 public static class ScimServiceFactory
 {
     /// <summary>
-    /// Creates a Users service with shared plugins
+    /// Creates a Users service with per-scope plugin instances.
+    /// This prevents cross-tenant contamination in multi-tenant environments.
     /// </summary>
     public static Users CreateUsers(IServiceProvider sp) =>
         CreateService(sp, (plugins, s) =>
             new Users(
-                plugins.ToList(),
+                plugins.Select(p => (IPlugin)Activator.CreateInstance(p.GetType())!).ToList(),
                 s.GetRequiredService<IRbacService>(),
                 s.GetRequiredService<IHttpContextAccessor>(),
                 s.GetRequiredService<IMediator>()));
 
     /// <summary>
-    /// Creates a Groups service with shared plugins
+    /// Creates a Groups service with per-scope plugin instances.
+    /// This prevents cross-tenant contamination in multi-tenant environments.
     /// </summary>
     public static Groups CreateGroups(IServiceProvider sp) =>
         CreateService(sp, (plugins, s) =>
             new Groups(
-                plugins.ToList(),
+                plugins.Select(p => (IPlugin)Activator.CreateInstance(p.GetType())!).ToList(),
                 s.GetRequiredService<IRbacService>(),
                 s.GetRequiredService<IHttpContextAccessor>(),
                 s.GetRequiredService<IMediator>()));
 
     /// <summary>
-    /// Creates a Bulks service with shared plugins
+    /// Creates a Bulks service with per-scope plugin instances.
+    /// This prevents cross-tenant contamination in multi-tenant environments.
     /// </summary>
     public static Bulks CreateBulks(IServiceProvider sp) =>
         CreateService(sp, (plugins, s) =>
             new Bulks(
-                plugins.ToList(),
+                plugins.Select(p => (IPlugin)Activator.CreateInstance(p.GetType())!).ToList(),
                 s,
                 s.GetRequiredService<ServiceProviderConfiguration>()));
 
     /// <summary>
-    /// Creates a ClientServices service with shared plugins
+    /// Creates a ClientServices service with per-scope plugin instances.
+    /// This prevents cross-tenant contamination in multi-tenant environments.
     /// </summary>
     public static ClientServices CreateClientServices(IServiceProvider sp) =>
         CreateService(sp, (plugins, s) =>
             new ClientServices(
-                plugins.ToList(),
+                plugins.Select(p => (IPlugin)Activator.CreateInstance(p.GetType())!).ToList(),
                 s.GetRequiredService<IRbacService>(),
                 s.GetRequiredService<IHttpContextAccessor>(),
                 s.GetRequiredService<IMediator>(),
                 s.GetRequiredService<IConfiguration>()));
 
     /// <summary>
-    /// Creates a ClientCredentialsAuthentications service with shared plugins
+    /// Creates a ClientCredentialsAuthentications service with per-scope plugin instances.
+    /// This prevents cross-tenant contamination in multi-tenant environments.
     /// </summary>
     public static ClientCredentialsAuthentications CreateClientCredentialsAuthentications(IServiceProvider sp) =>
         CreateService(sp, (plugins, s) =>
             new ClientCredentialsAuthentications(
-                plugins.ToList(),
+                plugins.Select(p => (IPlugin)Activator.CreateInstance(p.GetType())!).ToList(),
                 s.GetRequiredService<IConfiguration>(),
                 s.GetRequiredService<ClientServices>(),
                 s.GetRequiredService<IJwtService>()));
 
     /// <summary>
-    /// Creates a TokenExchangeAuthentications service with shared plugins
+    /// Creates a TokenExchangeAuthentications service with per-scope plugin instances.
+    /// This prevents cross-tenant contamination in multi-tenant environments.
     /// </summary>
     public static TokenExchangeAuthentications CreateTokenExchangeAuthentications(IServiceProvider sp) =>
         CreateService(sp, (plugins, s) =>
             new TokenExchangeAuthentications(
-                plugins.ToList(),
+                plugins.Select(p => (IPlugin)Activator.CreateInstance(p.GetType())!).ToList(),
                 s.GetRequiredService<IConfiguration>(),
                 s.GetRequiredService<IJwtService>(),
                 s.GetRequiredService<HttpClient>()));
