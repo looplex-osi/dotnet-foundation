@@ -22,6 +22,13 @@ namespace Looplex.Samples.Tests;
 [TestClass]
 public class NotejamTests
 {
+  [TestCleanup]
+  public void Cleanup()
+  {
+    // Reset plugin state between tests
+    PluginManager.Instance.ReloadPlugins();
+  }
+
   private IEnforcer InitRbacEnforcer()
   {
     string dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
@@ -107,10 +114,10 @@ public class NotejamTests
     mockHttpAccessor.HttpContext.Returns(httpContext);
 
     // Initialize PluginManager for testing
-    PluginManager.Instance.Initialize();
-    IList<IPlugin> plugins = PluginManager.Instance.Plugins;
+    PluginManager.Instance.ReloadPlugins();
+    IReadOnlyList<IPlugin> plugins = PluginManager.Instance.Plugins;
 
-    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor);
+    Notejam notejam = new(plugins.ToList(), rbacSvc, mockHttpAccessor);
 
     // Act
     string result = await notejam.Echo("World", CancellationToken.None);

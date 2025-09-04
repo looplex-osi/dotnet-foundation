@@ -33,79 +33,68 @@ public static class ScimServiceFactory
     /// <summary>
     /// Creates a Users service with shared plugins
     /// </summary>
-    public static Users CreateUsers(IServiceProvider serviceProvider)
-    {
-        var plugins = PluginManager.Instance.Plugins;
-        var rbacService = serviceProvider.GetRequiredService<IRbacService>();
-        var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
-        var mediator = serviceProvider.GetRequiredService<IMediator>();
-
-        return new Users(plugins, rbacService, httpContextAccessor, mediator);
-    }
+    public static Users CreateUsers(IServiceProvider sp) =>
+        CreateService(sp, (plugins, s) =>
+            new Users(
+                plugins.ToList(),
+                s.GetRequiredService<IRbacService>(),
+                s.GetRequiredService<IHttpContextAccessor>(),
+                s.GetRequiredService<IMediator>()));
 
     /// <summary>
     /// Creates a Groups service with shared plugins
     /// </summary>
-    public static Groups CreateGroups(IServiceProvider serviceProvider)
-    {
-        var plugins = PluginManager.Instance.Plugins;
-        var rbacService = serviceProvider.GetRequiredService<IRbacService>();
-        var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
-        var mediator = serviceProvider.GetRequiredService<IMediator>();
-
-        return new Groups(plugins, rbacService, httpContextAccessor, mediator);
-    }
+    public static Groups CreateGroups(IServiceProvider sp) =>
+        CreateService(sp, (plugins, s) =>
+            new Groups(
+                plugins.ToList(),
+                s.GetRequiredService<IRbacService>(),
+                s.GetRequiredService<IHttpContextAccessor>(),
+                s.GetRequiredService<IMediator>()));
 
     /// <summary>
     /// Creates a Bulks service with shared plugins
     /// </summary>
-    public static Bulks CreateBulks(IServiceProvider serviceProvider)
-    {
-        var plugins = PluginManager.Instance.Plugins;
-        var serviceProviderConfiguration = serviceProvider.GetRequiredService<ServiceProviderConfiguration>();
-
-        return new Bulks(plugins, serviceProvider, serviceProviderConfiguration);
-    }
+    public static Bulks CreateBulks(IServiceProvider sp) =>
+        CreateService(sp, (plugins, s) =>
+            new Bulks(
+                plugins.ToList(),
+                s,
+                s.GetRequiredService<ServiceProviderConfiguration>()));
 
     /// <summary>
     /// Creates a ClientServices service with shared plugins
     /// </summary>
-    public static ClientServices CreateClientServices(IServiceProvider serviceProvider)
-    {
-        var plugins = PluginManager.Instance.Plugins;
-        var rbacService = serviceProvider.GetRequiredService<IRbacService>();
-        var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
-        var mediator = serviceProvider.GetRequiredService<IMediator>();
-        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-
-        return new ClientServices(plugins, rbacService, httpContextAccessor, mediator, configuration);
-    }
+    public static ClientServices CreateClientServices(IServiceProvider sp) =>
+        CreateService(sp, (plugins, s) =>
+            new ClientServices(
+                plugins.ToList(),
+                s.GetRequiredService<IRbacService>(),
+                s.GetRequiredService<IHttpContextAccessor>(),
+                s.GetRequiredService<IMediator>(),
+                s.GetRequiredService<IConfiguration>()));
 
     /// <summary>
     /// Creates a ClientCredentialsAuthentications service with shared plugins
     /// </summary>
-    public static ClientCredentialsAuthentications CreateClientCredentialsAuthentications(IServiceProvider serviceProvider)
-    {
-        var plugins = PluginManager.Instance.Plugins;
-        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        var clientCredentials = serviceProvider.GetRequiredService<ClientServices>();
-        var jwtService = serviceProvider.GetRequiredService<IJwtService>();
-
-        return new ClientCredentialsAuthentications(plugins, configuration, clientCredentials, jwtService);
-    }
+    public static ClientCredentialsAuthentications CreateClientCredentialsAuthentications(IServiceProvider sp) =>
+        CreateService(sp, (plugins, s) =>
+            new ClientCredentialsAuthentications(
+                plugins.ToList(),
+                s.GetRequiredService<IConfiguration>(),
+                s.GetRequiredService<ClientServices>(),
+                s.GetRequiredService<IJwtService>()));
 
     /// <summary>
     /// Creates a TokenExchangeAuthentications service with shared plugins
     /// </summary>
-    public static TokenExchangeAuthentications CreateTokenExchangeAuthentications(IServiceProvider serviceProvider)
-    {
-        var plugins = PluginManager.Instance.Plugins;
-        var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        var jwtService = serviceProvider.GetRequiredService<IJwtService>();
-        var httpClient = serviceProvider.GetRequiredService<HttpClient>();
-
-        return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient);
-    }
+    public static TokenExchangeAuthentications CreateTokenExchangeAuthentications(IServiceProvider sp) =>
+        CreateService(sp, (plugins, s) =>
+            new TokenExchangeAuthentications(
+                plugins.ToList(),
+                s.GetRequiredService<IConfiguration>(),
+                s.GetRequiredService<IJwtService>(),
+                s.GetRequiredService<HttpClient>()));
 
     /// <summary>
     /// Generic method to create any SCIM service with shared plugins.
@@ -116,7 +105,7 @@ public static class ScimServiceFactory
     /// <param name="serviceProvider">The service provider for dependency injection</param>
     /// <param name="factoryMethod">Factory method to create the specific service</param>
     /// <returns>The created service instance</returns>
-    public static T CreateService<T>(IServiceProvider serviceProvider, Func<IList<IPlugin>, IServiceProvider, T> factoryMethod)
+    public static T CreateService<T>(IServiceProvider serviceProvider, Func<IReadOnlyList<IPlugin>, IServiceProvider, T> factoryMethod)
         where T : class
     {
         var plugins = PluginManager.Instance.Plugins;

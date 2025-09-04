@@ -28,7 +28,7 @@ public sealed class PluginManager
     private static readonly Lazy<PluginManager> _instance = new(() => new PluginManager());
     private static readonly object _lock = new();
     
-    private IList<IPlugin> _plugins = new List<IPlugin>();
+    private List<IPlugin> _plugins = new();
     private readonly PluginLoader _loader = new();
     private bool _isInitialized = false;
 
@@ -44,8 +44,9 @@ public sealed class PluginManager
 
     /// <summary>
     /// Gets the loaded plugins. Thread-safe access to the plugin collection.
+    /// Returns a read-only view to prevent external modification.
     /// </summary>
-    public IList<IPlugin> Plugins
+    public IReadOnlyList<IPlugin> Plugins
     {
         get
         {
@@ -54,8 +55,9 @@ public sealed class PluginManager
                 if (!_isInitialized)
                 {
                     LoadPlugins();
+                    _isInitialized = true;
                 }
-                return _plugins;
+                return _plugins.AsReadOnly();
             }
         }
     }
@@ -85,6 +87,7 @@ public sealed class PluginManager
         lock (_lock)
         {
             LoadPlugins();
+            _isInitialized = true;
         }
     }
 
@@ -96,7 +99,7 @@ public sealed class PluginManager
     {
         try
         {
-            var pluginsDirectory = "plugins";
+            var pluginsDirectory = Path.Combine(AppContext.BaseDirectory, "plugins");
             
             if (!Directory.Exists(pluginsDirectory))
             {
@@ -110,6 +113,7 @@ public sealed class PluginManager
         catch (Exception ex)
         {
             // Log the error but don't throw to prevent application startup failure
+            // TODO: Replace with proper logging when ILogger is available
             Console.WriteLine($"Error loading plugins: {ex.Message}");
             _plugins = new List<IPlugin>();
         }

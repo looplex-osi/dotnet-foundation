@@ -51,9 +51,6 @@ public static class SCIMv2
     services.AddHttpContextAccessor();
     services.AddSingleton(ServiceProviderConfiguration);
     
-    // Initialize PluginManager to ensure plugins are loaded once
-    PluginManager.Instance.Initialize();
-    
     // Use ScimServiceFactory to create services with shared plugins
     services.AddScoped<Bulks>(sp => ScimServiceFactory.CreateBulks(sp));
     services.AddScoped<Users>(sp => ScimServiceFactory.CreateUsers(sp));
@@ -107,12 +104,12 @@ public static class SCIMv2
       CancellationToken cancellationToken = context.RequestAborted;
       var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
-      // SCIMv2 Filtering (RFC 7644 �3.4.2.2)
+      // SCIMv2 Filtering (RFC 7644 sec. 3.4.2.2)
       string? filter = null;
       if (context.Request.Query.TryGetValue("filter", out var filterStr))
         filter = filterStr;
 
-      // SCIMv2 Sorting (RFC 7644 �3.4.2.3)
+      // SCIMv2 Sorting (RFC 7644 sec. 3.4.2.3)
       string? sortBy = null;
       string? sortOrder = null;
       if (context.Request.Query.TryGetValue("sortBy", out var sortByStr))
@@ -120,7 +117,7 @@ public static class SCIMv2
       if (context.Request.Query.TryGetValue("sortOrder", out var sortOrderStr))
         sortOrder = sortOrderStr;
 
-      // SCIMv2 Pagination (RFC 7644 �3.4.2.4)
+      // SCIMv2 Pagination (RFC 7644 sec. 3.4.2.4)
       int startIndex = 1;
       int count = 12;
 
@@ -265,7 +262,7 @@ public static class SCIMv2
       }
       else
       {
-        // JSON Patch (RFC 6902 �3)
+        // JSON Patch (RFC 6902 sec. 3)
         using StreamReader reader = new(context.Request.Body);
         string json = await reader.ReadToEndAsync(cancellationToken);
         JArray patches = JArray.Parse(json);

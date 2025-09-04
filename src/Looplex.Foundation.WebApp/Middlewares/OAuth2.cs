@@ -40,9 +40,6 @@ public static class OAuth2
 
     services.AddSingleton<IJwtService, JwtService>();
     services.AddScoped<AuthenticationsFactory>();
-    // Initialize PluginManager to ensure plugins are loaded once
-    PluginManager.Instance.Initialize();
-    
     // Use ScimServiceFactory to create services with shared plugins
     services.AddScoped<ClientServices>(sp => ScimServiceFactory.CreateClientServices(sp));
     services.AddScoped<ClientCredentialsAuthentications>(sp => ScimServiceFactory.CreateClientCredentialsAuthentications(sp));
