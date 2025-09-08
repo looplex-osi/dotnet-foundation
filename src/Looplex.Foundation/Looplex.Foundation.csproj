@@ -38,6 +38,9 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Antlr4.Runtime" Version="4.6.6"/>
+    <PackageReference Include="OpenTelemetry" Version="1.7.0"/>
+    <PackageReference Include="OpenTelemetry.Api" Version="1.7.0"/>
+    <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0"/>
   </ItemGroup>
 
   <ItemGroup>

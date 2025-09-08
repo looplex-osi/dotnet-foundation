@@ -16,12 +16,19 @@ using Looplex.Samples.Application.Abstraction;
 using Looplex.Samples.Application.Services;
 using Looplex.Samples.Infra;
 using Looplex.Samples.Infra.CommandHandlers;
+using Looplex.Samples.WebApp.Helpers;
+using Looplex.Samples.WebApp.Middlewares;
 
 using MediatR;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 using Newtonsoft.Json;
+
+using OpenTelemetry;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
 
 using Polly;
 using Polly.Extensions.Http;
@@ -80,6 +87,58 @@ public static class Program
       return new AzureSecretsService(secretClient, retryPolicy, logger);
     });
     builder.Services.AddSingleton<IDbConnections, DbConnections>();
+    // Configure telemetry
+    var telemetryOptions = TelemetryConfigurationHelper.LoadTelemetryOptions();
+    builder.Services.AddSingleton(telemetryOptions);
+    builder.Services.AddSingleton<ITelemetryService>(sp => TelemetryServiceFactory.CreateWithValidation(telemetryOptions));
+
+    // Configure OpenTelemetry if provider is OpenTelemetry
+    if (telemetryOptions.Provider.Equals("OpenTelemetry", StringComparison.OrdinalIgnoreCase))
+    {
+        builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource
+                .AddService(telemetryOptions.ServiceName, telemetryOptions.ServiceVersion)
+                .AddAttributes(telemetryOptions.GlobalAttributes))
+            .WithTracing(tracing =>
+            {
+                tracing
+                    .AddAspNetCoreInstrumentation()
+                    .AddSqlClientInstrumentation()
+                    .AddSource(telemetryOptions.ServiceName);
+
+                if (telemetryOptions.OpenTelemetry.EnableConsoleExporter)
+                {
+                    tracing.AddConsoleExporter();
+                }
+
+                if (telemetryOptions.OpenTelemetry.ExportProtocol.Equals("otlp", StringComparison.OrdinalIgnoreCase))
+                {
+                    tracing.AddOtlpExporter(options =>
+                    {
+                        options.Endpoint = new Uri(telemetryOptions.OpenTelemetry.Endpoint);
+                    });
+                }
+            })
+            .WithMetrics(metrics =>
+            {
+                metrics
+                    .AddAspNetCoreInstrumentation();
+
+                if (telemetryOptions.OpenTelemetry.EnableConsoleExporter)
+                {
+                    metrics.AddConsoleExporter();
+                }
+
+                if (telemetryOptions.OpenTelemetry.ExportProtocol.Equals("otlp", StringComparison.OrdinalIgnoreCase))
+                {
+                    metrics.AddOtlpExporter(options =>
+                    {
+                        options.Endpoint = new Uri(telemetryOptions.OpenTelemetry.Endpoint);
+                    });
+                }
+            });
+    }
+
     builder.Services.AddOAuth2(builder.Configuration);
     builder.Services.AddSCIMv2();
     builder.Services.AddAuthZ(InitRbacEnforcer());
@@ -124,6 +183,7 @@ public static class Program
       })
       .AllowAnonymous();
 
+    app.UseTelemetry();
     app.UseOAuth2();
     app.UseSCIMv2();
 
