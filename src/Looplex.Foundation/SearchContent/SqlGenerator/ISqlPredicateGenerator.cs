@@ -116,6 +116,19 @@ public class SqlGenerationOptions
     /// Only used when UseParameters is false
     /// </summary>
     public bool EscapeStrings { get; set; } = true;
+
+    /// <summary>
+    /// Table name to use for complex filter EXISTS queries
+    /// Must be configured by the consuming application
+    /// </summary>
+    public string? ComplexFilterTableName { get; set; }
+
+    /// <summary>
+    /// Enables debug logging for troubleshooting SCIM filter processing.
+    /// When enabled, outputs detailed information about key matching and SQL generation.
+    /// Defaults to false for production use to avoid log pollution.
+    /// </summary>
+    public bool EnableDebugLogging { get; set; } = false;
 }
 
 /// <summary>
