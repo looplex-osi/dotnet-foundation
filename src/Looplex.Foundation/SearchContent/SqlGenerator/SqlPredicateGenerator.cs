@@ -273,10 +273,18 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
 
     public string VisitLiteralValue(LiteralValueNode node)
     {
-        var parameterName = GetNextParameterName();
         var value = GetParameterValue(node);
-        _parameters[parameterName] = value;
-        return $"@{parameterName}";
+        
+        if (_options.UseParameters)
+        {
+            var parameterName = GetNextParameterName();
+            _parameters[parameterName] = value;
+            return $"@{parameterName}";
+        }
+        else
+        {
+            return EscapeValue(value);
+        }
     }
 
     /// <summary>
@@ -332,15 +340,113 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
     }
 
     /// <summary>
-    /// Process Value Path Filters like identities[IdentityProviderType eq "CPF"].Value
+    /// Processes SCIM value path filters by first checking FieldMapping for direct mappings,
+    /// then falling back to EXISTS subquery generation if no mapping is found.
+    /// Supports multiple key formats including case variations and different condition formats.
     /// </summary>
+    /// <param name="mainAttribute">The main attribute name (e.g., "identities")</param>
+    /// <param name="condition">The condition string (e.g., "identityProviderType eq \"CNJ\"")</param>
+    /// <param name="subAttribute">The sub-attribute name (e.g., "Value")</param>
+    /// <returns>SQL expression from FieldMapping or generated EXISTS subquery</returns>
+    /// <exception cref="InvalidOperationException">Thrown when ComplexFilterTableName is required but not configured</exception>
     private string ProcessValuePathFilter(string mainAttribute, string condition, string? subAttribute)
     {
+        // Check FieldMapping first - if there's a direct mapping, use it instead of EXISTS query
+        // Try different formats to match the mapping (case-insensitive)
+        var possibleKeys = new[]
+        {
+            $"{mainAttribute}[{condition}].{subAttribute}",
+            $"{mainAttribute}[IdentityProviderType eq \"{ExtractValueFromCondition(condition)}\"].{subAttribute}",
+            $"{mainAttribute}[IdentityProviderType eq {ExtractValueFromCondition(condition)}].{subAttribute}",
+            // Try with capitalized first letter
+            $"{CapitalizeFirst(mainAttribute)}[IdentityProviderType eq \"{ExtractValueFromCondition(condition)}\"].{subAttribute}",
+            $"{CapitalizeFirst(mainAttribute)}[IdentityProviderType eq {ExtractValueFromCondition(condition)}].{subAttribute}"
+        };
+
+        foreach (var key in possibleKeys)
+        {
+            if (_options.EnableDebugLogging)
+            {
+                Console.WriteLine($"DEBUG: Trying key: '{key}'");
+            }
+            
+            if (_options.FieldMapping?.ContainsKey(key) == true)
+            {
+                if (_options.EnableDebugLogging)
+                {
+                    Console.WriteLine($"DEBUG: Found mapping for key: '{key}' -> '{_options.FieldMapping[key]}'");
+                }
+                return _options.FieldMapping[key];
+            }
+        }
+        
+        if (_options.EnableDebugLogging)
+        {
+            var availableKeys = _options.FieldMapping?.Keys.ToList() ?? new List<string>();
+            Console.WriteLine($"DEBUG: No mapping found for any key. Available keys: {string.Join(", ", availableKeys)}");
+        }
+
         // Parse the condition (e.g., "IdentityProviderType eq \"CPF\"")
         var conditionParts = ParseValuePathCondition(condition);
         
         // Generate EXISTS subquery
         return GenerateValuePathExistsQuery(mainAttribute, conditionParts, subAttribute ?? "");
+    }
+
+    /// <summary>
+    /// Extracts the value from a SCIM filter condition string.
+    /// Supports multiple formats: "(attribute, operator, value)" and "attribute operator \"value\"".
+    /// </summary>
+    /// <param name="condition">The condition string to parse</param>
+    /// <returns>The extracted value without quotes or parentheses</returns>
+    /// <example>
+    /// ExtractValueFromCondition("(identityProviderType, eq, CNJ)") returns "CNJ"
+    /// ExtractValueFromCondition("IdentityProviderType eq \"CNJ\"") returns "CNJ"
+    /// </example>
+    private string ExtractValueFromCondition(string condition)
+    {
+        // Handle format: (identityProviderType, eq, CNJ)
+        if (condition.StartsWith("(") && condition.EndsWith(")"))
+        {
+            var parts = condition.Trim('(', ')').Split(',');
+            if (parts.Length >= 3)
+            {
+                return parts[2].Trim();
+            }
+        }
+        
+        // Handle format: IdentityProviderType eq "CNJ"
+        var eqIndex = condition.IndexOf(" eq ");
+        if (eqIndex > 0)
+        {
+            var value = condition.Substring(eqIndex + 4).Trim();
+            // Remove quotes if present
+            if (value.StartsWith("\"") && value.EndsWith("\""))
+            {
+                value = value.Substring(1, value.Length - 2);
+            }
+            return value;
+        }
+        
+        return condition;
+    }
+
+    /// <summary>
+    /// Capitalizes the first letter of a string while preserving the rest of the string.
+    /// Returns empty string if input is null or empty.
+    /// </summary>
+    /// <param name="input">The string to capitalize</param>
+    /// <returns>The string with first letter capitalized, or empty string if input is null/empty</returns>
+    /// <example>
+    /// CapitalizeFirst("identities") returns "Identities"
+    /// CapitalizeFirst("") returns ""
+    /// </example>
+    private string CapitalizeFirst(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+        
+        return char.ToUpper(input[0]) + input.Substring(1);
     }
 
     /// <summary>
@@ -411,7 +517,12 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
             lock (_lockObject) { _parameters[paramName] = paramValue; }
             
             // Generate EXISTS subquery with parameter
-            var existsQuery = $"EXISTS (SELECT 1 FROM TIdentidade {tableAlias} WHERE {tableAlias}.cdProcesso = p.cdProcesso AND {tableAlias}.{columnName} {sqlOperator} @{paramName}";
+            var tableName = _options.ComplexFilterTableName;
+            if (string.IsNullOrEmpty(tableName))
+            {
+                throw new InvalidOperationException($"ComplexFilterTableName must be configured to generate EXISTS queries for complex filters. Attribute: {mainAttribute}[{condition}].{subAttribute}");
+            }
+            var existsQuery = $"EXISTS (SELECT 1 FROM {tableName} {tableAlias} WHERE {tableAlias}.cdProcesso = p.cdProcesso AND {tableAlias}.{columnName} {sqlOperator} @{paramName}";
             
             // Add sub-attribute condition if specified
             if (!string.IsNullOrEmpty(subAttribute))
@@ -440,7 +551,12 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
             });
             
             // Generate EXISTS subquery with escaped value
-            var existsQuery = $"EXISTS (SELECT 1 FROM TIdentidade {tableAlias} WHERE {tableAlias}.cdProcesso = p.cdProcesso AND {tableAlias}.{columnName} {sqlOperator} {escapedValue}";
+            var tableName = _options.ComplexFilterTableName;
+            if (string.IsNullOrEmpty(tableName))
+            {
+                throw new InvalidOperationException($"ComplexFilterTableName must be configured to generate EXISTS queries for complex filters. Attribute: {mainAttribute}[{condition}].{subAttribute}");
+            }
+            var existsQuery = $"EXISTS (SELECT 1 FROM {tableName} {tableAlias} WHERE {tableAlias}.cdProcesso = p.cdProcesso AND {tableAlias}.{columnName} {sqlOperator} {escapedValue}";
             
             // Add sub-attribute condition if specified
             if (!string.IsNullOrEmpty(subAttribute))
@@ -637,7 +753,7 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
 
     private static string? ExtractExistsAlias(string existsSql)
     {
-        const string marker = "FROM TIdentidade ";
+        const string marker = "FROM ";
         var idx = existsSql.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
         if (idx < 0) return null;
         idx += marker.Length;
@@ -671,17 +787,8 @@ public class SqlPredicateGenerator : ISqlPredicateGenerator, IAstVisitor<string>
 
         if (value is string stringValue)
         {
-            // Check if the string represents a numeric value (for enum conversions)
-            if (int.TryParse(stringValue, out var intValue))
-            {
-                return intValue.ToString();
-            }
-            
-            if (decimal.TryParse(stringValue, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var decimalValue))
-            {
-                return decimalValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            }
-
+            // Always treat string values as strings, even if they look like numbers
+            // This prevents SQL type conversion errors like "Conversion failed when converting the varchar value 'NNNNNNN-DD.AAAA.J.TR.OOOO' to data type int"
             if (_options.EscapeStrings)
             {
                 // Escape single quotes by doubling them

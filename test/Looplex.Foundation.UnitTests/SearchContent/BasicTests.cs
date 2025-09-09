@@ -123,10 +123,10 @@ public class BasicTests
         // Arrange - Test cases that simulate enum conversions from Case Management
         var testCases = new[]
         {
-            ("Status eq \"1\"", "Status = 1"), // "ATIVO" converted to "1"
-            ("Type eq \"3\"", "Type = 3"), // "JUDICIAL_ESTADUAL" converted to "3"
-            ("Status ne \"2\"", "Status != 2"), // "ARQUIVO_MORTO" converted to "2"
-            ("Status eq \"1\" and Type eq \"3\"", "Status = 1 AND Type = 3")
+            ("Status eq \"1\"", "Status = '1'"), // String values are always quoted to prevent SQL type conversion errors
+            ("Type eq \"3\"", "Type = '3'"), // String values are always quoted to prevent SQL type conversion errors
+            ("Status ne \"2\"", "Status != '2'"), // String values are always quoted to prevent SQL type conversion errors
+            ("Status eq \"1\" and Type eq \"3\"", "Status = '1' AND Type = '3'")
         };
 
         foreach (var (scimFilter, expectedSql) in testCases)
@@ -155,26 +155,26 @@ public class BasicTests
         // Arrange - Test all three enum types that Case Management uses
         var enumTestCases = new[]
         {
-            // Status enum (SituacaoDoProcesso)
-            ("Status eq \"1\"", "Status = 1"), // ATIVO
-            ("Status eq \"2\"", "Status = 2"), // ARQUIVO_MORTO
-            ("Status eq \"3\"", "Status = 3"), // ENCERRADO
+            // Status enum (SituacaoDoProcesso) - String values are always quoted to prevent SQL type conversion errors
+            ("Status eq \"1\"", "Status = '1'"), // ATIVO
+            ("Status eq \"2\"", "Status = '2'"), // ARQUIVO_MORTO
+            ("Status eq \"3\"", "Status = '3'"), // ENCERRADO
             
-            // Type enum (RamosJudicial) 
-            ("Type eq \"1\"", "Type = 1"), // ADMINISTRATIVO
-            ("Type eq \"3\"", "Type = 3"), // JUDICIAL_ESTADUAL
-            ("Type eq \"4\"", "Type = 4"), // JUDICIAL_FEDERAL
-            ("Type eq \"5\"", "Type = 5"), // JUDICIAL_TRABALHISTA
+            // Type enum (RamosJudicial) - String values are always quoted to prevent SQL type conversion errors
+            ("Type eq \"1\"", "Type = '1'"), // ADMINISTRATIVO
+            ("Type eq \"3\"", "Type = '3'"), // JUDICIAL_ESTADUAL
+            ("Type eq \"4\"", "Type = '4'"), // JUDICIAL_FEDERAL
+            ("Type eq \"5\"", "Type = '5'"), // JUDICIAL_TRABALHISTA
             
-            // SubType enum (ClasseProcesso)
-            ("SubType eq \"1\"", "SubType = 1"), // CASO
-            ("SubType eq \"2\"", "SubType = 2"), // SUBCASO
-            ("SubType eq \"3\"", "SubType = 3"), // RECURSO
+            // SubType enum (ClasseProcesso) - String values are always quoted to prevent SQL type conversion errors
+            ("SubType eq \"1\"", "SubType = '1'"), // CASO
+            ("SubType eq \"2\"", "SubType = '2'"), // SUBCASO
+            ("SubType eq \"3\"", "SubType = '3'"), // RECURSO
             
-            // Combined queries
-            ("Status eq \"1\" and Type eq \"3\"", "Status = 1 AND Type = 3"),
-            ("Type eq \"3\" and SubType eq \"1\"", "Type = 3 AND SubType = 1"),
-            ("Status eq \"1\" and Type eq \"3\" and SubType eq \"1\"", "Status = 1 AND Type = 3 AND SubType = 1")
+            // Combined queries - String values are always quoted to prevent SQL type conversion errors
+            ("Status eq \"1\" and Type eq \"3\"", "Status = '1' AND Type = '3'"),
+            ("Type eq \"3\" and SubType eq \"1\"", "Type = '3' AND SubType = '1'"),
+            ("Status eq \"1\" and Type eq \"3\" and SubType eq \"1\"", "Status = '1' AND Type = '3' AND SubType = '1'")
         };
 
         foreach (var (scimFilter, expectedSql) in enumTestCases)
