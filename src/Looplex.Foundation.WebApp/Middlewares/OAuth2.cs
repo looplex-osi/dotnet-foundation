@@ -29,51 +29,59 @@ public static class OAuth2
   {
     services.AddAuthentication(options =>
       {
-        options.DefaultAuthenticateScheme =
-          JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme =
-          JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
       })
       .AddJwtBearer(options => JwtBearerMiddleware(options, configuration));
     services.AddAuthorization();
-
     services.AddSingleton<IJwtService, JwtService>();
     services.AddScoped<AuthenticationsFactory>();
+    services.AddScoped<IAuthentications, AuthenticationsFacade>();
     services.AddScoped<ClientServices>(sp =>
     {
-      PluginLoader loader = new();
-      IEnumerable<string> dlls = Directory.Exists("plugins")
-        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : [];
+      var loader = new PluginLoader();
+      var dlls = Directory.Exists("plugins")
+          ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+          : Enumerable.Empty<string>();
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
       var mediator = sp.GetRequiredService<IMediator>();
+
       return new ClientServices(plugins, rbacService, httpContextAccessor, mediator, configuration);
     });
     services.AddScoped<ClientCredentialsAuthentications>(sp =>
     {
-      PluginLoader loader = new();
-      IEnumerable<string> dlls = Directory.Exists("plugins")
-        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : [];
+      var loader = new PluginLoader();
+      var dlls = Directory.Exists("plugins")
+          ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+          : Enumerable.Empty<string>();
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
-      var clientCredentials = sp.GetRequiredService<ClientServices>();
+
+      var clientServices = sp.GetRequiredService<ClientServices>();
       var jwtService = sp.GetRequiredService<IJwtService>();
-      return new ClientCredentialsAuthentications(plugins, configuration, clientCredentials, jwtService);
+
+      return new ClientCredentialsAuthentications(plugins, configuration, clientServices, jwtService);
     });
     services.AddScoped<TokenExchangeAuthentications>(sp =>
     {
-      PluginLoader loader = new();
-      IEnumerable<string> dlls = Directory.Exists("plugins")
-        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : [];
+      var loader = new PluginLoader();
+      var dlls = Directory.Exists("plugins")
+          ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
+          : Enumerable.Empty<string>();
       IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+
       var jwtService = sp.GetRequiredService<IJwtService>();
       var httpClient = sp.GetRequiredService<HttpClient>();
-      return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient);
-    });
+      var clientServices = sp.GetRequiredService<ClientServices>();
 
+      return new TokenExchangeAuthentications(plugins, configuration, jwtService, httpClient, clientServices);
+    });
+    services.AddScoped<IClientCredentialsAuthentications, ClientCredentialsAuthentications>();
+    services.AddScoped<ITokenExchangeAuthentications, TokenExchangeAuthentications>();
+    services.AddScoped<FlowRouter>();
+    services.AddScoped<OAuth2Service>();
     return services;
   }
 

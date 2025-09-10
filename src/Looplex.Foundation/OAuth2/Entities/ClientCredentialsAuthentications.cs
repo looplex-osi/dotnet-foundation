@@ -19,7 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Looplex.Foundation.OAuth2.Entities;
 
-public class ClientCredentialsAuthentications : Service, IAuthentications
+public class ClientCredentialsAuthentications : Service, IClientCredentialsAuthentications
 {
   private readonly ClientServices? _clientServices;
   private readonly IConfiguration? _configuration;
