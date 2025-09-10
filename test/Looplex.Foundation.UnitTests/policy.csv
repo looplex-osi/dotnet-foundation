@@ -1,9 +1,13 @@
-# Define permissions for groups
-p, group1, looplex, resource, read
-p, group1, looplex, resource, write
-p, group1, looplex, resource, delete
+# Allow permissions for group1
+p, group1, looplex, resource, read, allow
+p, group1, looplex, resource, write, allow
+p, group1, looplex, resource, delete, allow
 
-p, group2, looplex, resource, execute
+# Allow permission for group2
+p, group2, looplex, resource, execute, allow
+
+# Deny permission for specific user
+p, alice.rivest@email.com, looplex, resource, delete, deny
 
 # Assign users to groups
 g, bob.rivest@email.com, group1, looplex

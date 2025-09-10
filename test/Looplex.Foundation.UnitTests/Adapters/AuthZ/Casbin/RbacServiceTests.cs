@@ -2,12 +2,15 @@ using System.Reflection;
 using System.Security.Claims;
 
 using Casbin;
+using Casbin.Model;
 
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
 
 using Microsoft.Extensions.Logging;
 
 using NSubstitute;
+
+using static Org.BouncyCastle.Crypto.Engines.SM2Engine;
 
 namespace Looplex.Foundation.UnitTests.Adapters.AuthZ.Casbin;
 
@@ -25,12 +28,23 @@ public class RbacServiceTests
     // Set up substitutes
     string testDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
                            ?? throw new InvalidOperationException("Could not determine test directory");
-    string modelPath = Path.Combine(testDirectory, "model.conf");
     string policyPath = Path.Combine(testDirectory, "policy.csv");
 
-    if (!File.Exists(modelPath) || !File.Exists(policyPath))
+
+
+    // Load model.conf as EmbeddedResource from Foundation
+    var modelResource = "Looplex.Foundation.Adapters.AuthZ.Casbin.model.conf";
+    var foundationAssembly = typeof(RbacService).Assembly;
+
+    using Stream? modelStream = foundationAssembly.GetManifestResourceStream(modelResource);
+    if (modelStream == null)
     {
-      throw new FileNotFoundException("Required Casbin configuration files are missing");
+      throw new FileNotFoundException($"Embedded resource '{modelResource}' not found in Looplex.Foundation.");
+    }
+    string modelPath = Path.Combine(Path.GetTempPath(), $"model-{Guid.NewGuid()}.conf");
+    using (var fileStream = File.Create(modelPath))
+    {
+      modelStream.CopyTo(fileStream);
     }
 
     _enforcer = new Enforcer(modelPath, policyPath);
@@ -104,6 +118,92 @@ public class RbacServiceTests
     UnauthorizedAccessException ex =
       Assert.ThrowsException<UnauthorizedAccessException>(() =>
         _rbacService.ThrowIfUnauthorized(_user, "resource", action));
+    Assert.AreEqual("UNAUTHORIZED_ACCESS", ex.Message);
+  }
+
+  [TestMethod]
+  public void ThrowIfUnauthorized_UserHasDenyPolicy_ExceptionIsThrown()
+  {
+    _user.Claims.Returns(new[]
+    {
+    new Claim(ClaimTypes.Email, "alice.rivest@email.com"),
+    new Claim("tenant", "looplex")
+  });
+
+    var ex = Assert.ThrowsException<UnauthorizedAccessException>(() =>
+      _rbacService.ThrowIfUnauthorized(_user, "resource", "delete"));
+
+    Assert.AreEqual("UNAUTHORIZED_ACCESS", ex.Message);
+  }
+  [TestMethod]
+  public void UserInGroup1_CanReadResource()
+  {
+    _user.Claims.Returns(new[]
+    {
+    new Claim(ClaimTypes.Email, "bob.rivest@email.com"),
+    new Claim("tenant", "looplex")
+  });
+
+    _rbacService.ThrowIfUnauthorized(_user, "resource", "read"); // Não lança exceção
+  }
+  [TestMethod]
+  public void UserInGroup1_CanDeleteResource()
+  {
+    _user.Claims.Returns(new[]
+    {
+    new Claim(ClaimTypes.Email, "bob.rivest@email.com"),
+    new Claim("tenant", "looplex")
+  });
+
+    _rbacService.ThrowIfUnauthorized(_user, "resource", "delete"); // Não lança exceção
+  }
+  [TestMethod]
+  public void AliceInGroup2_CanExecuteResource()
+  {
+    _user.Claims.Returns(new[]
+    {
+    new Claim(ClaimTypes.Email, "alice.rivest@email.com"),
+    new Claim("tenant", "looplex")
+  });
+
+    _rbacService.ThrowIfUnauthorized(_user, "resource", "execute"); 
+  }
+  [TestMethod]
+  public void UserInGroup1_CanWriteResource()
+  {
+    _user.Claims.Returns(new[]
+    {
+    new Claim(ClaimTypes.Email, "bob.rivest@email.com"),
+    new Claim("tenant", "looplex")
+  });
+
+    _rbacService.ThrowIfUnauthorized(_user, "resource", "write"); 
+  }
+
+  [TestMethod]
+  public void AliceIsDeniedDeleteDirectly()
+  {
+    _user.Claims.Returns(new[]
+    {
+    new Claim(ClaimTypes.Email, "alice.rivest@email.com"),
+    new Claim("tenant", "looplex")
+  });
+
+    var ex = Assert.ThrowsException<UnauthorizedAccessException>(() =>
+      _rbacService.ThrowIfUnauthorized(_user, "resource", "delete"));
+    Assert.AreEqual("UNAUTHORIZED_ACCESS", ex.Message);
+  }
+  [TestMethod]
+  public void UserInGroup1_CannotExecute()
+  {
+    _user.Claims.Returns(new[]
+    {
+    new Claim(ClaimTypes.Email, "bob.rivest@email.com"),
+    new Claim("tenant", "looplex")
+  });
+
+    var ex = Assert.ThrowsException<UnauthorizedAccessException>(() =>
+      _rbacService.ThrowIfUnauthorized(_user, "resource", "execute"));
     Assert.AreEqual("UNAUTHORIZED_ACCESS", ex.Message);
   }
 }
