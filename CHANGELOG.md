@@ -2,23 +2,6 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
-<a name="1.3.1"></a>
-## [1.3.1](https://www.github.com/looplex-osi/dotnet-foundation/releases/tag/v1.3.1) (2025-01-20)
-
-### Refactoring
-
-* **serialization:** migrate ActorJsonSerializer from Newtonsoft.Json to System.Text.Json for improved performance
-* **serialization:** standardize ActorXmlSerializer namespace and API consistency
-* **serialization:** remove JsonSerializerFoundation redundant utility class
-* **scimv2:** standardize RFC comment format with proper links
-* **scimv2:** simplify serialization configuration by removing explicit OverrideSpecifiedNames
-
-### Bug Fixes
-
-* **serialization:** update all serialization references to use System.Text.Json consistently
-* **tests:** update unit tests to use static serialization APIs
-* **oauth2:** migrate OAuth2 entities to System.Text.Json serialization
-
 <a name="1.3.0"></a>
 ## [1.3.0](https://www.github.com/looplex-osi/dotnet-foundation/releases/tag/v1.3.0) (2025-05-19)
 
