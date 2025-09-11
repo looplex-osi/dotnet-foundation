@@ -46,7 +46,7 @@ public class TelemetryMiddleware
             ["method"] = context.Request.Method,
             ["path"] = TelemetrySecurityHelper.SanitizeUrl(context.Request.Path),
             ["user_agent"] = context.Request.Headers.UserAgent.ToString(),
-            ["remote_ip"] = TelemetrySecurityHelper.SanitizeIpAddress(context.Connection.RemoteIpAddress?.ToString() ?? "unknown")
+            ["remote_ip"] = context.Connection.RemoteIpAddress?.ToString() ?? "unknown"
         };
 
         // Sanitize headers if needed

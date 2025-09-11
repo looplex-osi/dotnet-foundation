@@ -9,6 +9,7 @@ using Looplex.Foundation.Adapters;
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
+using Looplex.Samples.WebApp.HealthChecks;
 using Looplex.Foundation.WebApp.Middlewares;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
@@ -88,34 +89,46 @@ public static class Program
     });
     builder.Services.AddSingleton<IDbConnections, DbConnections>();
     // Configure telemetry
-    var telemetryOptions = TelemetryConfigurationHelper.LoadTelemetryOptions();
-    builder.Services.AddSingleton(telemetryOptions);
-    builder.Services.AddSingleton<ITelemetryService>(sp => TelemetryServiceFactory.CreateWithValidation(telemetryOptions));
+    var telemetryConfig = TelemetryConfigurationHelper.LoadTelemetryConfiguration();
+    
+    // Validate telemetry configuration (optional - can be removed in production)
+    var (isValid, errors) = TelemetryServiceFactory.ValidateConfiguration(telemetryConfig);
+    if (!isValid)
+    {
+        var logger = builder.Services.BuildServiceProvider().GetService<ILogger<WebApplication>>();
+        logger?.LogWarning("Telemetry configuration issues: {Errors}", string.Join(", ", errors));
+    }
+    
+    builder.Services.AddSingleton<ITelemetryService>(sp => TelemetryServiceFactory.CreateTelemetryService(telemetryConfig));
+    
+    // Configure health checks
+    builder.Services.AddHealthChecks()
+        .AddCheck<TelemetryHealthCheck>("telemetry");
 
     // Configure OpenTelemetry if provider is OpenTelemetry
-    if (telemetryOptions.Provider.Equals("OpenTelemetry", StringComparison.OrdinalIgnoreCase))
+    if (telemetryConfig.Provider.Equals("OpenTelemetry", StringComparison.OrdinalIgnoreCase))
     {
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
-                .AddService(telemetryOptions.ServiceName, telemetryOptions.ServiceVersion)
-                .AddAttributes(telemetryOptions.GlobalAttributes))
+                .AddService(telemetryConfig.ServiceName, telemetryConfig.ServiceVersion)
+                .AddAttributes(telemetryConfig.GlobalAttributes ?? new Dictionary<string, object>()))
             .WithTracing(tracing =>
             {
                 tracing
                     .AddAspNetCoreInstrumentation()
                     .AddSqlClientInstrumentation()
-                    .AddSource(telemetryOptions.ServiceName);
+                    .AddSource(telemetryConfig.ServiceName);
 
-                if (telemetryOptions.OpenTelemetry.EnableConsoleExporter)
+                if (telemetryConfig.OpenTelemetryEnableConsoleExporter)
                 {
                     tracing.AddConsoleExporter();
                 }
 
-                if (telemetryOptions.OpenTelemetry.ExportProtocol.Equals("otlp", StringComparison.OrdinalIgnoreCase))
+                if (telemetryConfig.OpenTelemetryExportProtocol.Equals("otlp", StringComparison.OrdinalIgnoreCase))
                 {
                     tracing.AddOtlpExporter(options =>
                     {
-                        options.Endpoint = new Uri(telemetryOptions.OpenTelemetry.Endpoint);
+                        options.Endpoint = new Uri(telemetryConfig.OpenTelemetryEndpoint);
                     });
                 }
             })
@@ -124,16 +137,16 @@ public static class Program
                 metrics
                     .AddAspNetCoreInstrumentation();
 
-                if (telemetryOptions.OpenTelemetry.EnableConsoleExporter)
+                if (telemetryConfig.OpenTelemetryEnableConsoleExporter)
                 {
                     metrics.AddConsoleExporter();
                 }
 
-                if (telemetryOptions.OpenTelemetry.ExportProtocol.Equals("otlp", StringComparison.OrdinalIgnoreCase))
+                if (telemetryConfig.OpenTelemetryExportProtocol.Equals("otlp", StringComparison.OrdinalIgnoreCase))
                 {
                     metrics.AddOtlpExporter(options =>
                     {
-                        options.Endpoint = new Uri(telemetryOptions.OpenTelemetry.Endpoint);
+                        options.Endpoint = new Uri(telemetryConfig.OpenTelemetryEndpoint);
                     });
                 }
             });
@@ -180,7 +193,14 @@ public static class Program
           });
           await context.Response.WriteAsync(result);
         }
-      })
+      });
+
+    // Custom telemetry health check endpoint
+    app.MapGet("/health/telemetry", async (ITelemetryService telemetryService) =>
+    {
+      var (isHealthy, message) = await TelemetryServiceFactory.HealthCheckAsync(telemetryService);
+      return new { healthy = isHealthy, message, timestamp = DateTime.UtcNow };
+    })
       .AllowAnonymous();
 
     app.UseTelemetry();

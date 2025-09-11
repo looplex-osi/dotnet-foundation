@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Looplex.Foundation.Configuration;
 using Looplex.Foundation.Ports;
 
 namespace Looplex.Foundation.Adapters.Telemetry;
@@ -12,29 +11,32 @@ namespace Looplex.Foundation.Adapters.Telemetry;
 /// </summary>
 public class ApplicationInsightsAdapter : ITelemetryService, IDisposable
 {
-    private readonly TelemetryOptions _options;
+    private readonly string _serviceName;
+    private readonly string _serviceVersion;
+    private readonly string _environment;
+    private readonly Dictionary<string, object>? _globalAttributes;
     private readonly Microsoft.ApplicationInsights.TelemetryClient? _telemetryClient;
 
     /// <summary>
     /// Initializes a new instance of the ApplicationInsightsAdapter class.
     /// </summary>
-    /// <param name="options">The telemetry configuration options.</param>
-    public ApplicationInsightsAdapter(TelemetryOptions options)
+    /// <param name="connectionString">The Application Insights connection string.</param>
+    /// <param name="serviceName">The name of the service.</param>
+    /// <param name="serviceVersion">The version of the service.</param>
+    /// <param name="environment">The environment (e.g., Development, Production).</param>
+    /// <param name="globalAttributes">Optional global attributes to include with all telemetry.</param>
+    public ApplicationInsightsAdapter(string connectionString, string serviceName, string serviceVersion = "1.0.0", string environment = "Development", Dictionary<string, object>? globalAttributes = null)
     {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _serviceName = serviceName ?? throw new ArgumentNullException(nameof(serviceName));
+        _serviceVersion = serviceVersion ?? "1.0.0";
+        _environment = environment ?? "Development";
+        _globalAttributes = globalAttributes;
         
         // Initialize Application Insights telemetry client if connection string is provided
-        if (!string.IsNullOrEmpty(_options.ApplicationInsights.ConnectionString))
+        if (!string.IsNullOrEmpty(connectionString))
         {
             var config = Microsoft.ApplicationInsights.Extensibility.TelemetryConfiguration.CreateDefault();
-            config.ConnectionString = _options.ApplicationInsights.ConnectionString;
-            _telemetryClient = new Microsoft.ApplicationInsights.TelemetryClient(config);
-        }
-        else if (!string.IsNullOrEmpty(_options.ApplicationInsights.InstrumentationKey))
-        {
-            // Legacy support for instrumentation key
-            var config = Microsoft.ApplicationInsights.Extensibility.TelemetryConfiguration.CreateDefault();
-            config.InstrumentationKey = _options.ApplicationInsights.InstrumentationKey;
+            config.ConnectionString = connectionString;
             _telemetryClient = new Microsoft.ApplicationInsights.TelemetryClient(config);
         }
     }
@@ -186,18 +188,19 @@ public class ApplicationInsightsAdapter : ITelemetryService, IDisposable
     /// <param name="properties">The properties dictionary to add attributes to.</param>
     private void AddGlobalAttributes(IDictionary<string, string> properties)
     {
-        if (_options.GlobalAttributes == null)
-            return;
-
-        foreach (var attribute in _options.GlobalAttributes)
+        // Add global attributes if provided
+        if (_globalAttributes != null)
         {
-            properties[attribute.Key] = attribute.Value?.ToString() ?? string.Empty;
+            foreach (var attribute in _globalAttributes)
+            {
+                properties[attribute.Key] = attribute.Value?.ToString() ?? string.Empty;
+            }
         }
         
         // Add service information
-        properties["service.name"] = _options.ServiceName;
-        properties["service.version"] = _options.ServiceVersion;
-        properties["service.environment"] = _options.Environment;
+        properties["service.name"] = _serviceName;
+        properties["service.version"] = _serviceVersion;
+        properties["service.environment"] = _environment;
     }
 
     /// <summary>
@@ -218,3 +221,4 @@ public class ApplicationInsightsAdapter : ITelemetryService, IDisposable
         }
     }
 }
+

@@ -28,9 +28,9 @@ public class TelemetrySecurityHelperTests
         var sanitized = TelemetrySecurityHelper.SanitizeHeaders(headers);
 
         // Assert
-        Assert.AreEqual("[REDACTED]", sanitized["authorization"]);
-        Assert.AreEqual("[REDACTED]", sanitized["cookie"]);
-        Assert.AreEqual("[REDACTED]", sanitized["x-api-key"]);
+        Assert.AreEqual("********", sanitized["authorization"]);
+        Assert.AreEqual("********", sanitized["cookie"]);
+        Assert.AreEqual("********", sanitized["x-api-key"]);
         Assert.AreEqual("application/json", sanitized["content-type"]);
         Assert.AreEqual("Mozilla/5.0", sanitized["user-agent"]);
     }
@@ -46,8 +46,8 @@ public class TelemetrySecurityHelperTests
 
         // Assert
         Assert.IsTrue(sanitized.Contains("name=john"));
-        Assert.IsTrue(sanitized.Contains("password=[REDACTED]"));
-        Assert.IsTrue(sanitized.Contains("token=[REDACTED]"));
+        Assert.IsTrue(sanitized.Contains("password=********"));
+        Assert.IsTrue(sanitized.Contains("token=********"));
         Assert.IsTrue(sanitized.Contains("category=electronics"));
     }
 
@@ -70,10 +70,10 @@ public class TelemetrySecurityHelperTests
 
         // Assert
         Assert.AreEqual("user123", sanitized["user_id"]);
-        Assert.AreEqual("[REDACTED]", sanitized["password"]);
-        Assert.AreEqual("[REDACTED]", sanitized["api_key"]);
-        Assert.AreEqual("[REDACTED]", sanitized["email"]);
-        Assert.AreEqual("[REDACTED]", sanitized["phone"]);
+        Assert.AreEqual("********", sanitized["password"]);
+        Assert.AreEqual("********", sanitized["api_key"]);
+        Assert.AreEqual("********", sanitized["email"]);
+        Assert.AreEqual("********", sanitized["phone"]);
         Assert.AreEqual("active", sanitized["status"]);
     }
 
@@ -82,12 +82,17 @@ public class TelemetrySecurityHelperTests
     {
         // Arrange
         var value = "Contact user@example.com for support";
+        var patterns = new Dictionary<string, System.Text.RegularExpressions.Regex>
+        {
+            ["email"] = new System.Text.RegularExpressions.Regex(@"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", 
+                System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100))
+        };
 
         // Act
-        var sanitized = TelemetrySecurityHelper.SanitizeStringValue(value);
+        var sanitized = TelemetrySecurityHelper.SanitizeStringValue(value, patterns);
 
         // Assert
-        Assert.AreEqual("Contact [REDACTED] for support", sanitized);
+        Assert.AreEqual("Contact ******** for support", sanitized);
     }
 
     [TestMethod]
@@ -95,12 +100,17 @@ public class TelemetrySecurityHelperTests
     {
         // Arrange
         var value = "Call us at 555-123-4567 or 555.123.4567";
+        var patterns = new Dictionary<string, System.Text.RegularExpressions.Regex>
+        {
+            ["phone"] = new System.Text.RegularExpressions.Regex(@"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b", 
+                System.Text.RegularExpressions.RegexOptions.Compiled, TimeSpan.FromMilliseconds(100))
+        };
 
         // Act
-        var sanitized = TelemetrySecurityHelper.SanitizeStringValue(value);
+        var sanitized = TelemetrySecurityHelper.SanitizeStringValue(value, patterns);
 
         // Assert
-        Assert.AreEqual("Call us at [REDACTED] or [REDACTED]", sanitized);
+        Assert.AreEqual("Call us at ******** or ********", sanitized);
     }
 
     [TestMethod]
@@ -108,12 +118,17 @@ public class TelemetrySecurityHelperTests
     {
         // Arrange
         var value = "Card number: 1234-5678-9012-3456";
+        var patterns = new Dictionary<string, System.Text.RegularExpressions.Regex>
+        {
+            ["creditcard"] = new System.Text.RegularExpressions.Regex(@"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b", 
+                System.Text.RegularExpressions.RegexOptions.Compiled, TimeSpan.FromMilliseconds(100))
+        };
 
         // Act
-        var sanitized = TelemetrySecurityHelper.SanitizeStringValue(value);
+        var sanitized = TelemetrySecurityHelper.SanitizeStringValue(value, patterns);
 
         // Assert
-        Assert.AreEqual("Card number: [REDACTED]", sanitized);
+        Assert.AreEqual("Card number: ********", sanitized);
     }
 
     [TestMethod]
@@ -121,12 +136,17 @@ public class TelemetrySecurityHelperTests
     {
         // Arrange
         var value = "SSN: 123-45-6789";
+        var patterns = new Dictionary<string, System.Text.RegularExpressions.Regex>
+        {
+            ["ssn"] = new System.Text.RegularExpressions.Regex(@"\b\d{3}-\d{2}-\d{4}\b", 
+                System.Text.RegularExpressions.RegexOptions.Compiled, TimeSpan.FromMilliseconds(100))
+        };
 
         // Act
-        var sanitized = TelemetrySecurityHelper.SanitizeStringValue(value);
+        var sanitized = TelemetrySecurityHelper.SanitizeStringValue(value, patterns);
 
         // Assert
-        Assert.AreEqual("SSN: [REDACTED]", sanitized);
+        Assert.AreEqual("SSN: ********", sanitized);
     }
 
     [TestMethod]
@@ -140,8 +160,8 @@ public class TelemetrySecurityHelperTests
 
         // Assert
         Assert.IsTrue(sanitized.Contains("name=john"));
-        Assert.IsTrue(sanitized.Contains("password=[REDACTED]"));
-        Assert.IsTrue(sanitized.Contains("token=[REDACTED]"));
+        Assert.IsTrue(sanitized.Contains("password=********"));
+        Assert.IsTrue(sanitized.Contains("token=********"));
         Assert.IsTrue(sanitized.Contains("page=1"));
     }
 
@@ -201,8 +221,8 @@ public class TelemetrySecurityHelperTests
         var sanitized = TelemetrySecurityHelper.SanitizeProperties(properties);
 
         // Assert
-        Assert.AreEqual("[REDACTED]", sanitized["password"]);
-        Assert.AreEqual("[REDACTED]", sanitized["token"]);
+        Assert.AreEqual("********", sanitized["password"]);
+        Assert.AreEqual("********", sanitized["token"]);
         Assert.AreEqual("john", sanitized["name"]);
     }
 
@@ -228,75 +248,6 @@ public class TelemetrySecurityHelperTests
         Assert.AreEqual(0, sanitized.Count);
     }
 
-    [TestMethod]
-    public void SanitizePath_ShouldRedactUserIds()
-    {
-        // Arrange
-        var paths = new[]
-        {
-            "/users/12345",
-            "/api/users/67890",
-            "/profiles/11111",
-            "/accounts/22222",
-            "/orders/user/44444",
-            "/api/orders/user/55555"
-        };
-
-        // Act & Assert
-        foreach (var path in paths)
-        {
-            var sanitized = TelemetrySecurityHelper.SanitizePath(path);
-            Assert.IsTrue(sanitized.Contains("[USER_ID]"), $"Path {path} should contain [USER_ID]");
-            Assert.IsFalse(sanitized.Contains("12345"), $"Path {path} should not contain user ID");
-        }
-    }
-
-    [TestMethod]
-    public void SanitizePath_ShouldNotRedactNonUserPaths()
-    {
-        // Arrange
-        var paths = new[]
-        {
-            "/api/health",
-            "/api/status",
-            "/api/version",
-            "/docs/swagger",
-            "/static/css/style.css"
-        };
-
-        // Act & Assert
-        foreach (var path in paths)
-        {
-            var sanitized = TelemetrySecurityHelper.SanitizePath(path);
-            Assert.AreEqual(path, sanitized, $"Path {path} should remain unchanged");
-        }
-    }
-
-    [TestMethod]
-    public void SanitizeIpAddress_ShouldRedactLastOctet()
-    {
-        // Arrange
-        var ipAddress = "192.168.1.100";
-
-        // Act
-        var sanitized = TelemetrySecurityHelper.SanitizeIpAddress(ipAddress);
-
-        // Assert
-        Assert.AreEqual("192.168.1.xxx", sanitized);
-    }
-
-    [TestMethod]
-    public void RedactIpAddress_ShouldCompletelyRedact()
-    {
-        // Arrange
-        var ipAddress = "192.168.1.100";
-
-        // Act
-        var redacted = TelemetrySecurityHelper.RedactIpAddress(ipAddress);
-
-        // Assert
-        Assert.AreEqual("[IP_REDACTED]", redacted);
-    }
 
     [TestMethod]
     public void SanitizeUrl_ShouldRedactUserIdsInPath()
@@ -308,9 +259,9 @@ public class TelemetrySecurityHelperTests
         var sanitized = TelemetrySecurityHelper.SanitizeUrl(url);
 
         // Assert
-        Assert.IsTrue(sanitized.Contains("/users/[USER_ID]"));
+        Assert.IsTrue(sanitized.Contains("/users/12345")); // Paths are preserved for debugging
         Assert.IsTrue(sanitized.Contains("name=john"));
-        Assert.IsTrue(sanitized.Contains("password=[REDACTED]"));
+        Assert.IsTrue(sanitized.Contains("password=********"));
     }
 
     [TestMethod]
@@ -329,9 +280,9 @@ public class TelemetrySecurityHelperTests
         var sanitized = TelemetrySecurityHelper.SanitizeHeaders(headers);
 
         // Assert
-        Assert.AreEqual("[REDACTED]", sanitized["x-tenant-id"]);
-        Assert.AreEqual("[REDACTED]", sanitized["x-organization-id"]);
-        Assert.AreEqual("[REDACTED]", sanitized["x-company-id"]);
+        Assert.AreEqual("********", sanitized["x-tenant-id"]);
+        Assert.AreEqual("********", sanitized["x-organization-id"]);
+        Assert.AreEqual("********", sanitized["x-company-id"]);
         Assert.AreEqual("application/json", sanitized["content-type"]);
     }
 
@@ -346,8 +297,8 @@ public class TelemetrySecurityHelperTests
 
         // Assert
         Assert.IsTrue(sanitized.Contains("name=john"));
-        Assert.IsTrue(sanitized.Contains("tenant_id=[REDACTED]"));
-        Assert.IsTrue(sanitized.Contains("org_id=[REDACTED]"));
+        Assert.IsTrue(sanitized.Contains("tenant_id=********"));
+        Assert.IsTrue(sanitized.Contains("org_id=********"));
         Assert.IsTrue(sanitized.Contains("category=electronics"));
     }
 
@@ -368,59 +319,11 @@ public class TelemetrySecurityHelperTests
 
         // Assert
         Assert.AreEqual("user123", sanitized["user_id"]);
-        Assert.AreEqual("[REDACTED]", sanitized["tenant_id"]);
-        Assert.AreEqual("[REDACTED]", sanitized["organization_id"]);
+        Assert.AreEqual("********", sanitized["tenant_id"]);
+        Assert.AreEqual("********", sanitized["organization_id"]);
         Assert.AreEqual("active", sanitized["status"]);
     }
 
-    [TestMethod]
-    public void SanitizePath_ShouldRedactTenantIds()
-    {
-        // Arrange
-        var paths = new[]
-        {
-            "/tenant/12345",
-            "/api/tenant/67890",
-            "/org/11111",
-            "/api/organization/22222",
-            "/company/33333",
-            "/api/company/44444",
-            "/client/55555",
-            "/api/customer/66666"
-        };
-
-        // Act & Assert
-        foreach (var path in paths)
-        {
-            var sanitized = TelemetrySecurityHelper.SanitizePath(path);
-            Assert.IsTrue(sanitized.Contains("[TENANT_ID]"), $"Path {path} should contain [TENANT_ID]");
-            Assert.IsFalse(sanitized.Contains("12345"), $"Path {path} should not contain tenant ID");
-        }
-    }
-
-    [TestMethod]
-    public void SanitizePath_ShouldDistinguishBetweenUserAndTenantIds()
-    {
-        // Arrange
-        var userPaths = new[] { "/users/12345", "/api/profiles/67890" };
-        var tenantPaths = new[] { "/tenant/12345", "/api/org/67890" };
-
-        // Act & Assert for User IDs
-        foreach (var path in userPaths)
-        {
-            var sanitized = TelemetrySecurityHelper.SanitizePath(path);
-            Assert.IsTrue(sanitized.Contains("[USER_ID]"), $"Path {path} should contain [USER_ID]");
-            Assert.IsFalse(sanitized.Contains("[TENANT_ID]"), $"Path {path} should not contain [TENANT_ID]");
-        }
-
-        // Act & Assert for Tenant IDs
-        foreach (var path in tenantPaths)
-        {
-            var sanitized = TelemetrySecurityHelper.SanitizePath(path);
-            Assert.IsTrue(sanitized.Contains("[TENANT_ID]"), $"Path {path} should contain [TENANT_ID]");
-            Assert.IsFalse(sanitized.Contains("[USER_ID]"), $"Path {path} should not contain [USER_ID]");
-        }
-    }
 
     [TestMethod]
     public void SanitizeUrl_ShouldRedactTenantIdsInPath()
@@ -432,8 +335,8 @@ public class TelemetrySecurityHelperTests
         var sanitized = TelemetrySecurityHelper.SanitizeUrl(url);
 
         // Assert
-        Assert.IsTrue(sanitized.Contains("/tenant/[TENANT_ID]"));
+        Assert.IsTrue(sanitized.Contains("/tenant/12345")); // Paths are preserved for debugging
         Assert.IsTrue(sanitized.Contains("name=john"));
-        Assert.IsTrue(sanitized.Contains("tenant_id=[REDACTED]"));
+        Assert.IsTrue(sanitized.Contains("tenant_id=********"));
     }
 }

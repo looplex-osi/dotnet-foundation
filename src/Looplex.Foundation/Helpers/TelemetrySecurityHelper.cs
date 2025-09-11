@@ -10,6 +10,7 @@ namespace Looplex.Foundation.Helpers;
 /// <summary>
 /// Helper class for securing telemetry data by sanitizing sensitive information.
 /// This class ensures that no sensitive data (PII, passwords, tokens) is sent to telemetry systems.
+/// Regex patterns are configurable by the developer to support different locales and requirements.
 /// </summary>
 public static class TelemetrySecurityHelper
 {
@@ -129,7 +130,7 @@ public static class TelemetrySecurityHelper
         {
             if (SensitiveHeaders.ContainsKey(header.Key))
             {
-                sanitized[header.Key] = "[REDACTED]";
+                sanitized[header.Key] = REDACTION_PLACEHOLDER;
             }
             else
             {
@@ -164,7 +165,7 @@ public static class TelemetrySecurityHelper
 
                 if (SensitiveQueryParams.ContainsKey(key))
                 {
-                    sanitizedParams.Add($"{key}=[REDACTED]");
+                    sanitizedParams.Add($"{key}={REDACTION_PLACEHOLDER}");
                 }
                 else
                 {
@@ -195,12 +196,13 @@ public static class TelemetrySecurityHelper
         {
             if (SensitiveProperties.ContainsKey(property.Key))
             {
-                sanitized[property.Key] = "[REDACTED]";
+                sanitized[property.Key] = REDACTION_PLACEHOLDER;
             }
             else if (property.Value is string stringValue)
             {
                 // Check if the value itself contains sensitive patterns
-                sanitized[property.Key] = SanitizeStringValue(stringValue);
+                // Note: This method now requires user-provided regex patterns
+                sanitized[property.Key] = stringValue;
             }
             else
             {
@@ -212,52 +214,31 @@ public static class TelemetrySecurityHelper
     }
 
     /// <summary>
-    /// Pre-compiled regex pattern for email address detection with timeout protection.
+    /// Placeholder for redacted sensitive data.
     /// </summary>
-    private static readonly Regex EmailRegex = new Regex(@"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", 
-        RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
-    
-    /// <summary>
-    /// Pre-compiled regex pattern for phone number detection with timeout protection.
-    /// </summary>
-    private static readonly Regex PhoneRegex = new Regex(@"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b", 
-        RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
-    
-    /// <summary>
-    /// Pre-compiled regex pattern for credit card number detection with timeout protection.
-    /// </summary>
-    private static readonly Regex CreditCardRegex = new Regex(@"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b", 
-        RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
-    
-    /// <summary>
-    /// Pre-compiled regex pattern for SSN detection with timeout protection.
-    /// </summary>
-    private static readonly Regex SsnRegex = new Regex(@"\b\d{3}-\d{2}-\d{4}\b", 
-        RegexOptions.Compiled, TimeSpan.FromMilliseconds(100));
+    private const string REDACTION_PLACEHOLDER = "********";
 
     /// <summary>
-    /// Sanitizes a string value by redacting sensitive patterns.
-    /// Uses pre-compiled regex patterns with timeout to prevent regex injection attacks.
+    /// Sanitizes a string value using user-provided regex patterns.
+    /// Applies boundary protection to prevent regex injection attacks.
     /// </summary>
     /// <param name="value">The string value to sanitize.</param>
+    /// <param name="userProvidedRegexps">Dictionary of regex patterns provided by the developer.</param>
     /// <returns>A sanitized string with sensitive patterns redacted.</returns>
-    public static string SanitizeStringValue(string value)
+    public static string SanitizeStringValue(string value, Dictionary<string, Regex> userProvidedRegexps)
     {
-        if (string.IsNullOrEmpty(value)) return value;
+        if (string.IsNullOrEmpty(value) || userProvidedRegexps == null || userProvidedRegexps.Count == 0) 
+            return value;
 
         try
         {
-            // Redact email addresses
-            value = EmailRegex.Replace(value, "[REDACTED]");
-
-            // Redact phone numbers
-            value = PhoneRegex.Replace(value, "[REDACTED]");
-
-            // Redact credit card numbers
-            value = CreditCardRegex.Replace(value, "[REDACTED]");
-
-            // Redact SSN patterns
-            value = SsnRegex.Replace(value, "[REDACTED]");
+            foreach (var regex in userProvidedRegexps)
+            {
+                // Apply boundary protection to prevent regex injection attacks
+                var protectedPattern = $@"\b{regex.Value}\b";
+                value = Regex.Replace(value, protectedPattern, REDACTION_PLACEHOLDER, 
+                    RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
+            }
         }
         catch (RegexMatchTimeoutException)
         {
@@ -269,10 +250,11 @@ public static class TelemetrySecurityHelper
     }
 
     /// <summary>
-    /// Sanitizes a URL by redacting sensitive query parameters and user IDs.
+    /// Sanitizes a URL by redacting sensitive query parameters.
+    /// Paths are preserved for debugging and tracing purposes.
     /// </summary>
     /// <param name="url">The URL to sanitize.</param>
-    /// <returns>A sanitized URL with sensitive parameters and user IDs redacted.</returns>
+    /// <returns>A sanitized URL with sensitive parameters redacted.</returns>
     public static string SanitizeUrl(string url)
     {
         if (string.IsNullOrEmpty(url)) return url;
@@ -282,12 +264,9 @@ public static class TelemetrySecurityHelper
             var uri = new Uri(url);
             var sanitizedQuery = SanitizeQueryString(uri.Query.TrimStart('?'));
             
-            // Sanitize path to remove user IDs and other sensitive path segments
-            var sanitizedPath = SanitizePath(uri.AbsolutePath);
-            
+            // Preserve path for debugging and tracing (as per Nagao's requirements)
             var builder = new UriBuilder(uri)
             {
-                Path = sanitizedPath,
                 Query = sanitizedQuery
             };
 
@@ -300,85 +279,6 @@ public static class TelemetrySecurityHelper
         }
     }
 
-    /// <summary>
-    /// Sanitizes a path by redacting user IDs and other sensitive path segments.
-    /// </summary>
-    /// <param name="path">The path to sanitize.</param>
-    /// <returns>A sanitized path with user IDs redacted.</returns>
-    public static string SanitizePath(string path)
-    {
-        if (string.IsNullOrEmpty(path)) return path;
-
-        // Common patterns for user IDs and tenant IDs in paths
-        var patterns = new[]
-        {
-            // User ID patterns
-            @"/users/\d+",           // /users/12345
-            @"/user/\d+",            // /user/12345
-            @"/profiles/\d+",        // /profiles/12345
-            @"/accounts/\d+",        // /accounts/12345
-            @"/customers/\d+",       // /customers/12345
-            @"/members/\d+",         // /members/12345
-            @"/clients/\d+",         // /clients/12345
-            @"/orders/user/\d+",     // /orders/user/12345
-            @"/api/users/\d+",       // /api/users/12345
-            @"/api/user/\d+",        // /api/user/12345
-            @"/api/profiles/\d+",    // /api/profiles/12345
-            @"/api/accounts/\d+",    // /api/accounts/12345
-            @"/api/customers/\d+",   // /api/customers/12345
-            @"/api/members/\d+",     // /api/members/12345
-            @"/api/clients/\d+",     // /api/clients/12345
-            @"/api/orders/user/\d+", // /api/orders/user/12345
-            
-            // Tenant ID patterns
-            @"/tenant/\d+",          // /tenant/12345
-            @"/tenants/\d+",         // /tenants/12345
-            @"/org/\d+",             // /org/12345
-            @"/organization/\d+",    // /organization/12345
-            @"/company/\d+",         // /company/12345
-            @"/client/\d+",          // /client/12345
-            @"/customer/\d+",        // /customer/12345
-            @"/api/tenant/\d+",      // /api/tenant/12345
-            @"/api/tenants/\d+",     // /api/tenants/12345
-            @"/api/org/\d+",         // /api/org/12345
-            @"/api/organization/\d+", // /api/organization/12345
-            @"/api/company/\d+",     // /api/company/12345
-            @"/api/client/\d+",      // /api/client/12345
-            @"/api/customer/\d+"     // /api/customer/12345
-        };
-
-        var sanitizedPath = path;
-        foreach (var pattern in patterns)
-        {
-            sanitizedPath = Regex.Replace(sanitizedPath, pattern, match =>
-            {
-                var parts = match.Value.Split('/');
-                var lastPart = parts[parts.Length - 1];
-                if (int.TryParse(lastPart, out _))
-                {
-                    // Determine if it's a tenant ID or user ID based on the path segment
-                    var pathSegment = parts[parts.Length - 2].ToLowerInvariant();
-                    if (pathSegment.Contains("tenant") || 
-                        pathSegment.Contains("org") || 
-                        pathSegment.Contains("organization") || 
-                        pathSegment.Contains("company") ||
-                        pathSegment.Contains("client") || 
-                        pathSegment.Contains("customer"))
-                    {
-                        parts[parts.Length - 1] = "[TENANT_ID]";
-                    }
-                    else
-                    {
-                        parts[parts.Length - 1] = "[USER_ID]";
-                    }
-                    return string.Join("/", parts);
-                }
-                return match.Value;
-            }, RegexOptions.IgnoreCase);
-        }
-
-        return sanitizedPath;
-    }
 
     /// <summary>
     /// Checks if a property name is considered sensitive.
@@ -400,47 +300,4 @@ public static class TelemetrySecurityHelper
         return !string.IsNullOrEmpty(headerName) && SensitiveHeaders.ContainsKey(headerName);
     }
 
-    /// <summary>
-    /// Sanitizes an IP address by redacting the last octet for privacy.
-    /// Uses proper IP address validation to prevent bypassing.
-    /// </summary>
-    /// <param name="ipAddress">The IP address to sanitize.</param>
-    /// <returns>A sanitized IP address with the last octet redacted.</returns>
-    public static string SanitizeIpAddress(string ipAddress)
-    {
-        if (string.IsNullOrEmpty(ipAddress)) return ipAddress;
-
-        // Try to parse as IPv4 address for proper validation
-        if (IPAddress.TryParse(ipAddress, out var parsedIp) && parsedIp.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-        {
-            var parts = ipAddress.Split('.');
-            if (parts.Length == 4 && parts.All(part => int.TryParse(part, out var octet) && octet >= 0 && octet <= 255))
-            {
-                return $"{parts[0]}.{parts[1]}.{parts[2]}.xxx";
-            }
-        }
-
-        // If not a valid IPv4, return as-is (might be IPv6 or hostname)
-        return ipAddress;
-    }
-
-    /// <summary>
-    /// Completely redacts an IP address.
-    /// Uses proper IP address validation to prevent bypassing.
-    /// </summary>
-    /// <param name="ipAddress">The IP address to redact.</param>
-    /// <returns>A redacted IP address.</returns>
-    public static string RedactIpAddress(string ipAddress)
-    {
-        if (string.IsNullOrEmpty(ipAddress)) return ipAddress;
-
-        // Try to parse as IP address for proper validation
-        if (IPAddress.TryParse(ipAddress, out _))
-        {
-            return "[IP_REDACTED]";
-        }
-
-        // If not a valid IP, return as-is (might be hostname)
-        return ipAddress;
-    }
 }

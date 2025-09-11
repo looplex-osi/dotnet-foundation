@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Looplex.Foundation.Configuration;
 using Looplex.Foundation.Ports;
 
 namespace Looplex.Foundation.Adapters.Telemetry;

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Looplex.Foundation.Configuration;
 using Looplex.Foundation.Ports;
 
 namespace Looplex.Foundation.Adapters.Telemetry;
@@ -12,22 +11,30 @@ namespace Looplex.Foundation.Adapters.Telemetry;
 /// </summary>
 public class DataDogAdapter : ITelemetryService, IDisposable
 {
-    private readonly TelemetryOptions _options;
     private readonly string _apiKey;
     private readonly string _site;
     private readonly string _service;
+    private readonly string _serviceVersion;
+    private readonly string _environment;
+    private readonly Dictionary<string, object>? _globalAttributes;
 
     /// <summary>
     /// Initializes a new instance of the DataDogAdapter class.
     /// </summary>
-    /// <param name="options">The telemetry configuration options.</param>
-    public DataDogAdapter(TelemetryOptions options)
+    /// <param name="apiKey">The DataDog API key.</param>
+    /// <param name="serviceName">The name of the service.</param>
+    /// <param name="serviceVersion">The version of the service.</param>
+    /// <param name="environment">The environment (e.g., Development, Production).</param>
+    /// <param name="site">The DataDog site (default: datadoghq.com).</param>
+    /// <param name="globalAttributes">Optional global attributes to include with all telemetry.</param>
+    public DataDogAdapter(string apiKey, string serviceName, string serviceVersion = "1.0.0", string environment = "Development", string site = "datadoghq.com", Dictionary<string, object>? globalAttributes = null)
     {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        
-        _apiKey = _options.DataDog.ApiKey ?? throw new ArgumentException("DataDog API key is required", nameof(options));
-        _site = _options.DataDog.Site ?? "datadoghq.com";
-        _service = _options.DataDog.Service ?? _options.ServiceName;
+        _apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
+        _service = serviceName ?? throw new ArgumentNullException(nameof(serviceName));
+        _serviceVersion = serviceVersion ?? "1.0.0";
+        _environment = environment ?? "Development";
+        _site = site ?? "datadoghq.com";
+        _globalAttributes = globalAttributes;
     }
 
     /// <summary>
@@ -181,13 +188,13 @@ public class DataDogAdapter : ITelemetryService, IDisposable
 
         // Add service information
         tags.Add($"service:{_service}");
-        tags.Add($"version:{_options.ServiceVersion}");
-        tags.Add($"environment:{_options.Environment}");
+        tags.Add($"version:{_serviceVersion}");
+        tags.Add($"environment:{_environment}");
 
         // Add global attributes
-        if (_options.GlobalAttributes != null)
+        if (_globalAttributes != null)
         {
-            foreach (var attribute in _options.GlobalAttributes)
+            foreach (var attribute in _globalAttributes)
             {
                 tags.Add($"{attribute.Key}:{attribute.Value}");
             }

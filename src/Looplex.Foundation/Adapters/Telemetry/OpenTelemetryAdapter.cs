@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using Looplex.Foundation.Configuration;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
 using OpenTelemetry;
@@ -18,7 +17,10 @@ namespace Looplex.Foundation.Adapters.Telemetry;
 /// </summary>
 public class OpenTelemetryAdapter : ITelemetryService, IDisposable
 {
-    private readonly TelemetryOptions _options;
+    private readonly string _serviceName;
+    private readonly string _serviceVersion;
+    private readonly string _environment;
+    private readonly Dictionary<string, object>? _globalAttributes;
     private readonly Tracer _tracer;
     private readonly Meter _meter;
     private readonly ActivitySource _activitySource;
@@ -31,19 +33,25 @@ public class OpenTelemetryAdapter : ITelemetryService, IDisposable
     /// <summary>
     /// Initializes a new instance of the OpenTelemetryAdapter class.
     /// </summary>
-    /// <param name="options">The telemetry configuration options.</param>
-    public OpenTelemetryAdapter(TelemetryOptions options)
+    /// <param name="serviceName">The name of the service.</param>
+    /// <param name="serviceVersion">The version of the service.</param>
+    /// <param name="environment">The environment (e.g., Development, Production).</param>
+    /// <param name="globalAttributes">Optional global attributes to include with all telemetry.</param>
+    public OpenTelemetryAdapter(string serviceName, string serviceVersion = "1.0.0", string environment = "Development", Dictionary<string, object>? globalAttributes = null)
     {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _serviceName = serviceName ?? throw new ArgumentNullException(nameof(serviceName));
+        _serviceVersion = serviceVersion ?? "1.0.0";
+        _environment = environment ?? "Development";
+        _globalAttributes = globalAttributes;
         
         // Create activity source for distributed tracing
-        _activitySource = new ActivitySource(_options.ServiceName, _options.ServiceVersion);
+        _activitySource = new ActivitySource(_serviceName, _serviceVersion);
         
         // Create tracer
-        _tracer = TracerProvider.Default.GetTracer(_options.ServiceName, _options.ServiceVersion);
+        _tracer = TracerProvider.Default.GetTracer(_serviceName, _serviceVersion);
         
         // Create meter for metrics
-        _meter = new Meter(_options.ServiceName, _options.ServiceVersion);
+        _meter = new Meter(_serviceName, _serviceVersion);
         
         // Create counters for tracking telemetry operations
         _eventCounter = _meter.CreateCounter<long>("telemetry_events_total", "Total number of events tracked");
@@ -202,18 +210,22 @@ public class OpenTelemetryAdapter : ITelemetryService, IDisposable
     /// <param name="activity">The activity to add attributes to.</param>
     private void AddGlobalAttributes(Activity? activity)
     {
-        if (activity == null || _options.GlobalAttributes == null)
+        if (activity == null)
             return;
 
-        foreach (var attribute in _options.GlobalAttributes)
+        // Add global attributes if provided
+        if (_globalAttributes != null)
         {
-            activity.SetTag(attribute.Key, attribute.Value?.ToString());
+            foreach (var attribute in _globalAttributes)
+            {
+                activity.SetTag(attribute.Key, attribute.Value?.ToString());
+            }
         }
         
         // Add service information
-        activity.SetTag("service.name", _options.ServiceName);
-        activity.SetTag("service.version", _options.ServiceVersion);
-        activity.SetTag("service.environment", _options.Environment);
+        activity.SetTag("service.name", _serviceName);
+        activity.SetTag("service.version", _serviceVersion);
+        activity.SetTag("service.environment", _environment);
     }
 
     /// <summary>

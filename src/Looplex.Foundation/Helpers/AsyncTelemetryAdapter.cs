@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Looplex.Foundation.Configuration;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.Ports;
 
