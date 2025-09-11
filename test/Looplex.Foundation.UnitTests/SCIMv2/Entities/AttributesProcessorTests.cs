@@ -1,7 +1,6 @@
 using Looplex.Foundation.SCIMv2.Entities;
 
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Internal;
 
 using Newtonsoft.Json.Linq;
 
@@ -13,11 +12,15 @@ public class AttributeProcessorTests
   private static HttpContext CreateHttpContext(string? attributes = null, string? excludedAttributes = null)
   {
     var context = new DefaultHttpContext();
-    var query = new QueryCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
-    {
-      { "attributes", attributes }, { "excludedAttributes", excludedAttributes }
-    }.ToDictionary(k => k.Key, v => v.Value));
-    context.Request.QueryString = QueryString.Create(query);
+    var queryParts = new List<string>();
+    
+    if (!string.IsNullOrEmpty(attributes))
+      queryParts.Add($"attributes={attributes}");
+    if (!string.IsNullOrEmpty(excludedAttributes))
+      queryParts.Add($"excludedAttributes={excludedAttributes}");
+    
+    var queryString = string.Join("&", queryParts);
+    context.Request.QueryString = new QueryString("?" + queryString);
     return context;
   }
 

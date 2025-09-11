@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="1.4.0"></a>
+## [1.4.0](https://www.github.com/looplex-osi/dotnet-foundation/releases/tag/v1.4.0) (2025-01-XX)
+
+### Features
+
+* **telemetry:** implement comprehensive telemetry and observability system
+* **telemetry:** add provider-agnostic telemetry service with OpenTelemetry, Application Insights, and DataDog adapters
+* **telemetry:** implement automatic data sanitization for security and privacy protection
+* **telemetry:** add asynchronous telemetry operations with proper resource management
+* **telemetry:** implement robust exception handling to prevent telemetry failures from affecting main application
+* **telemetry:** add comprehensive configuration validation with early error detection
+* **telemetry:** create middleware for automatic HTTP request telemetry collection
+* **telemetry:** implement security helpers for sanitizing sensitive data (PII, headers, IPs, tenant/user IDs)
+* **telemetry:** add 98 comprehensive tests covering all telemetry functionality
+
+### Bug Fixes
+
+* **notejam:** fix compilation errors in Notes service Update and Replace methods
+* **notejam:** correct SCIMv2 contract implementation for plugin-based architecture
+* **tests:** fix MSTest framework usage and remove obsolete using statements
+
 <a name="1.3.0"></a>
 ## [1.3.0](https://www.github.com/looplex-osi/dotnet-foundation/releases/tag/v1.3.0) (2025-05-19)
 

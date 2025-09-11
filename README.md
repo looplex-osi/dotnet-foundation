@@ -569,3 +569,277 @@ Result: `true`, because of `["admin","looplex.com.br","documents","read"]`
 * [RBAC](https://csrc.nist.gov/files/pubs/conference/1992/10/13/rolebased-access-controls/final/docs/ferraiolo-kuhn-92.pdf) -- Role Based Access Controls
 * [Naming and grouping privileges to simplify security management in large databases](https://ieeexplore.ieee.org/document/63844)
 * [Casbin](https://casbin.org/docs/get-started) -- An authorization library that supports access control models like ACL, RBAC, ABAC
+
+# Telemetry and Observability
+
+The telemetry system implements observability capabilities following the Hexagonal Architecture pattern and SOLID principles. It provides a provider-agnostic approach to collecting, processing, and exporting telemetry data with built-in security and performance optimizations.
+
+## Architecture Overview
+
+```mermaid
+erDiagram
+  ITELEMETRY_SERVICE ||--o{ OPENTELEMETRY_ADAPTER : implements
+  ITELEMETRY_SERVICE ||--o{ APPLICATIONINSIGHTS_ADAPTER : implements
+  ITELEMETRY_SERVICE ||--o{ DATADOG_ADAPTER : implements
+  ITELEMETRY_SERVICE ||--o{ NOOP_ADAPTER : implements
+  ITELEMETRY_SERVICE ||--o{ ASYNC_TELEMETRY_ADAPTER : wraps
+
+  TELEMETRY_OPTIONS ||--o{ TELEMETRY_SERVICE_FACTORY : configures
+  TELEMETRY_SERVICE_FACTORY ||--o{ ITELEMETRY_SERVICE : creates
+
+  TELEMETRY_SECURITY_HELPER ||--o{ TELEMETRY_MIDDLEWARE : sanitizes
+  TELEMETRY_EXCEPTION_HANDLER ||--o{ ITELEMETRY_SERVICE : protects
+  TELEMETRY_CONFIGURATION_VALIDATOR ||--o{ TELEMETRY_SERVICE_FACTORY : validates
+```
+
+## Core Components
+
+### Ports (Abstractions)
+
+**`ITelemetryService`** - Main telemetry contract
+```csharp
+public interface ITelemetryService
+{
+    void TrackEvent(string eventName, IDictionary<string, object>? properties = null);
+    void TrackException(Exception exception, IDictionary<string, object>? properties = null);
+    void TrackMetric(string metricName, double value, IDictionary<string, object>? properties = null);
+    void TrackTrace(string message, IDictionary<string, object>? properties = null);
+}
+```
+
+**`ITelemetryServiceAsync`** - Asynchronous telemetry contract
+```csharp
+public interface ITelemetryServiceAsync
+{
+    Task TrackEventAsync(string eventName, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default);
+    Task TrackExceptionAsync(Exception exception, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default);
+    Task TrackMetricAsync(string metricName, double value, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default);
+    Task TrackTraceAsync(string message, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default);
+}
+```
+
+### Adapters (Implementations)
+
+| Adapter | Purpose | Key Features |
+|---------|---------|--------------|
+| **OpenTelemetryAdapter** | OpenTelemetry integration | Distributed tracing, metrics, activities |
+| **ApplicationInsightsAdapter** | Microsoft Application Insights | Azure-native telemetry, custom events |
+| **DataDogAdapter** | DataDog integration | APM, logs, metrics via HTTP API |
+| **NoOpTelemetryAdapter** | Development/testing | No-op implementation for testing |
+| **AsyncTelemetryAdapter** | Performance wrapper | Async operations, resource management |
+
+### Configuration
+
+**`TelemetryOptions`** - Centralized configuration
+```csharp
+public class TelemetryOptions
+{
+    public string Provider { get; set; } = "NoOp";
+    public string ServiceName { get; set; } = "looplex-foundation";
+    public string ServiceVersion { get; set; } = "1.0.0";
+    public string Environment { get; set; } = "development";
+    public Dictionary<string, object> GlobalAttributes { get; set; } = new();
+    
+    public OpenTelemetryOptions OpenTelemetry { get; set; } = new();
+    public ApplicationInsightsOptions ApplicationInsights { get; set; } = new();
+    public DataDogOptions DataDog { get; set; } = new();
+}
+```
+
+## Security and Privacy
+
+The system automatically sanitizes sensitive data before transmission:
+
+**Headers Sanitization:**
+```csharp
+"authorization" → "[REDACTED]"
+"x-api-key" → "[REDACTED]"
+"x-tenant-id" → "[REDACTED]"
+"cookie" → "[REDACTED]"
+```
+
+**PII Protection:**
+```csharp
+"email" → "[REDACTED]"
+"phone" → "[REDACTED]"
+"password" → "[REDACTED]"
+"token" → "[REDACTED]"
+```
+
+**URL Path Sanitization:**
+```csharp
+"/users/12345" → "/users/[USER_ID]"
+"/tenant/67890" → "/tenant/[TENANT_ID]"
+"/api/org/11111" → "/api/org/[TENANT_ID]"
+```
+
+**IP Address Masking:**
+```csharp
+"192.168.1.100" → "192.168.1.xxx"
+"10.0.0.50" → "10.0.0.xxx"
+```
+
+## Performance and Reliability
+
+### Asynchronous Operations
+- Non-blocking telemetry operations
+- Cancellation support via `CancellationToken`
+- Proper resource management with `IDisposable`
+
+### Exception Handling
+- Fail-safe design prevents telemetry failures from breaking the main application
+- Automatic fallback mechanisms for service unavailability
+- Comprehensive error logging for troubleshooting
+
+### Configuration Validation
+- Early detection of configuration issues at startup
+- Clear error messages for quick resolution
+- Warning system for suboptimal configurations
+
+## Usage Examples
+
+### Basic Setup
+```csharp
+// Program.cs
+var telemetryOptions = TelemetryConfigurationHelper.LoadTelemetryOptions();
+var telemetryService = TelemetryServiceFactory.Create(telemetryOptions);
+
+builder.Services.AddSingleton(telemetryOptions);
+builder.Services.AddSingleton<ITelemetryService>(telemetryService);
+
+// Add middleware
+app.UseTelemetry();
+```
+
+### Manual Telemetry
+```csharp
+public class MyService
+{
+    private readonly ITelemetryService _telemetry;
+
+    public MyService(ITelemetryService telemetry)
+    {
+        _telemetry = telemetry;
+    }
+
+    public async Task ProcessDataAsync()
+    {
+        _telemetry.TrackEvent("data_processing_started", new Dictionary<string, object>
+        {
+            ["batch_size"] = 100,
+            ["source"] = "api"
+        });
+
+        try
+        {
+            await ProcessBatchAsync();
+            _telemetry.TrackMetric("data_processed", 100);
+        }
+        catch (Exception ex)
+        {
+            _telemetry.TrackException(ex, new Dictionary<string, object>
+            {
+                ["operation"] = "data_processing",
+                ["batch_id"] = Guid.NewGuid()
+            });
+            throw;
+        }
+    }
+}
+```
+
+## Configuration Examples
+
+### OpenTelemetry Configuration
+```env
+TELEMETRY_PROVIDER=OpenTelemetry
+OTEL_ENDPOINT=http://localhost:4317
+OTEL_EXPORT_PROTOCOL=otlp
+OTEL_SAMPLE_RATE=0.1
+OTEL_ENABLE_CONSOLE_EXPORTER=true
+OTEL_ENABLE_HTTP_INSTRUMENTATION=true
+OTEL_ENABLE_SQL_INSTRUMENTATION=true
+```
+
+### Application Insights Configuration
+```env
+TELEMETRY_PROVIDER=ApplicationInsights
+APPLICATIONINSIGHTS_CONNECTIONSTRING=InstrumentationKey=your-key-here
+```
+
+### DataDog Configuration
+```env
+TELEMETRY_PROVIDER=DataDog
+DATADOG_API_KEY=your-api-key-here
+DATADOG_SITE=datadoghq.com
+DATADOG_SERVICE=my-service
+```
+
+### NoOp Configuration (Development)
+```env
+TELEMETRY_PROVIDER=NoOp
+```
+
+## Testing
+
+The telemetry system includes comprehensive test covering security sanitization, configuration validation, exception handling, and performance scenarios.
+
+### Running Tests
+```bash
+dotnet test test/Looplex.Foundation.UnitTests/Looplex.Foundation.UnitTests.csproj --filter "Telemetry"
+```
+
+## Best Practices
+
+### Security
+- Always use the built-in sanitization mechanisms
+- Never log sensitive data directly
+- Use environment variables for configuration
+- Validate configurations in production environments
+
+### Performance
+- Use async operations for high-throughput scenarios
+- Implement proper resource disposal
+- Monitor telemetry overhead
+- Use appropriate sampling rates
+
+### Reliability
+- Handle telemetry failures gracefully
+- Use fallback mechanisms
+- Monitor telemetry system health
+- Implement circuit breakers for external services
+
+### Observability
+- Use meaningful event names
+- Include relevant context in properties
+- Track business metrics alongside technical metrics
+- Implement distributed tracing for microservices
+
+## Compatibility
+
+### OpenTelemetry Versions
+
+The telemetry system has been tested with the following versions:
+
+| Component | Version | Status |
+|-----------|---------|--------|
+| **OpenTelemetry .NET SDK** | 1.8.0 | Tested |
+| **OpenTelemetry Collector** | 0.134.0 | Tested |
+| **OTLP Protocol** | 1.0.0 | Supported |
+
+### Supported Collectors
+
+- **OpenTelemetry Collector** (otlp-contrib) v0.134.0+
+- **Jaeger** (with OTLP receiver)
+- **Zipkin** (with OTLP receiver)
+- **Prometheus** (with OTLP receiver)
+
+### Configuration Compatibility
+
+The system uses OTLP (OpenTelemetry Protocol) for data export, ensuring compatibility with most OpenTelemetry-compatible backends.
+
+## References
+
+* [OpenTelemetry](https://opentelemetry.io/) -- Observability framework for cloud-native software
+* [Application Insights](https://docs.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview) -- Application performance monitoring
+* [DataDog](https://www.datadoghq.com/) -- Cloud monitoring and security platform
