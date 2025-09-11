@@ -1,6 +1,6 @@
 ﻿using Looplex.Foundation.Entities;
 
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace Looplex.Foundation.OAuth2.Dtos;
 
@@ -12,5 +12,5 @@ public class AccessTokenDto : Actor
 
   #endregion
 
-  [JsonProperty("access_token")] public string? AccessToken { get; set; }
+  [JsonPropertyName("access_token")] public string? AccessToken { get; set; }
 }

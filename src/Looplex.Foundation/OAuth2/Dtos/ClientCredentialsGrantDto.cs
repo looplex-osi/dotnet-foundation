@@ -1,6 +1,6 @@
 ﻿using Looplex.Foundation.Entities;
 
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace Looplex.Foundation.OAuth2.Dtos;
 
@@ -12,9 +12,9 @@ public class ClientCredentialsGrantDto : Actor
 
   #endregion
 
-  [JsonProperty("grant_type")] public string? GrantType { get; set; }
+  [JsonPropertyName("grant_type")] public string? GrantType { get; set; }
 
-  [JsonProperty("subject_token")] public string? SubjectToken { get; set; }
+  [JsonPropertyName("subject_token")] public string? SubjectToken { get; set; }
 
-  [JsonProperty("subject_token_type")] public string? SubjectTokenType { get; set; }
+  [JsonPropertyName("subject_token_type")] public string? SubjectTokenType { get; set; }
 }
