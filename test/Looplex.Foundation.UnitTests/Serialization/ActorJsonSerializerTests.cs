@@ -1,5 +1,5 @@
 using Looplex.Foundation.Entities;
-using Looplex.Foundation.Serialization.Json;
+using Looplex.Foundation.Serialization;
 
 namespace Looplex.Foundation.UnitTests.Serialization;
 
@@ -19,7 +19,7 @@ public class ActorJsonSerializerTests
   public void JsonSerialize_ShouldConvertActorToJsonString()
   {
     // Act
-    string json = _actor.Serialize();
+    string json = ActorJsonSerializer.Serialize(_actor);
 
     // Assert
     Assert.IsNotNull(json);
@@ -30,10 +30,10 @@ public class ActorJsonSerializerTests
   public void JsonDeserialize_ShouldConvertJsonStringToActor()
   {
     // Arrange
-    string json = _actor.Serialize();
+    string json = ActorJsonSerializer.Serialize(_actor);
 
     // Act
-    TestActor? deserializedActor = json.Deserialize<TestActor>();
+    TestActor? deserializedActor = ActorJsonSerializer.Deserialize<TestActor>(json);
 
     // Assert
     Assert.IsNotNull(deserializedActor);
@@ -45,7 +45,7 @@ public class ActorJsonSerializerTests
   public void JsonDeserialize_ShouldThrowExceptionForEmptyJson()
   {
     // Act
-    "".Deserialize<TestActor>();
+    ActorJsonSerializer.Deserialize<TestActor>("");
   }
 
   [TestMethod]
@@ -54,7 +54,7 @@ public class ActorJsonSerializerTests
   {
     // Act
     Actor? nullActor = null;
-    nullActor.Serialize();
+    ActorJsonSerializer.Serialize(nullActor);
   }
 
   public class TestActor : Actor

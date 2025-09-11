@@ -6,8 +6,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
-using Looplex.Foundation.Serialization.Json;
 
 namespace Looplex.Foundation.Helpers;
 
@@ -92,7 +92,7 @@ public static class Objects
   {
     if (node is null) throw new ArgumentNullException(nameof(node));
     // Re-serialize to enforce canonical options (camelCase, compact, omit nulls)
-    string canonicalJson = JsonSerializerFoundation.Serialize(node, omitNulls: true, compact: true);
+    string canonicalJson = System.Text.Json.JsonSerializer.Serialize(node, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = false });
     using var md5 = MD5.Create();
     return Convert.ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(canonicalJson)));
   }
@@ -103,7 +103,7 @@ public static class Objects
   public static string ComputeMD5(this JsonElement element)
   {
     // Re-serialize to canonical JSON to avoid depending on raw text formatting
-    string canonicalJson = JsonSerializerFoundation.Serialize(element, omitNulls: true, compact: true);
+    string canonicalJson = System.Text.Json.JsonSerializer.Serialize(element, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = false });
     using var md5 = MD5.Create();
     return Convert.ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(canonicalJson)));
   }

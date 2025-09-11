@@ -1,40 +1,30 @@
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Xml.Serialization;
 
 using Looplex.Foundation.Entities;
 
-// ReSharper disable once CheckNamespace
-namespace Looplex.Foundation.Serialization.Xml;
-
-public static class ActorXmlSerializer
+namespace Looplex.Foundation.Serialization
 {
-  public static string Serialize<T>(this T actor) where T : Actor?
+  public static class ActorXmlSerializer
   {
-    if (actor == null)
-      throw new ArgumentNullException(nameof(actor));
+    public static string Serialize(Actor actor)
+    {
+      if (actor == null) throw new ArgumentNullException(nameof(actor));
+      var serializer = new XmlSerializer(actor.GetType());
+      using var writer = new StringWriter();
+      serializer.Serialize(writer, actor);
+      return writer.ToString();
+    }
 
-    XmlSerializer serializer = new(actor.GetType());
-    using StringWriter writer = new();
-    serializer.Serialize(writer, actor);
-    return writer.ToString();
-  }
-
-  public static T Deserialize<T>(this string xml) where T : Actor
-  {
-    return (T)Deserialize(xml, typeof(T));
-  }
-
-  public static object Deserialize(this string xml, Type type)
-  {
-    if (!typeof(Actor).IsAssignableFrom(type)) // Must inherit from Actor
-      throw new Exception($"Type {type.Name} must inherit from {nameof(Actor)}.");
-
-    if (string.IsNullOrWhiteSpace(xml))
-      throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
-
-    XmlSerializer serializer = new(type);
-    using StringReader reader = new(xml);
-    return serializer.Deserialize(reader);
+    public static T Deserialize<T>(string xml) where T : Actor
+    {
+      if (string.IsNullOrWhiteSpace(xml))
+        throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
+      var serializer = new XmlSerializer(typeof(T));
+      using var reader = new StringReader(xml);
+      return (T)serializer.Deserialize(reader);
+    }
   }
 }

@@ -1,9 +1,8 @@
 using System.ComponentModel;
 
 using Looplex.Foundation.SCIMv2.Entities;
-using Looplex.Foundation.Serialization.Json;
+using Looplex.Foundation.Serialization;
 using Looplex.Foundation.Serialization.Protobuf;
-using Looplex.Foundation.Serialization.Xml;
 
 namespace Looplex.Foundation.UnitTests.SCIMv2.Entities;
 
@@ -50,7 +49,7 @@ public class UserTests
     byte[] minimalProtobuf = ActorProtobufSerializer
       .Serialize<User>(new User { UserName = "minimalUserProtobuf" });
 
-    User user = minimalProtobuf.Deserialize<User>();
+    User user = ActorProtobufSerializer.Deserialize<User>(minimalProtobuf);
 
     Assert.IsNotNull(user, "Deserializing minimal user XML should not produce null.");
     Assert.AreEqual("minimalUserProtobuf", user.UserName, "UserName must match minimal XML payload.");

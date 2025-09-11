@@ -9,7 +9,6 @@ using Looplex.Foundation.Helpers;
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.SCIMv2.Entities;
-using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
 
@@ -39,7 +38,7 @@ public static class SCIMv2
     public IList<T> Items { get; set; } = new List<T>();
 
     // SCIM ListResponse MUST include this schemas value
-    // RFC 7644 §3.4.2.2 / §3.4.2.4
+    // [SCIMv2 ListResponse](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
     [JsonPropertyName("schemas")]
     public string[] Schemas { get; set; } = new[]
     {
@@ -164,7 +163,7 @@ public static class SCIMv2
 
       // Materialize each resource as camelCase JSON string via our serializer
       var jsource = result.Resources
-        .Select(r => JObject.Parse(JsonSerializerFoundation.Serialize(r)))
+        .Select(r => JObject.Parse(System.Text.Json.JsonSerializer.Serialize(r, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })))
         .ToList();
 
       // Keep your attribute pipeline
@@ -199,7 +198,7 @@ public static class SCIMv2
       };
 
       // Serialize with omitNulls=true for SCIM parity
-      string json = JsonSerializerFoundation.Serialize(envelope, omitNulls: true);
+      string json = System.Text.Json.JsonSerializer.Serialize(envelope, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
       context.Response.ContentType = "application/scim+json; charset=utf-8";
       await context.Response.WriteAsync(json, cancellationToken);
     });
@@ -213,7 +212,7 @@ public static class SCIMv2
     // [SCIMv2 Create](https://datatracker.ietf.org/doc/html/rfc7644#section-3.3)
     // [SCIMv2 Representation: id, meta](https://datatracker.ietf.org/doc/html/rfc7644#section-3.1)
     // [SCIMv2 Content-Type](https://datatracker.ietf.org/doc/html/rfc7644#section-3)
-    // [HTTP Semantics — 201 Created](https://www.rfc-editor.org/rfc/rfc9110#name-201-created)
+    // [HTTP Semantics ï¿½ 201 Created](https://www.rfc-editor.org/rfc/rfc9110#name-201-created)
     // [HTTP ETag (Weak)](https://www.rfc-editor.org/rfc/rfc9110#field.etag)
     map = group.MapPost("/", async context =>
     {
@@ -222,7 +221,7 @@ public static class SCIMv2
 
       using var reader = new StreamReader(context.Request.Body);
       string json = await reader.ReadToEndAsync(cancellationToken);
-      Tdata? resource = json.Deserialize<Tdata>();
+      Tdata? resource = System.Text.Json.JsonSerializer.Deserialize<Tdata>(json, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
       if (resource == null)
         throw new Exception($"Could not deserialize {typeof(Tdata).Name}");
@@ -242,7 +241,7 @@ public static class SCIMv2
       {
         // Core "Resource" schema for custom resources
         // [SCIMv2 Core Schema Identifier](https://datatracker.ietf.org/doc/html/rfc7643#section-3)
-        // Custom extension schema defined by Looplex (RFC 7643 §6 — schema extension).
+        // Custom extension schema defined by Looplex (RFC 7643 ï¿½6 ï¿½ schema extension).
         ["schemas"] = new JsonArray(
           "urn:ietf:params:scim:schemas:core:2.0:Resource",
           $"urn:looplex:params:scim:schemas:{resourceObject}:2.0:{typeof(Tdata).Name}"
@@ -262,7 +261,7 @@ public static class SCIMv2
       };
 
       // Serialize SCIM resource response
-      // [SCIMv2 Representation — Attribute presence vs. null](https://datatracker.ietf.org/doc/html/rfc7644#section-3.1)
+      // [SCIMv2 Representation ï¿½ Attribute presence vs. null](https://datatracker.ietf.org/doc/html/rfc7644#section-3.1)
       // Attributes with null values MUST be omitted from the representation
       var scimJsonOptions = new JsonSerializerOptions
       {
@@ -282,7 +281,7 @@ public static class SCIMv2
       }
 
       // Prepare HTTP response (single place)
-      context.Response.StatusCode = StatusCodes.Status201Created;                 // RFC 9110 §10.2.2
+      context.Response.StatusCode = StatusCodes.Status201Created;                 // RFC 9110 ï¿½10.2.2
       context.Response.Headers.Location = relativeLocation;                       // Relative is OK
       context.Response.ContentType = "application/scim+json; charset=utf-8";      // SCIM media type
 
@@ -328,21 +327,18 @@ public static class SCIMv2
 
       if (result is null)
       {
-        // [HTTP Semantics — 404 Not Found](https://www.rfc-editor.org/rfc/rfc9110#name-404-not-found)
+        // [HTTP Semantics ï¿½ 404 Not Found](https://www.rfc-editor.org/rfc/rfc9110#name-404-not-found)
         context.Response.StatusCode = StatusCodes.Status404NotFound;
         return;
       }
 
       // Newtonsoft-only pipeline (no System.Text.Json round-trips).
-      // [SCIM Representation — omit null attributes](https://www.rfc-editor.org/rfc/rfc7644#section-3.1)
+      // [SCIM Representation ï¿½ omit null attributes](https://www.rfc-editor.org/rfc/rfc7644#section-3.1)
       var settings = new JsonSerializerSettings
       {
         ContractResolver = new DefaultContractResolver
         {
-          NamingStrategy = new CamelCaseNamingStrategy(
-            processDictionaryKeys: true,
-            overrideSpecifiedNames: false // Preserve explicit PascalCase keys when specified
-          )
+          NamingStrategy = new CamelCaseNamingStrategy()
         },
         NullValueHandling = NullValueHandling.Ignore // Omit nulls for SCIM parity
       };
@@ -413,7 +409,7 @@ public static class SCIMv2
       {
         using StreamReader reader = new(context.Request.Body);
         string json = await reader.ReadToEndAsync(cancellationToken);
-        Tdata? resource = json.Deserialize<Tdata>();
+        Tdata? resource = System.Text.Json.JsonSerializer.Deserialize<Tdata>(json, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
         if (resource == null)
           throw new Exception($"Could not deserialize {typeof(Tdata).Name}");
@@ -511,7 +507,7 @@ public static class SCIMv2
         using StreamReader reader = new(context.Request.Body);
         var json = await reader.ReadToEndAsync(cancellationToken);
 
-        var request = JsonSerializerFoundation.Deserialize<BulkRequest>(json);
+        var request = System.Text.Json.JsonSerializer.Deserialize<BulkRequest>(json, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
         if (request == null)
           throw new Exception($"Could not deserialize {nameof(BulkRequest)}");
 
@@ -519,7 +515,7 @@ public static class SCIMv2
 
         context.Response.ContentType = "application/scim+json; charset=utf-8";
         context.Response.StatusCode = (int)HttpStatusCode.OK;
-        await context.Response.WriteAsync(result.Serialize(), cancellationToken);
+        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(result, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }), cancellationToken);
       });
     return app;
   }

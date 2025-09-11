@@ -1,5 +1,5 @@
 using Looplex.Foundation.Entities;
-using Looplex.Foundation.Serialization.Xml;
+using Looplex.Foundation.Serialization;
 
 namespace Looplex.Foundation.UnitTests.Serialization;
 
@@ -19,7 +19,7 @@ public class ActorXmlSerializerTests
   public void XmlSerialize_ShouldConvertActorToXmlString()
   {
     // Act
-    string xml = _actor.Serialize();
+    string xml = ActorXmlSerializer.Serialize(_actor);
 
     // Assert
     Assert.IsNotNull(xml);
@@ -30,10 +30,10 @@ public class ActorXmlSerializerTests
   public void XmlDeserialize_ShouldConvertXmlStringToActor()
   {
     // Arrange
-    string xml = _actor.Serialize();
+    string xml = ActorXmlSerializer.Serialize(_actor);
 
     // Act
-    TestActor? deserializedActor = xml.Deserialize<TestActor>();
+    TestActor? deserializedActor = ActorXmlSerializer.Deserialize<TestActor>(xml);
 
     // Assert
     Assert.IsNotNull(deserializedActor);
@@ -45,7 +45,7 @@ public class ActorXmlSerializerTests
   public void XmlDeserialize_ShouldThrowExceptionForEmptyXml()
   {
     // Act
-    "".Deserialize<TestActor>();
+    ActorXmlSerializer.Deserialize<TestActor>("");
   }
 
   [TestMethod]
@@ -54,7 +54,7 @@ public class ActorXmlSerializerTests
   {
     // Act
     Actor? nullActor = null;
-    nullActor.Serialize();
+    ActorXmlSerializer.Serialize(nullActor);
   }
 
   public class TestActor : Actor

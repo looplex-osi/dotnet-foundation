@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Claims;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,7 +12,6 @@ using Looplex.Foundation.Entities;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.OAuth2.Dtos;
 using Looplex.Foundation.Ports;
-using Looplex.Foundation.Serialization.Json;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
@@ -55,7 +56,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     cancellationToken.ThrowIfCancellationRequested();
     IContext ctx = NewContext();
 
-    ClientCredentialsGrantDto? clientCredentialsDto = json.Deserialize<ClientCredentialsGrantDto>();
+    ClientCredentialsGrantDto? clientCredentialsDto = System.Text.Json.JsonSerializer.Deserialize<ClientCredentialsGrantDto>(json, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
     if (clientCredentialsDto == null)
@@ -77,7 +78,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     if (!ctx.SkipDefaultAction)
     {
       string accessToken = CreateAccessToken((UserInfo)ctx.Roles["UserInfo"]);
-      ctx.Result = new AccessTokenDto { AccessToken = accessToken }.Serialize();
+      ctx.Result = System.Text.Json.JsonSerializer.Serialize(new AccessTokenDto { AccessToken = accessToken }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
     }
 
     await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);

@@ -20,8 +20,15 @@ erDiagram
 
 ## Domain
 * **Purpose:** Holds all the core business logic and domain models (`entities`, value objects, domain events, interfaces that are purely domain-driven, etc.).
-* **Dependencies:** Generally depends on no other projects (it’s the core).
+* **Dependencies:** Generally depends on no other projects (it's the core).
 * **Key Point:** It should remain free of infrastructure or framework-specific concerns so it can be tested and reused without external dependencies.
+
+## Serialization
+The foundation provides standardized serialization utilities optimized for performance and consistency:
+* **ActorJsonSerializer:** High-performance JSON serialization using System.Text.Json with camelCase naming policy
+* **ActorXmlSerializer:** XML serialization for legacy system integration
+* **ActorProtobufSerializer:** Binary serialization for high-throughput scenarios
+* **Consistent APIs:** All serializers follow the same static method pattern for predictable usage
 
 ## Application
 * **Purpose:** Contains application-specific logic, like use-cases, `commands`, `queries`, handlers, and orchestrators that coordinate domain operations.
