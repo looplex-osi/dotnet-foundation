@@ -23,7 +23,7 @@ using Newtonsoft.Json;
 
 namespace Looplex.Foundation.OAuth2.Entities;
 
-public class TokenExchangeAuthentications : Service, IAuthentications
+public class TokenExchangeAuthentications : Service, ITokenExchangeAuthentications
 {
   private readonly IConfiguration? _configuration;
   private readonly HttpClient? _httpClient;
