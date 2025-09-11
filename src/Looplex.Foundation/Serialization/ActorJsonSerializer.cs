@@ -26,9 +26,13 @@ namespace Looplex.Foundation.Serialization
         throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
       var options = new JsonSerializerOptions
       {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
       };
-      return JsonSerializer.Deserialize<T>(json, options);
+      var result = JsonSerializer.Deserialize<T>(json, options);
+      if (result is null)
+        throw new JsonException($"Deserialization returned null for type {typeof(T).Name}.");
+      return result;
     }
   }
 }

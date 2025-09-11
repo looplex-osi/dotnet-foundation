@@ -24,7 +24,10 @@ namespace Looplex.Foundation.Serialization
         throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
       var serializer = new XmlSerializer(typeof(T));
       using var reader = new StringReader(xml);
-      return (T)serializer.Deserialize(reader);
+      var result = (T)serializer.Deserialize(reader);
+      if (result == null)
+        throw new InvalidOperationException($"Failed to deserialize XML to {typeof(T).Name}");
+      return result;
     }
   }
 }
