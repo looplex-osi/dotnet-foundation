@@ -7,11 +7,10 @@ using Casbin;
 
 using Looplex.Foundation.Adapters;
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
-using Looplex.Foundation.Helpers;
+using Looplex.Foundation.WebApp.Helpers;
 using Looplex.Foundation.Ports;
-using Looplex.Foundation.WebApp.Middlewares;
 using Looplex.OpenForExtension.Abstractions.Plugins;
-using Looplex.OpenForExtension.Loader;
+using Looplex.Foundation.WebApp.Middlewares;
 using Looplex.Samples.Application.Abstraction;
 using Looplex.Samples.Application.Services;
 using Looplex.Samples.Infra;
@@ -83,18 +82,20 @@ public static class Program
     builder.Services.AddOAuth2(builder.Configuration);
     builder.Services.AddSCIMv2();
     builder.Services.AddAuthZ(InitRbacEnforcer());
+    builder.Services.AddHttpClient();
 
+    // Initialize PluginManager and expose shared plugin collection via DI
+    PluginManager.Instance.Initialize();
+    builder.Services.AddSingleton<IReadOnlyList<IPlugin>>(_ => PluginManager.Instance.Plugins);
+    
     builder.Services.AddScoped<Notes>(sp =>
     {
-      PluginLoader loader = new();
-      IEnumerable<string> dlls = Directory.Exists("plugins")
-        ? Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"))
-        : [];
-      IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
+      var plugins = sp.GetRequiredService<IReadOnlyList<IPlugin>>();
       var rbacService = sp.GetRequiredService<IRbacService>();
       var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
       var mediator = sp.GetRequiredService<IMediator>();
-      return new Notes(plugins, rbacService, httpContextAccessor, mediator);
+      // Create per-scope plugin instances to prevent cross-tenant contamination
+      return new Notes(plugins.Select(p => (IPlugin)Activator.CreateInstance(p.GetType())!).ToList(), rbacService, httpContextAccessor, mediator);
     });
 
     builder.Services.AddMediatR(cfg =>

@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Casbin;
 
 using Looplex.Foundation.Adapters.AuthZ.Casbin;
+using Looplex.Foundation.WebApp.Helpers;
 using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
@@ -21,6 +22,13 @@ namespace Looplex.Samples.Tests;
 [TestClass]
 public class NotejamTests
 {
+  [TestInitialize]
+  public void Setup()
+  {
+    // Ensure fresh state before each test
+    PluginManager.Instance.ReloadPlugins();
+  }
+
   private IEnforcer InitRbacEnforcer()
   {
     string dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
@@ -105,12 +113,14 @@ public class NotejamTests
     var httpContext = new DefaultHttpContext() { User = user };
     mockHttpAccessor.HttpContext.Returns(httpContext);
 
-    PluginLoader loader = new();
+    // Initialize PluginManager for testing
+    PluginManager.Instance.ReloadPlugins();
+    IReadOnlyList<IPlugin> plugins = PluginManager.Instance.Plugins;
+    
+    // Guard for missing plugins to avoid opaque failures
+    Assert.IsTrue(plugins.Count > 0, "No plugins loaded. Ensure EPTracker.Plugin.dll is copied to the test 'plugins' directory.");
 
-    IEnumerable<string> dlls = Directory.GetFiles("plugins").Where(x => x.EndsWith(".dll"));
-    IList<IPlugin> plugins = loader.LoadPlugins(dlls).ToList();
-
-    Notejam notejam = new(plugins, rbacSvc, mockHttpAccessor);
+    Notejam notejam = new(plugins.ToList(), rbacSvc, mockHttpAccessor);
 
     // Act
     string result = await notejam.Echo("World", CancellationToken.None);
