@@ -30,14 +30,4 @@ public abstract class Service : Actor
   }
 
   #endregion
-
-  #region Helpers
-
-  protected static int Page(int startIndex, int count)
-  {
-    var page = (int)Math.Ceiling((double)startIndex / count);
-    return page;
-  }
-
-  #endregion
 }

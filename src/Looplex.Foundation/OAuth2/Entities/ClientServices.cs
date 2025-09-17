@@ -62,7 +62,7 @@ public class ClientServices : SCIMv2<ClientService, ClientService>
     IContext ctx = NewContext();
     _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
 
-    int page = Page(startIndex, count);
+    int page = QueryResource<ClientService>.pageFromScimPaginationRequest(startIndex, count);
 
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
 
