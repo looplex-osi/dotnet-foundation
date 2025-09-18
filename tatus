@@ -1,0 +1,28 @@
+  feat/search-content-ast-sql[m
+  feat/search-only[m
+  feat/search-only-clean[m
+  feat/search-only-new[m
+  feat/search-only-v2[m
+  feat/search-plus-notejam[m
+* [32mfeat/search-plus-notejam-clean[m
+  fix/scimv2-response[m
+  master[m
+  [31mremotes/myfork/HEAD[m -> myfork/master
+  [31mremotes/myfork/feat/search-content-ast-sql[m
+  [31mremotes/myfork/feat/search-only[m
+  [31mremotes/myfork/feat/search-only-clean[m
+  [31mremotes/myfork/feat/search-plus-notejam[m
+  [31mremotes/myfork/feat/search-plus-notejam-clean[m
+  [31mremotes/myfork/fix/scimv2-response[m
+  [31mremotes/myfork/master[m
+  [31mremotes/origin/HEAD[m -> origin/master
+  [31mremotes/origin/feat/clean-arch[m
+  [31mremotes/origin/feat/search-content-ast-sql[m
+  [31mremotes/origin/feat/search-only[m
+  [31mremotes/origin/feat/search-plus-notejam[m
+  [31mremotes/origin/feature/rbac-db-deny-support[m
+  [31mremotes/origin/fix/scimv2-camelcase-items[m
+  [31mremotes/origin/fix/scimv2-response[m
+  [31mremotes/origin/hotfix/scim-pagination[m
+  [31mremotes/origin/master[m
+  [31mremotes/origin/refactor/revert-plugins-factory[m

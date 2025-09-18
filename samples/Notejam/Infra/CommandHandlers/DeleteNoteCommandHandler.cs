@@ -1,37 +1,41 @@
-using System.Data;
-
-using Looplex.Foundation.Helpers;
 using Looplex.Foundation.SCIMv2.Commands;
-using Looplex.Samples.Application.Abstraction;
+using Looplex.Samples.Application;
+using Looplex.Samples.Application.Commands;
 using Looplex.Samples.Domain.Entities;
-
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace Looplex.Samples.Infra.CommandHandlers
 {
-  public class DeleteNoteCommandHandler(IDbConnections connections) : IRequestHandler<DeleteResource<Note>, int>
+  public class DeleteNoteCommandHandler(INoteRepository noteRepository, ILogger<DeleteNoteCommandHandler> logger) 
+    : IRequestHandler<DeleteNoteCommand, int>
   {
-    public async Task<int> Handle(DeleteResource<Note> request, CancellationToken cancellationToken)
+    public async Task<int> Handle(DeleteNoteCommand request, CancellationToken cancellationToken)
     {
       cancellationToken.ThrowIfCancellationRequested();
 
-      string resourceName = nameof(Note).ToLower();
-      string procName = $"USP_{resourceName}_delete";
+      try
+      {
+        logger.LogInformation("Deleting note with ID: {NoteId}", request.Id);
 
-      var dbCommand = await connections.CommandConnection();
-      await dbCommand.OpenAsync(cancellationToken);
-      await using var command = dbCommand.CreateCommand();
+        var rows = await noteRepository.DeleteNoteAsync(request.Id, cancellationToken);
 
-      command.CommandType = CommandType.StoredProcedure;
-      command.CommandText = procName;
+        if (rows == 0)
+        {
+          logger.LogWarning("No active note found to delete with ID: {NoteId}", request.Id);
+        }
+        else
+        {
+          logger.LogInformation("Note deleted successfully. Rows affected: {RowsAffected}", rows);
+        }
 
-      command.Parameters.Add(Dbs.CreateParameter(command, "@uuid", request.Id, DbType.Guid));
-
-      // If your stored procedure supported a parameter for hard deletion,
-      // you could add it here. For now, we assume the same proc handles deletion.
-      int rows = await command.ExecuteNonQueryAsync(cancellationToken);
-
-      return rows;
+        return rows;
+      }
+      catch (Exception ex)
+      {
+        logger.LogError(ex, "Error deleting note with ID: {NoteId}", request.Id);
+        throw new InvalidOperationException($"Failed to delete note: {ex.Message}", ex);
+      }
     }
   }
 }
