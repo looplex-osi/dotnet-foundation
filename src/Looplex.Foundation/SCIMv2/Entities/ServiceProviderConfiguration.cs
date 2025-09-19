@@ -14,6 +14,19 @@ namespace Looplex.Foundation.SCIMv2.Entities;
 /// implementation details to clients. All attributes have a mutability of `readOnly`.
 /// Unlike other core resources, the `id` attribute is not required for the service provider
 /// configuration resource.
+/// 
+/// Implements RFC 7643 (SCIM Schema Definition) and RFC 7644 (SCIM Protocol)
+/// [RFC 7643](https://datatracker.ietf.org/doc/html/rfc7643) - SCIM Schema Definition
+/// [RFC 7644](https://datatracker.ietf.org/doc/html/rfc7644) - SCIM Protocol
+/// 
+/// RFC Compliance:
+/// - RFC 7643 Section 5 - Service Provider Configuration Schema
+/// - RFC 7644 Section 3.7 - Bulk Operations
+/// - RFC 7644 Section 3.4.2.3 - Filtering
+/// - RFC 7644 Section 3.4.2.4 - Sorting
+/// - RFC 7644 Section 3.5.2 - PATCH Operations
+/// - RFC 7644 Section 3.6 - ETag Support
+/// - RFC 7644 Section 3.8 - Authentication Schemes
 /// </summary>
 public class ServiceProviderConfiguration : Actor
 {
@@ -33,6 +46,7 @@ public class ServiceProviderConfiguration : Actor
 
   /// <summary>
   /// A complex type that specifies bulk configuration options.  See Section 3.7 of [RFC7644].
+  /// [RFC 7644 Section 3.7](https://datatracker.ietf.org/doc/html/rfc7644#section-3.7)
   /// </summary>
   public Bulk? Bulk { get; set; }
 
@@ -103,6 +117,9 @@ public class AuthenticationScheme
 /// <summary>
 ///    The authentication scheme.  This specification defines the values
 /// "oauth", "oauth2", "oauthbearertoken", "httpbasic", and "httpdigest".
+/// 
+/// Implements RFC 7644 (SCIM Protocol) for authentication schemes
+/// [RFC 7644 Section 3.8](https://datatracker.ietf.org/doc/html/rfc7644#section-3.8) - Authentication Schemes
 /// </summary>
 public enum AuthenticationSchemeType
 {
@@ -115,6 +132,9 @@ public enum AuthenticationSchemeType
 
 /// <summary>
 /// A complex type that specifies bulk configuration options.  See Section 3.7 of [RFC7644].
+/// 
+/// Implements RFC 7644 (SCIM Protocol) for bulk operations
+/// [RFC 7644 Section 3.7](https://datatracker.ietf.org/doc/html/rfc7644#section-3.7) - Bulk Operations
 /// </summary>
 public class Bulk
 {
@@ -147,6 +167,9 @@ public class ChangePassword
 
 /// <summary>
 /// A complex type that specifies ETag configuration options.
+/// 
+/// Implements RFC 7644 (SCIM Protocol) for ETag support
+/// [RFC 7644 Section 3.6](https://datatracker.ietf.org/doc/html/rfc7644#section-3.6) - ETag Support
 /// </summary>
 public class Etag
 {
@@ -158,6 +181,9 @@ public class Etag
 
 /// <summary>
 /// A complex type that specifies FILTER options.
+/// 
+/// Implements RFC 7644 (SCIM Protocol) for filtering capabilities
+/// [RFC 7644 Section 3.4.2.3](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.3) - Filtering
 /// </summary>
 public class Filter
 {
@@ -174,6 +200,9 @@ public class Filter
 
 /// <summary>
 /// A complex type that specifies PATCH configuration options.
+/// 
+/// Implements RFC 7644 (SCIM Protocol) for PATCH operations
+/// [RFC 7644 Section 3.5.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.5.2) - PATCH Operations
 /// </summary>
 public class Patch
 {
@@ -185,6 +214,9 @@ public class Patch
 
 /// <summary>
 /// A complex type that specifies Sort configuration options.
+/// 
+/// Implements RFC 7644 (SCIM Protocol) for sorting capabilities
+/// [RFC 7644 Section 3.4.2.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.4) - Sorting
 /// </summary>
 public class Sort
 {

@@ -1,0 +1,40 @@
+using Looplex.Foundation.SCIMv2.Entities;
+
+namespace Looplex.Foundation.SCIMv2;
+
+/// <summary>
+/// Interface for SCIMv2 validation and parsing operations
+/// </summary>
+public interface ISCIMv2Validation
+{
+    /// <summary>
+    /// Validates JSON request body for SCIMv2 operations
+    /// </summary>
+    /// <param name="json">JSON content to validate</param>
+    /// <returns>Validation result with error message if invalid</returns>
+    (bool IsValid, string ErrorMessage) ValidateJsonRequest(string json);
+
+    /// <summary>
+    /// Parses PATCH operations from JSON array
+    /// </summary>
+    /// <param name="json">JSON array of patch operations</param>
+    /// <returns>Parsed patch operations or error result</returns>
+    (bool IsValid, PatchOperation[] Operations, string ErrorMessage) ParsePatchOperations(string json);
+
+    /// <summary>
+    /// Validates collection name for SCIMv2 operations
+    /// </summary>
+    /// <param name="collectionName">Collection name to validate</param>
+    /// <returns>Validation result with error message if invalid</returns>
+    (bool IsValid, string ErrorMessage) ValidateCollection(string collectionName);
+
+    /// <summary>
+    /// Creates a mock resource for testing purposes
+    /// This should be replaced with proper resource creation in production
+    /// </summary>
+    /// <param name="collectionName">Collection name</param>
+    /// <param name="id">Resource ID</param>
+    /// <returns>Mock resource</returns>
+    IResource CreateMockResource(string collectionName, string id);
+
+}
