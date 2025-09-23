@@ -19,28 +19,14 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
   public class UsersTests
   {
     private UserService _users = null!;
-    private IRbacService _rbacService = null!;
-    private IHttpContextAccessor _httpContextAccessor = null!;
-    private IMediator _mediator = null!;
-    private List<IPlugin> _plugins = null!;
-    private ClaimsPrincipal _user = null!;
+    private IResourceRepository<User> _mockRepository = null!;
 
     [TestInitialize]
     public void Setup()
     {
-      _rbacService = Substitute.For<IRbacService>();
-      _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
-      _mediator = Substitute.For<IMediator>();
-      _plugins = new List<IPlugin>();
-      _user = new ClaimsPrincipal();
-
-      var httpContext = Substitute.For<HttpContext>();
-      httpContext.User.Returns(_user);
-      _httpContextAccessor.HttpContext.Returns(httpContext);
-
       // Create mock repository for UserService
-      var mockRepository = Substitute.For<IResourceRepository<User>>();
-      _users = new UserService(mockRepository);
+      _mockRepository = Substitute.For<IResourceRepository<User>>();
+      _users = new UserService(_mockRepository);
     }
 
     [TestMethod]
@@ -52,12 +38,8 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       int expectedTotal = 1;
 
       // Configure mock repository to return expected data
-      var mockRepository = Substitute.For<IResourceRepository<User>>();
-      mockRepository.QueryAsync(1, 10, "filter", "name", "asc", cancellationToken)
-        .Returns(new ListResponse<User> { Resources = expectedUsers, TotalResults = expectedTotal });
-      
-      // Recreate UserService with configured mock
-      _users = new UserService(mockRepository);
+      _mockRepository.QueryAsync(1, 10, "filter", cancellationToken)
+        .Returns((expectedUsers, expectedTotal));
 
       // Act
       var response = await _users.Query(1, 10, "filter", "name", "asc", cancellationToken);
@@ -74,21 +56,17 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       // Arrange
       var cancellationToken = CancellationToken.None;
       var user = new User();
-      var expectedId = Guid.NewGuid();
+      var expectedUser = new User { Id = Guid.NewGuid().ToString() };
 
-      // Configure mock repository to return expected ID
-      var mockRepository = Substitute.For<IResourceRepository<User>>();
-      mockRepository.CreateAsync(user, cancellationToken)
-        .Returns(expectedId);
-      
-      // Recreate UserService with configured mock
-      _users = new UserService(mockRepository);
+      // Configure mock repository to return expected user
+      _mockRepository.CreateAsync(user, cancellationToken)
+        .Returns(expectedUser);
 
       // Act
       var result = await _users.Create(user, cancellationToken);
 
       // Assert
-      Assert.AreEqual(expectedId, result);
+      Assert.AreEqual(Guid.Parse(expectedUser.Id), result);
     }
 
     [TestMethod]
@@ -97,18 +75,14 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       // Arrange
       var cancellationToken = CancellationToken.None;
       var expectedUser = new User();
-      var id = Guid.NewGuid();
+      var id = Guid.NewGuid().ToString();
 
       // Configure mock repository to return expected user
-      var mockRepository = Substitute.For<IResourceRepository<User>>();
-      mockRepository.RetrieveAsync(id, cancellationToken)
+      _mockRepository.GetByIdAsync(id, cancellationToken)
         .Returns(expectedUser);
-      
-      // Recreate UserService with configured mock
-      _users = new UserService(mockRepository);
 
       // Act
-      var result = await _users.Retrieve(id, cancellationToken);
+      var result = await _users.Retrieve(Guid.Parse(id), cancellationToken);
 
       // Assert
       Assert.IsNotNull(result);
@@ -139,18 +113,14 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var id = Guid.NewGuid();
+      var id = Guid.NewGuid().ToString();
 
       // Configure mock repository to return success
-      var mockRepository = Substitute.For<IResourceRepository<User>>();
-      mockRepository.DeleteAsync(id, cancellationToken)
+      _mockRepository.DeleteAsync(id, cancellationToken)
         .Returns(true);
-      
-      // Recreate UserService with configured mock
-      _users = new UserService(mockRepository);
 
       // Act
-      var result = await _users.Delete(id, cancellationToken);
+      var result = await _users.Delete(Guid.Parse(id), cancellationToken);
 
       // Assert
       Assert.IsTrue(result);

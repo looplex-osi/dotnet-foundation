@@ -105,7 +105,6 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     {
         try
         {
-
             if (startIndex < 1)
             {
                 return CreateErrorResponse(400, "Bad Request", "Start index must be greater than 0");
@@ -132,9 +131,28 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             var totalCount = result.Item2;
             
             // Validate output data before returning
-            ValidateResourcesForOutput(resources);
+            try
+            {
+                // Convert dynamic resources to IList<IResource>
+                if (resources is IList<IResource> resourceList)
+                {
+                    ValidateResourcesForOutput(resourceList);
+                }
+                else if (resources is IEnumerable<IResource> resourceEnumerable)
+                {
+                    // Convert to List<IResource> for validation
+                    var convertedResourceList = resourceEnumerable.ToList();
+                    ValidateResourcesForOutput(convertedResourceList);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
 
-            return CreateListResponse(resources, totalCount, startIndex, count);
+            var response = CreateListResponse(resources, totalCount, startIndex, count);
+            
+            return response;
         }
         catch (Exception ex)
         {
@@ -188,14 +206,22 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             dynamic dynamicService = service;
             var result = await dynamicService.CreateAsync(json, cancellationToken);
             
-            // The service returns a Guid, but we need to create a proper response
-            // For now, create a basic response with the returned GUID
+            // Retrieve the created resource to generate proper ETag
+            var createdResource = await dynamicService.RetrieveAsync(result, cancellationToken);
+            
+            // Validate the created resource for SCIMv2 compliance
+            if (createdResource != null)
+            {
+                ValidateResourceForOutput(createdResource);
+            }
+            
             var response = new SCIMv2Response
             {
                 StatusCode = 201,
-                Data = null, // The actual resource should be retrieved if needed
+                Data = createdResource, // Include the created resource in response
+                Schemas = createdResource?.Schemas ?? Array.Empty<string>(),
                 Location = $"/{collection}/{result}",
-                ETag = "W/\"1\""
+                ETag = createdResource != null ? GenerateContentETag(createdResource) : "W/\"1\""
             };
             
             return response;
@@ -354,7 +380,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                 StatusCode = 200,
                 Data = updatedResource,
                 Schemas = updatedResource?.Schemas ?? Array.Empty<string>(),
-                ETag = $"W/\"{updatedResource?.Meta.Version}\""
+                ETag = updatedResource != null ? GenerateContentETag(updatedResource) : "W/\"1\""
             };
         }
         catch (Exception ex)
@@ -846,38 +872,70 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// </summary>
     private static void ValidateResourcesForOutput(IList<IResource> resources)
     {
-        foreach (var resource in resources)
+        if (resources == null)
         {
-            ValidateResourceForOutput(resource);
+            throw new InvalidOperationException("Resources list cannot be null");
+        }
+        
+        for (int i = 0; i < resources.Count; i++)
+        {
+            ValidateResourceForOutput(resources[i], i + 1);
         }
     }
     
     /// <summary>
     /// Validates a single resource for output compliance
     /// </summary>
-    private static void ValidateResourceForOutput(IResource resource)
+    private static void ValidateResourceForOutput(IResource resource, int resourceIndex = 0)
     {
         if (resource == null)
-            throw new InvalidOperationException("Resource cannot be null in output");
+        {
+            throw new InvalidOperationException("SCIMv2 VALIDATION ERROR: Resource cannot be null");
+        }
             
-        // Validate required SCIMv2 fields
+        var resourceType = resource.GetType().Name;
+        var resourceId = resource.Id ?? "NULL";
+        
+        // Validate required SCIMv2 fields with clear error messages
         if (string.IsNullOrWhiteSpace(resource.Id))
-            throw new InvalidOperationException($"Resource {resource.GetType().Name} has empty ID in output");
+        {
+            throw new InvalidOperationException($"SCIMv2 VALIDATION ERROR: {resourceType} has empty or null ID. " +
+                          "SCIMv2 requires every resource to have a unique identifier.");
+        }
             
         if (resource.Schemas == null || resource.Schemas.Length == 0)
-            throw new InvalidOperationException($"Resource {resource.Id} missing schemas in output");
+        {
+            throw new InvalidOperationException($"SCIMv2 VALIDATION ERROR: {resourceType} (ID: {resourceId}) is missing schemas. " +
+                          "SCIMv2 requires every resource to have at least one schema URI. " +
+                          "Add schemas like: [\"urn:ietf:params:scim:schemas:core:2.0:User\"]");
+        }
             
         if (resource.Meta == null)
-            throw new InvalidOperationException($"Resource {resource.Id} missing metadata in output");
+        {
+            throw new InvalidOperationException($"SCIMv2 VALIDATION ERROR: {resourceType} (ID: {resourceId}) is missing metadata. " +
+                          "SCIMv2 requires every resource to have Meta object with ResourceType, Location, and Version.");
+        }
             
         if (string.IsNullOrWhiteSpace(resource.Meta.ResourceType))
-            throw new InvalidOperationException($"Resource {resource.Id} missing ResourceType in metadata");
+        {
+            throw new InvalidOperationException($"SCIMv2 VALIDATION ERROR: {resourceType} (ID: {resourceId}) Meta.ResourceType is missing. " +
+                          "SCIMv2 requires Meta.ResourceType to identify the resource type (e.g., 'User', 'Group', 'Note'). " +
+                          "Set Meta.ResourceType = \"{resourceType}\"");
+        }
             
         if (string.IsNullOrWhiteSpace(resource.Meta.Location))
-            throw new InvalidOperationException($"Resource {resource.Id} missing Location in metadata");
+        {
+            throw new InvalidOperationException($"SCIMv2 VALIDATION ERROR: {resourceType} (ID: {resourceId}) Meta.Location is missing. " +
+                          "SCIMv2 requires Meta.Location to be the canonical URI of the resource. " +
+                          "Set Meta.Location = \"/{resourceType}s/{resourceId}\"");
+        }
             
         if (string.IsNullOrWhiteSpace(resource.Meta.Version))
-            throw new InvalidOperationException($"Resource {resource.Id} missing Version in metadata");
+        {
+            throw new InvalidOperationException($"SCIMv2 VALIDATION ERROR: {resourceType} (ID: {resourceId}) Meta.Version is missing. " +
+                          "SCIMv2 requires Meta.Version for optimistic concurrency control. " +
+                          "Set Meta.Version = \"W/\\\"1\\\"\" or use ETag format");
+        }
     }
 
     /// <summary>
@@ -1480,7 +1538,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// <returns>SCIMv2 response</returns>
     private static SCIMv2Response CreateListResponse(object resources, int totalCount, int startIndex, int count)
     {
-        return new SCIMv2Response
+        var response = new SCIMv2Response
         {
             StatusCode = 200,
             Data = resources, // RFC 7644 Section 3.4.2 - Resources directly in response
@@ -1489,6 +1547,27 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             StartIndex = startIndex,
             ItemsPerPage = count
         };
+        
+        return response;
+    }
+
+    /// <summary>
+    /// Generates a content-based ETag for SCIMv2 resources
+    /// Implements RFC 7232 - HTTP/1.1 Conditional Requests
+    /// </summary>
+    private static string GenerateContentETag(IResource resource)
+    {
+        if (resource == null) return "W/\"1\"";
+        
+        // Create a content hash based on resource data
+        var content = $"{resource.Id}|{resource.Meta?.Created}|{resource.Meta?.LastModified}|{resource.Meta?.ResourceType}";
+        
+        // Generate hash
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
+        var hash = Convert.ToBase64String(hashBytes)[..8]; // Use first 8 characters
+        
+        return $"W/\"{hash}\"";
     }
 
     /// <summary>
@@ -1532,7 +1611,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             StatusCode = 200,
             Data = resource,
             Schemas = resource.Schemas,
-            ETag = $"W/\"{resource.Meta.Version}\""
+            ETag = GenerateContentETag(resource)
         };
     }
 
@@ -1553,7 +1632,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                 Data = resource,
                 Schemas = resource.Schemas,
                 Location = $"/{collection}/{resourceId}",
-                ETag = $"W/\"{resource.Meta.Version}\""
+                ETag = GenerateContentETag(resource)
             };
             
             return response;

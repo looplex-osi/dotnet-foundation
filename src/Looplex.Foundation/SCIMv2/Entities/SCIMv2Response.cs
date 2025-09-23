@@ -32,8 +32,9 @@ public class SCIMv2Response
 
     /// <summary>
     /// Response data (resource, list, or error)
+    /// For ListResponse, this should be "Resources" per RFC 7644 Section 3.4.2
     /// </summary>
-    [JsonPropertyName("data")]
+    [JsonPropertyName("Resources")]
     public object? Data { get; set; }
 
     /// <summary>

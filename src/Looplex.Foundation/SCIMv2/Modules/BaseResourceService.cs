@@ -55,7 +55,8 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        return await _repository.QueryAsync(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
+        var result = await _repository.QueryAsync(startIndex, count, filter, cancellationToken);
+        return new ListResponse<T> { Resources = result.Resources, TotalResults = result.TotalCount };
     }
 
     /// <summary>
@@ -66,7 +67,8 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        return await _repository.CreateAsync(resource, cancellationToken);
+        var createdResource = await _repository.CreateAsync(resource, cancellationToken);
+        return Guid.Parse(createdResource.Id);
     }
 
     /// <summary>
@@ -77,7 +79,7 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        return await _repository.RetrieveAsync(id, cancellationToken);
+        return await _repository.GetByIdAsync(id.ToString(), cancellationToken);
     }
 
     /// <summary>
@@ -88,7 +90,8 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        return await _repository.ReplaceAsync(id, resource, cancellationToken);
+        var updatedResource = await _repository.UpdateAsync(id.ToString(), resource, cancellationToken);
+        return updatedResource != null;
     }
 
     /// <summary>
@@ -114,7 +117,8 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
             }
         }
         
-        return await _repository.UpdateAsync(id, resource, patchOperations.ToArray(), cancellationToken);
+        var updatedResource = await _repository.UpdateAsync(id.ToString(), resource, cancellationToken);
+        return updatedResource != null;
     }
 
     /// <summary>
@@ -125,7 +129,7 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        return await _repository.DeleteAsync(id, cancellationToken);
+        return await _repository.DeleteAsync(id.ToString(), cancellationToken);
     }
 
     #endregion

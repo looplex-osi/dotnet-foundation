@@ -19,28 +19,14 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
   public class GroupsTests
   {
     private GroupService _groups = null!;
-    private IRbacService _rbacService = null!;
-    private IHttpContextAccessor _httpContextAccessor = null!;
-    private IMediator _mediator = null!;
-    private List<IPlugin> _plugins = null!;
-    private ClaimsPrincipal _user = null!;
+    private IResourceRepository<Group> _mockRepository = null!;
 
     [TestInitialize]
     public void Setup()
     {
-      _rbacService = Substitute.For<IRbacService>();
-      _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
-      _mediator = Substitute.For<IMediator>();
-      _plugins = new List<IPlugin>();
-      _user = new ClaimsPrincipal();
-
-      var httpContext = Substitute.For<HttpContext>();
-      httpContext.User.Returns(_user);
-      _httpContextAccessor.HttpContext.Returns(httpContext);
-
       // Create mock repository for GroupService
-      var mockRepository = Substitute.For<IResourceRepository<Group>>();
-      _groups = new GroupService(mockRepository);
+      _mockRepository = Substitute.For<IResourceRepository<Group>>();
+      _groups = new GroupService(_mockRepository);
     }
 
     [TestMethod]
@@ -52,12 +38,8 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       int expectedTotal = 1;
 
       // Configure mock repository to return expected data
-      var mockRepository = Substitute.For<IResourceRepository<Group>>();
-      mockRepository.QueryAsync(1, 10, "filter", "name", "asc", cancellationToken)
-        .Returns(new ListResponse<Group> { Resources = expectedGroups, TotalResults = expectedTotal });
-      
-      // Recreate GroupService with configured mock
-      _groups = new GroupService(mockRepository);
+      _mockRepository.QueryAsync(1, 10, "filter", cancellationToken)
+        .Returns((expectedGroups, expectedTotal));
 
       // Act
       var response = await _groups.Query(1, 10, "filter", "name", "asc", cancellationToken);
@@ -74,21 +56,17 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       // Arrange
       var cancellationToken = CancellationToken.None;
       var group = new Group();
-      var expectedId = Guid.NewGuid();
+      var expectedGroup = new Group { Id = Guid.NewGuid().ToString() };
 
-      // Configure mock repository to return expected ID
-      var mockRepository = Substitute.For<IResourceRepository<Group>>();
-      mockRepository.CreateAsync(group, cancellationToken)
-        .Returns(expectedId);
-      
-      // Recreate GroupService with configured mock
-      _groups = new GroupService(mockRepository);
+      // Configure mock repository to return expected group
+      _mockRepository.CreateAsync(group, cancellationToken)
+        .Returns(expectedGroup);
 
       // Act
       var result = await _groups.Create(group, cancellationToken);
 
       // Assert
-      Assert.AreEqual(expectedId, result);
+      Assert.AreEqual(Guid.Parse(expectedGroup.Id), result);
     }
 
     [TestMethod]
@@ -97,18 +75,14 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       // Arrange
       var cancellationToken = CancellationToken.None;
       var expectedGroup = new Group();
-      var id = Guid.NewGuid();
+      var id = Guid.NewGuid().ToString();
 
       // Configure mock repository to return expected group
-      var mockRepository = Substitute.For<IResourceRepository<Group>>();
-      mockRepository.RetrieveAsync(id, cancellationToken)
+      _mockRepository.GetByIdAsync(id, cancellationToken)
         .Returns(expectedGroup);
-      
-      // Recreate GroupService with configured mock
-      _groups = new GroupService(mockRepository);
 
       // Act
-      var result = await _groups.Retrieve(id, cancellationToken);
+      var result = await _groups.Retrieve(Guid.Parse(id), cancellationToken);
 
       // Assert
       Assert.IsNotNull(result);
@@ -121,18 +95,14 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var id = Guid.NewGuid();
+      var id = Guid.NewGuid().ToString();
 
       // Configure mock repository to return success
-      var mockRepository = Substitute.For<IResourceRepository<Group>>();
-      mockRepository.DeleteAsync(id, cancellationToken)
+      _mockRepository.DeleteAsync(id, cancellationToken)
         .Returns(true);
-      
-      // Recreate GroupService with configured mock
-      _groups = new GroupService(mockRepository);
 
       // Act
-      var result = await _groups.Delete(id, cancellationToken);
+      var result = await _groups.Delete(Guid.Parse(id), cancellationToken);
 
       // Assert
       Assert.IsTrue(result);

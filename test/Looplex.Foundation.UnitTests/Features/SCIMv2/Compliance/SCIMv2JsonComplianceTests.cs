@@ -206,7 +206,7 @@ namespace Looplex.Foundation.UnitTests.Features.SCIMv2.Serialization
             Assert.IsTrue(root.TryGetProperty("schemas", out var schemasElement));
             Assert.IsTrue(schemasElement.ValueKind == JsonValueKind.Array);
 
-            Assert.IsTrue(root.TryGetProperty("data", out var dataElement));
+            Assert.IsTrue(root.TryGetProperty("Resources", out var dataElement));
             Assert.IsTrue(dataElement.TryGetProperty("id", out var idElement));
             Assert.AreEqual("2819c223-7f76-453a-919d-413861904646", idElement.GetString());
 

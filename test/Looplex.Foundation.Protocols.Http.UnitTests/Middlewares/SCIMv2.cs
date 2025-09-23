@@ -32,8 +32,13 @@ public class SCIMv2Tests
   [TestInitialize]
   public Task Setup()
   {
-    _users = Substitute.For<UserService>();
-    _groups = Substitute.For<GroupService>();
+    // Create mock repositories
+    var userRepository = Substitute.For<IResourceRepository<User>>();
+    var groupRepository = Substitute.For<IResourceRepository<Group>>();
+    
+    // Create services with mock repositories
+    _users = Substitute.For<UserService>(userRepository);
+    _groups = Substitute.For<GroupService>(groupRepository);
     _clientServices = Substitute.For<ClientServices>();
     _scimService = Substitute.For<ISCIMv2>();
 

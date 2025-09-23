@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Looplex.Foundation.WebApp\Looplex.Foundation.WebApp.csproj"/>
     <ProjectReference Include="..\..\src\Looplex.Foundation\Looplex.Foundation.csproj"/>
+    <ProjectReference Include="..\..\src\Looplex.Foundation.Protocols.Http\Looplex.Foundation.Protocols.Http.csproj"/>
     <ProjectReference Include="..\Notejam\Notejam\Notejam.csproj"/>
   </ItemGroup>
 

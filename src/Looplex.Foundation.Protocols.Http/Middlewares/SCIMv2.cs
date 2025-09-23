@@ -38,18 +38,33 @@ public static class SCIMv2
                 // GET /{collectionName} - Query resources
                 group.MapGet("", async (HttpContext context, ISCIMv2 scimService) =>
                 {
-                    var startIndex = int.Parse(context.Request.Query["startIndex"].FirstOrDefault() ?? "1");
-                    var count = int.Parse(context.Request.Query["count"].FirstOrDefault() ?? "100");
-                    var filter = context.Request.Query["filter"].FirstOrDefault();
-                    var sortBy = context.Request.Query["sortBy"].FirstOrDefault();
-                    var sortOrder = context.Request.Query["sortOrder"].FirstOrDefault();
+                    try
+                    {
+                        Console.WriteLine($"🔍 SCIMv2 Middleware - GET /{collectionName}");
+                        
+                        var startIndex = int.Parse(context.Request.Query["startIndex"].FirstOrDefault() ?? "1");
+                        var count = int.Parse(context.Request.Query["count"].FirstOrDefault() ?? "100");
+                        var filter = context.Request.Query["filter"].FirstOrDefault();
+                        var sortBy = context.Request.Query["sortBy"].FirstOrDefault();
+                        var sortOrder = context.Request.Query["sortOrder"].FirstOrDefault();
 
-                    var response = await scimService.QueryAsync(
-                        collectionName, startIndex, count, filter, sortBy, sortOrder, 
-                        context.RequestAborted);
+                        Console.WriteLine($"🔍 Query params - startIndex: {startIndex}, count: {count}, filter: {filter}");
 
-                    //  Return SCIMv2 compliant result with proper Content-Type
-                    return CreateSCIMv2Result(response);
+                        var response = await scimService.QueryAsync(
+                            collectionName, startIndex, count, filter, sortBy, sortOrder, 
+                            context.RequestAborted);
+                        
+                        Console.WriteLine($"🔍 SCIMv2 Service returned response with StatusCode: {response.StatusCode}");
+
+                        //  Return SCIMv2 compliant result with proper Content-Type
+                        return CreateSCIMv2Result(response);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ ERROR in SCIMv2 Middleware GET /{collectionName}: {ex.Message}");
+                        Console.WriteLine($"❌ StackTrace: {ex.StackTrace}");
+                        throw;
+                    }
                 });
 
                 // GET /{collectionName}/{id} - Retrieve resource
@@ -359,12 +374,18 @@ public static class SCIMv2
     /// </summary>
     private static IResult CreateSCIMv2Result(SCIMv2Response response, int statusCode = 200)
     {
+        Console.WriteLine($"🔍 CreateSCIMv2Result - StatusCode: {statusCode}, Response StatusCode: {response.StatusCode}");
+        Console.WriteLine($"🔍 Response Data type: {response.Data?.GetType().Name ?? "null"}");
+        Console.WriteLine($"🔍 Response Schemas: {string.Join(", ", response.Schemas ?? new string[0])}");
+        
         //  RFC 7644 Section 3.4.5 - DELETE responses (204) must not have body
         if (statusCode == 204)
         {
+            Console.WriteLine($"🔍 Returning NoContent for 204 status");
             return Results.NoContent();
         }
         
+        Console.WriteLine($"🔍 Returning JSON result with Content-Type: application/scim+json");
         return Results.Json(response, statusCode: statusCode, contentType: "application/scim+json");
     }
 

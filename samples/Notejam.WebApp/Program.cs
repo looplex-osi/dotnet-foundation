@@ -128,20 +128,8 @@ public static class Program
       })
       .AllowAnonymous();
 
-    // Add SCIMv2 discovery endpoints
-    app.MapGet("/Schemas", () => Results.Json(new { schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:User" } }));
-    app.MapGet("/ServiceProviderConfig", () => Results.Json(new { 
-        schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig" },
-        patch = new { supported = false },
-        bulk = new { supported = false, maxOperations = 0, maxPayloadSize = 0 },
-        filter = new { supported = true, maxResults = 200 },
-        changePassword = new { supported = false },
-        sort = new { supported = false },
-        etag = new { supported = false },
-        authenticationSchemes = new[] { 
-            new { type = "oauth2", name = "OAuth 2.0", description = "OAuth 2.0 Bearer Token" }
-        }
-    }));
+    // Use official SCIMv2 discovery endpoints from Looplex.Foundation
+    app.UseSCIMv2Discovery(authorize: false);
 
     // Register SCIMv2 services directly
     using (var scope = app.Services.CreateScope())
@@ -154,8 +142,23 @@ public static class Program
         scimService.Register<Pad>(padService, "pads");
     }
 
-    // Use SCIMv2 middleware for automatic endpoint mapping (PRODUCTION READY)
+    // Add detailed logging middleware
+    app.Use(async (context, next) =>
+    {
+        Console.WriteLine($"🔍 REQUEST: {context.Request.Method} {context.Request.Path}");
+        Console.WriteLine($"🔍 Headers: {string.Join(", ", context.Request.Headers.Select(h => $"{h.Key}={h.Value}"))}");
+        
+        await next();
+        
+        Console.WriteLine($"🔍 RESPONSE: {context.Response.StatusCode}");
+        Console.WriteLine($"🔍 Response Headers: {string.Join(", ", context.Response.Headers.Select(h => $"{h.Key}={h.Value}"))}");
+    });
+
+    // Use SCIMv2 middleware for proper compliance
+    Console.WriteLine("🚀 Registering SCIMv2 middleware for 'notes'");
     app.UseSCIMv2("notes", authorize: false);
+    
+    Console.WriteLine("🚀 Registering SCIMv2 middleware for 'pads'");
     app.UseSCIMv2("pads", authorize: false);
 
     app.Run();
