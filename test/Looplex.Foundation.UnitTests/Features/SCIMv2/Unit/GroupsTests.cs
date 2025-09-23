@@ -38,7 +38,9 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       httpContext.User.Returns(_user);
       _httpContextAccessor.HttpContext.Returns(httpContext);
 
-      _groups = new GroupService(_plugins, _rbacService, _httpContextAccessor, _mediator);
+      // Create mock repository for GroupService
+      var mockRepository = Substitute.For<IResourceRepository<Group>>();
+      _groups = new GroupService(mockRepository);
     }
 
     [TestMethod]
@@ -49,8 +51,13 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       var expectedGroups = new List<Group> { new Group() };
       int expectedTotal = 1;
 
-      _mediator.Send(Arg.Any<QueryResource<Group>>(), cancellationToken)
-        .Returns(Task.FromResult<(IList<Group>, int)>((expectedGroups, expectedTotal)));
+      // Configure mock repository to return expected data
+      var mockRepository = Substitute.For<IResourceRepository<Group>>();
+      mockRepository.QueryAsync(1, 10, "filter", "name", "asc", cancellationToken)
+        .Returns(new ListResponse<Group> { Resources = expectedGroups, TotalResults = expectedTotal });
+      
+      // Recreate GroupService with configured mock
+      _groups = new GroupService(mockRepository);
 
       // Act
       var response = await _groups.Query(1, 10, "filter", "name", "asc", cancellationToken);
@@ -69,8 +76,13 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       var group = new Group();
       var expectedId = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<CreateResource<Group>>(), cancellationToken)
-        .Returns(Task.FromResult(expectedId));
+      // Configure mock repository to return expected ID
+      var mockRepository = Substitute.For<IResourceRepository<Group>>();
+      mockRepository.CreateAsync(group, cancellationToken)
+        .Returns(expectedId);
+      
+      // Recreate GroupService with configured mock
+      _groups = new GroupService(mockRepository);
 
       // Act
       var result = await _groups.Create(group, cancellationToken);
@@ -87,8 +99,13 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       var expectedGroup = new Group();
       var id = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<RetrieveResource<Group>>(), cancellationToken)
-        .Returns(Task.FromResult<Group?>(expectedGroup));
+      // Configure mock repository to return expected group
+      var mockRepository = Substitute.For<IResourceRepository<Group>>();
+      mockRepository.RetrieveAsync(id, cancellationToken)
+        .Returns(expectedGroup);
+      
+      // Recreate GroupService with configured mock
+      _groups = new GroupService(mockRepository);
 
       // Act
       var result = await _groups.Retrieve(id, cancellationToken);
@@ -106,8 +123,13 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       var cancellationToken = CancellationToken.None;
       var id = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<DeleteResource<Group>>(), cancellationToken)
-        .Returns(Task.FromResult(1)); // Simulating that one row was affected
+      // Configure mock repository to return success
+      var mockRepository = Substitute.For<IResourceRepository<Group>>();
+      mockRepository.DeleteAsync(id, cancellationToken)
+        .Returns(true);
+      
+      // Recreate GroupService with configured mock
+      _groups = new GroupService(mockRepository);
 
       // Act
       var result = await _groups.Delete(id, cancellationToken);

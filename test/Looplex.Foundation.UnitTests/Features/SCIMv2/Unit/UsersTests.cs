@@ -38,7 +38,9 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       httpContext.User.Returns(_user);
       _httpContextAccessor.HttpContext.Returns(httpContext);
 
-      _users = new UserService(_plugins, _rbacService, _httpContextAccessor, _mediator);
+      // Create mock repository for UserService
+      var mockRepository = Substitute.For<IResourceRepository<User>>();
+      _users = new UserService(mockRepository);
     }
 
     [TestMethod]
@@ -49,8 +51,13 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       var expectedUsers = new List<User> { new User() };
       int expectedTotal = 1;
 
-      _mediator.Send(Arg.Any<QueryResource<User>>(), cancellationToken)
-        .Returns(Task.FromResult<(IList<User>, int)>((expectedUsers, expectedTotal)));
+      // Configure mock repository to return expected data
+      var mockRepository = Substitute.For<IResourceRepository<User>>();
+      mockRepository.QueryAsync(1, 10, "filter", "name", "asc", cancellationToken)
+        .Returns(new ListResponse<User> { Resources = expectedUsers, TotalResults = expectedTotal });
+      
+      // Recreate UserService with configured mock
+      _users = new UserService(mockRepository);
 
       // Act
       var response = await _users.Query(1, 10, "filter", "name", "asc", cancellationToken);
@@ -69,8 +76,13 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       var user = new User();
       var expectedId = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<CreateResource<User>>(), cancellationToken)
-        .Returns(Task.FromResult(expectedId));
+      // Configure mock repository to return expected ID
+      var mockRepository = Substitute.For<IResourceRepository<User>>();
+      mockRepository.CreateAsync(user, cancellationToken)
+        .Returns(expectedId);
+      
+      // Recreate UserService with configured mock
+      _users = new UserService(mockRepository);
 
       // Act
       var result = await _users.Create(user, cancellationToken);
@@ -87,8 +99,13 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       var expectedUser = new User();
       var id = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<RetrieveResource<User>>(), cancellationToken)
-        .Returns(Task.FromResult<User?>(expectedUser));
+      // Configure mock repository to return expected user
+      var mockRepository = Substitute.For<IResourceRepository<User>>();
+      mockRepository.RetrieveAsync(id, cancellationToken)
+        .Returns(expectedUser);
+      
+      // Recreate UserService with configured mock
+      _users = new UserService(mockRepository);
 
       // Act
       var result = await _users.Retrieve(id, cancellationToken);
@@ -124,8 +141,13 @@ namespace Looplex.Foundation.UnitTests.SCIMv2.Entities
       var cancellationToken = CancellationToken.None;
       var id = Guid.NewGuid();
 
-      _mediator.Send(Arg.Any<DeleteResource<User>>(), cancellationToken)
-        .Returns(Task.FromResult(1)); // Simulating that one row was affected
+      // Configure mock repository to return success
+      var mockRepository = Substitute.For<IResourceRepository<User>>();
+      mockRepository.DeleteAsync(id, cancellationToken)
+        .Returns(true);
+      
+      // Recreate UserService with configured mock
+      _users = new UserService(mockRepository);
 
       // Act
       var result = await _users.Delete(id, cancellationToken);

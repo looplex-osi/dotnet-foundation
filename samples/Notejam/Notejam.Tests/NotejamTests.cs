@@ -15,10 +15,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 using NSubstitute;
+using Xunit;
 
 namespace Looplex.Samples.Tests;
 
-[TestClass]
+// xUnit doesn't need class attributes
 public class NotejamTests
 {
   private IEnforcer InitRbacEnforcer()
@@ -31,14 +32,14 @@ public class NotejamTests
     return new Enforcer(modelPath, policyPath);
   }
 
-  [TestMethod]
+  [Fact]
   public void service_should_be_initialized()
   {
     Notejam service = new();
     Assert.IsInstanceOfType(service, typeof(Notejam));
   }
 
-  [TestMethod]
+  [Fact]
   public async Task service_should_implement_dependency_injection_with_mocked_dependencies()
   {
     // Arrange (setup)
@@ -59,7 +60,7 @@ public class NotejamTests
     Assert.AreEqual(result, "Hello World");
   }
 
-  [TestMethod]
+  [Fact]
   public async Task service_should_implement_microkernel_mocked_plugin()
   {
     // Arrange (setup)
@@ -94,7 +95,7 @@ public class NotejamTests
     Assert.AreEqual(result, "Hello John");
   }
 
-  [TestMethod]
+  [Fact]
   public async Task service_should_implement_leverage_eptracker_plugin()
   {
     // Arrange (setup)
@@ -119,7 +120,7 @@ public class NotejamTests
     Assert.AreEqual(result, @"[""@define"",""@bind"",""@beforeAction"",""@afterAction""]");
   }
 
-  [TestMethod]
+  [Fact]
   public async Task service_should_receive_rbac_as_a_dependency_and_succeed()
   {
     // Arrange (setup)
@@ -152,7 +153,7 @@ public class NotejamTests
     Assert.AreEqual(result, @"Hello World");
   }
 
-  [TestMethod]
+  [Fact]
   public async Task service_should_receive_rbac_as_a_dependency_and_unauthorize()
   {
     IPlugin? plugin = Substitute.For<IPlugin>();

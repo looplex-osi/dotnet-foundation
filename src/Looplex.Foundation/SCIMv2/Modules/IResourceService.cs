@@ -63,6 +63,15 @@ public interface IResourceService<T> : IResourceService where T : IResource
     Task<bool> ReplaceAsync(Guid id, T resource, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Replace a resource completely (non-generic version)
+    /// </summary>
+    /// <param name="id">Resource ID</param>
+    /// <param name="resource">New resource data</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if successful</returns>
+    Task<bool> ReplaceAsync(Guid id, IResource resource, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Update a resource using PATCH operations
     /// </summary>
     /// <param name="id">Resource ID</param>

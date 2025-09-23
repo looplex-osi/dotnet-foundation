@@ -48,7 +48,8 @@ public static class SCIMv2
                         collectionName, startIndex, count, filter, sortBy, sortOrder, 
                         context.RequestAborted);
 
-                    return Results.Ok(response);
+                    //  Return SCIMv2 compliant result with proper Content-Type
+                    return CreateSCIMv2Result(response);
                 });
 
                 // GET /{collectionName}/{id} - Retrieve resource
@@ -64,7 +65,8 @@ public static class SCIMv2
                             return Results.NotFound(response);
                         }
                         
-                        return Results.Ok(response);
+                        //  Return SCIMv2 compliant result with proper Content-Type
+                        return CreateSCIMv2Result(response);
                     }
                     catch (Exception)
                     {
@@ -77,6 +79,7 @@ public static class SCIMv2
                 {
                     try
                     {
+                        
                         // Read the request body
                         using var reader = new StreamReader(context.Request.Body);
                         var json = await reader.ReadToEndAsync();
@@ -85,21 +88,45 @@ public static class SCIMv2
                         var validation = validationService.ValidateJsonRequest(json);
                         if (!validation.IsValid)
                         {
-                            return Results.BadRequest(validation.ErrorMessage);
+                            //  Use SCIMv2 error format instead of direct Results.BadRequest
+                            var errorResponse = new SCIMv2Response
+                            {
+                                StatusCode = 400,
+                                Error = new SCIMv2Error
+                                {
+                                    Status = "400",
+                                    Detail = validation.ErrorMessage,
+                                    ScimType = "invalidSyntax",
+                                    Timestamp = DateTime.UtcNow.ToString("O")
+                                }
+                            };
+                            return CreateSCIMv2Result(errorResponse, 400);
                         }
                         
-                        // Use existing mock resource creation
-                        var mockResource = validationService.CreateMockResource(collectionName, Guid.NewGuid().ToString());
                         
-                        // Call SCIMv2 service to create the resource
-                        var response = await scimService.CreateAsync(collectionName, mockResource, context.RequestAborted);
+                        // Use ISCIMv2 directly - it will handle any registered collection
+                        // The service will use the appropriate IResourceService<T> implementation
+                        var response = await scimService.CreateAsync(collectionName, json, context.RequestAborted);
+                        
                         
                         // Use centralized HTTP result mapping from SCIMv2 core
-                        return MapToHttpResult(response, collectionName, mockResource.Id);
+                        return MapToHttpResult(response, collectionName);
                     }
                     catch (Exception ex)
                     {
-                        return Results.BadRequest($"Error creating resource: {ex.Message}");
+                        //  Use SCIMv2 error format for exceptions
+                        var errorResponse = new SCIMv2Response
+                        {
+                            StatusCode = 500,
+                            Error = new SCIMv2Error
+                            {
+                                Status = "500",
+                                Detail = $"Error creating resource: {ex.Message}",
+                                ScimType = "internalError",
+                                Timestamp = DateTime.UtcNow.ToString("O")
+                            }
+                        };
+                        return CreateSCIMv2Result(errorResponse, 500);
                     }
                 });
 
@@ -116,28 +143,43 @@ public static class SCIMv2
                         var validation = validationService.ValidateJsonRequest(json);
                         if (!validation.IsValid)
                         {
-                            return Results.BadRequest(validation.ErrorMessage);
+                            //  Use SCIMv2 error format for validation failures
+                            var errorResponse = new SCIMv2Response
+                            {
+                                StatusCode = 400,
+                                Error = new SCIMv2Error
+                                {
+                                    Status = "400",
+                                    Detail = validation.ErrorMessage,
+                                    ScimType = "invalidSyntax",
+                                    Timestamp = DateTime.UtcNow.ToString("O")
+                                }
+                            };
+                            return CreateSCIMv2Result(errorResponse, 400);
                         }
                         
-                        // Use existing collection validation
-                        var collectionValidation = validationService.ValidateCollection(collectionName);
-                        if (!collectionValidation.IsValid)
-                        {
-                            return Results.BadRequest(collectionValidation.ErrorMessage);
-                        }
-                        
-                        // Use existing mock resource creation
-                        var mockResource = validationService.CreateMockResource(collectionName, id.ToString());
-                        
-                        // Call SCIMv2 service to replace the resource
-                        var response = await scimService.ReplaceAsync(collectionName, id.ToString(), mockResource, context.RequestAborted);
+                        // Use ISCIMv2 directly - it will handle any registered collection
+                        // The service will use the appropriate IResourceService<T> implementation
+                        var response = await scimService.ReplaceAsync(collectionName, id.ToString(), json, context.RequestAborted);
                         
                         // Use centralized HTTP result mapping from SCIMv2 core
                         return MapToHttpResult(response, collectionName, id.ToString());
                     }
                     catch (Exception ex)
                     {
-                        return Results.BadRequest($"Error replacing resource: {ex.Message}");
+                        //  Use SCIMv2 error format for exceptions
+                        var errorResponse = new SCIMv2Response
+                        {
+                            StatusCode = 500,
+                            Error = new SCIMv2Error
+                            {
+                                Status = "500",
+                                Detail = $"Error replacing resource: {ex.Message}",
+                                ScimType = "internalError",
+                                Timestamp = DateTime.UtcNow.ToString("O")
+                            }
+                        };
+                        return CreateSCIMv2Result(errorResponse, 500);
                     }
                 });
 
@@ -146,6 +188,7 @@ public static class SCIMv2
                 {
                     try
                     {
+                        
                         // Read the request body
                         using var reader = new StreamReader(context.Request.Body);
                         var json = await reader.ReadToEndAsync();
@@ -154,18 +197,44 @@ public static class SCIMv2
                         var patchResult = validationService.ParsePatchOperations(json);
                         if (!patchResult.IsValid)
                         {
-                            return Results.BadRequest(patchResult.ErrorMessage);
+                            //  Use SCIMv2 error format for PATCH validation failures
+                            var errorResponse = new SCIMv2Response
+                            {
+                                StatusCode = 400,
+                                Error = new SCIMv2Error
+                                {
+                                    Status = "400",
+                                    Detail = patchResult.ErrorMessage,
+                                    ScimType = "invalidSyntax",
+                                    Timestamp = DateTime.UtcNow.ToString("O")
+                                }
+                            };
+                            return CreateSCIMv2Result(errorResponse, 400);
                         }
+                        
                         
                         // Call SCIMv2 service to modify the resource
                         var response = await scimService.ModifyAsync(collectionName, id.ToString(), patchResult.Operations, context.RequestAborted);
+                        
                         
                         // Use centralized HTTP result mapping from SCIMv2 core
                         return MapToHttpResult(response, collectionName, id.ToString());
                     }
                     catch (Exception ex)
                     {
-                        return Results.BadRequest($"Error updating resource: {ex.Message}");
+                        //  Use SCIMv2 error format for exceptions
+                        var errorResponse = new SCIMv2Response
+                        {
+                            StatusCode = 500,
+                            Error = new SCIMv2Error
+                            {
+                                Status = "500",
+                                Detail = $"Error updating resource: {ex.Message}",
+                                ScimType = "internalError",
+                                Timestamp = DateTime.UtcNow.ToString("O")
+                            }
+                        };
+                        return CreateSCIMv2Result(errorResponse, 500);
                     }
                 });
 
@@ -224,7 +293,7 @@ public static class SCIMv2
                             return Results.StatusCode(response.StatusCode);
                         }
                         
-                        return Results.Ok(response);
+                        return CreateSCIMv2Result(response);
                     }
                     catch (Exception)
                     {
@@ -244,7 +313,7 @@ public static class SCIMv2
                             return Results.StatusCode(response.StatusCode);
                         }
                         
-                        return Results.Ok(response);
+                        return CreateSCIMv2Result(response);
                     }
                     catch (Exception)
                     {
@@ -264,7 +333,7 @@ public static class SCIMv2
                             return Results.StatusCode(response.StatusCode);
                         }
                         
-                        return Results.Ok(response);
+                        return CreateSCIMv2Result(response);
                     }
                     catch (Exception)
                     {
@@ -283,19 +352,36 @@ public static class SCIMv2
     /// <param name="collectionName">Collection name for resource URLs</param>
     /// <param name="resourceId">Resource ID for Created responses</param>
     /// <returns>HTTP result</returns>
+    /// <summary>
+    /// Creates SCIMv2 compliant HTTP result with proper headers
+    /// Implements RFC 7644 Section 3.4.1 - HTTP Content-Type
+    /// [RFC 7644](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.1)
+    /// </summary>
+    private static IResult CreateSCIMv2Result(SCIMv2Response response, int statusCode = 200)
+    {
+        //  RFC 7644 Section 3.4.5 - DELETE responses (204) must not have body
+        if (statusCode == 204)
+        {
+            return Results.NoContent();
+        }
+        
+        return Results.Json(response, statusCode: statusCode, contentType: "application/scim+json");
+    }
+
     private static IResult MapToHttpResult(SCIMv2Response response, string collectionName, string? resourceId = null)
     {
         return response.StatusCode switch
         {
-            200 => Results.Ok(response),
-            201 => Results.Created($"/{collectionName}/{resourceId}", response),
+            200 => CreateSCIMv2Result(response),
+            201 => CreateSCIMv2Result(response, 201),
             204 => Results.NoContent(),
-            400 => Results.BadRequest(response.Error?.Detail ?? "Bad request"),
-            404 => Results.NotFound(response),
-            409 => Results.Conflict(response.Error?.Detail ?? "Conflict"),
-            412 => Results.StatusCode(412),
-            500 => Results.StatusCode(500),
-            _ => Results.StatusCode(response.StatusCode)
+            //  RFC 7644 Section 3.12 - All error responses must be in SCIMv2 format
+            400 => CreateSCIMv2Result(response, 400),
+            404 => CreateSCIMv2Result(response, 404),
+            409 => CreateSCIMv2Result(response, 409),
+            412 => CreateSCIMv2Result(response, 412),
+            500 => CreateSCIMv2Result(response, 500),
+            _ => CreateSCIMv2Result(response, response.StatusCode)
         };
     }
 }

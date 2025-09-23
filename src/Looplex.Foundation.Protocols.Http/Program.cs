@@ -10,7 +10,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Add SCIMv2 services
-builder.Services.AddSCIMv2Service();
+builder.Services.AddSCIMv2();
 
 // Add CORS for testing
 builder.Services.AddCors(options =>

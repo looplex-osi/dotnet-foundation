@@ -5,17 +5,34 @@ using Looplex.Foundation.SCIMv2.Antlr;
 
 namespace Looplex.Foundation.SCIMv2.Entities;
 
-public class SCIMv2ToSQLVisitor : ScimFilterBaseVisitor<string>
+public class SCIMv2ToSQLVisitor : ScimFilterBaseVisitor<(string Sql, Dictionary<string, object> Parameters)>
 {
   public HashSet<string>? AllowedAttributes { set; get; }
   public IDictionary<string, string>? AttributeMapper { set; get; }
   
-  public override string VisitOperatorExp(ScimFilterParser.OperatorExpContext context)
+  private int _parameterIndex = 0;
+  private Dictionary<string, object> _parameters = new();
+  
+  public override (string Sql, Dictionary<string, object> Parameters) VisitOperatorExp(ScimFilterParser.OperatorExpContext context)
   {
     var attr = context.attrPath().GetText();
     var op = context.COMPAREOPERATOR().GetText().ToLower();
     var value = context.VALUE().GetText();
 
+    // Validar atributo
+    if (!AllowedAttributes?.Contains(attr) ?? false)
+      throw new InvalidOperationException($"Cannot filter by {attr}");
+
+    // Mapear atributo
+    if (AttributeMapper?.TryGetValue(attr, out var mapped) ?? false)
+      attr = mapped;
+
+    // Gerar parâmetro
+    var paramName = $"@param_{_parameterIndex++}";
+    var sanitizedValue = SanitizeValue(value, op);
+    _parameters[paramName] = sanitizedValue;
+
+    // Gerar SQL com parâmetro
     string sqlOp = op switch
     {
       "eq" => "=",
@@ -30,58 +47,95 @@ public class SCIMv2ToSQLVisitor : ScimFilterBaseVisitor<string>
       _ => throw new NotImplementedException($"Operator {op} not implemented")
     };
 
-    if (op == "co") value = $"'%{TrimQuotes(value)}%'";
-    else if (op == "sw") value = $"'{TrimQuotes(value)}%'";
-    else if (op == "ew") value = $"'%{TrimQuotes(value)}'";
-    else value = IsNumeric(value) ? value : $"'{TrimQuotes(value)}'";
+    return ($"{attr} {sqlOp} {paramName}", _parameters);
+  }
 
+  public override (string Sql, Dictionary<string, object> Parameters) VisitPresentExp(ScimFilterParser.PresentExpContext context)
+  {
+    var attr = context.attrPath().GetText();
+    
+    // Validar atributo
     if (!AllowedAttributes?.Contains(attr) ?? false)
       throw new InvalidOperationException($"Cannot filter by {attr}");
-    
+
+    // Mapear atributo
     if (AttributeMapper?.TryGetValue(attr, out var mapped) ?? false)
       attr = mapped;
     
-    return $"{attr} {sqlOp} {value}";
+    return ($"{attr} IS NOT NULL", _parameters);
   }
 
-  public override string VisitPresentExp(ScimFilterParser.PresentExpContext context)
-  {
-    var attr = context.attrPath().GetText();
-    return $"{attr} IS NOT NULL";
-  }
-
-  public override string VisitAndExp(ScimFilterParser.AndExpContext context)
+  public override (string Sql, Dictionary<string, object> Parameters) VisitAndExp(ScimFilterParser.AndExpContext context)
   {
     var left = Visit(context.filter(0));
     var right = Visit(context.filter(1));
-    return $"({left} AND {right})";
+    
+    // Merge parameters from both sides
+    foreach (var param in right.Parameters)
+    {
+      _parameters[param.Key] = param.Value;
+    }
+    
+    return ($"({left.Sql} AND {right.Sql})", _parameters);
   }
 
-  public override string VisitOrExp(ScimFilterParser.OrExpContext context)
+  public override (string Sql, Dictionary<string, object> Parameters) VisitOrExp(ScimFilterParser.OrExpContext context)
   {
     var left = Visit(context.filter(0));
     var right = Visit(context.filter(1));
-    return $"({left} OR {right})";
+    
+    // Merge parameters from both sides
+    foreach (var param in right.Parameters)
+    {
+      _parameters[param.Key] = param.Value;
+    }
+    
+    return ($"({left.Sql} OR {right.Sql})", _parameters);
   }
 
-  public override string VisitBraceExp(ScimFilterParser.BraceExpContext context)
+  public override (string Sql, Dictionary<string, object> Parameters) VisitBraceExp(ScimFilterParser.BraceExpContext context)
   {
     var inner = Visit(context.filter());
-    return context.NOT() != null ? $"NOT ({inner})" : $"({inner})";
+    return context.NOT() != null ? ($"NOT ({inner.Sql})", inner.Parameters) : ($"({inner.Sql})", inner.Parameters);
   }
 
-  public override string VisitValPathExp(ScimFilterParser.ValPathExpContext context)
+  public override (string Sql, Dictionary<string, object> Parameters) VisitValPathExp(ScimFilterParser.ValPathExpContext context)
   {
     var attr = context.attrPath().GetText();
     var condition = this.Visit(context.valPathFilter());
-    return $"EXISTS (SELECT 1 FROM {attr} x WHERE {condition})";
+    
+    // Merge parameters from condition
+    foreach (var param in condition.Parameters)
+    {
+      _parameters[param.Key] = param.Value;
+    }
+    
+    return ($"EXISTS (SELECT 1 FROM {attr} x WHERE {condition.Sql})", _parameters);
   }
 
-  // Optional: handle valPath* if your SQL schema supports JSON/array columns
 
-  private static string TrimQuotes(string value) =>
-    value.Trim('"');
+  private static object SanitizeValue(string value, string operation)
+  {
+    if (string.IsNullOrEmpty(value))
+      return DBNull.Value;
 
-  private static bool IsNumeric(string value) =>
-    double.TryParse(value, out _);
+    // Remover aspas e escapar caracteres perigosos
+    var cleanValue = value.Trim('"', '\'');
+    
+    // Escapar caracteres SQL perigosos
+    cleanValue = cleanValue.Replace("'", "''")
+                          .Replace(";", "")
+                          .Replace("--", "")
+                          .Replace("/*", "")
+                          .Replace("*/", "");
+
+    return operation switch
+    {
+      "co" => $"%{cleanValue}%",
+      "sw" => $"{cleanValue}%",
+      "ew" => $"%{cleanValue}",
+      _ => double.TryParse(cleanValue, out _) ? Convert.ToDecimal(cleanValue) : cleanValue
+    };
+  }
+
 }

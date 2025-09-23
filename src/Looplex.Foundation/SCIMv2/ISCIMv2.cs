@@ -77,6 +77,16 @@ public interface ISCIMv2
         string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Create a new resource from JSON (POST /collection)
+    /// Generic method that works with any registered collection
+    /// </summary>
+    /// <param name="collection">Collection name</param>
+    /// <param name="json">JSON representation of the resource</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 Response with created resource</returns>
+    Task<SCIMv2Response> CreateAsync(string collection, string json, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Create a new resource (POST /collection)
     /// </summary>
     /// <param name="collection">Collection name</param>
@@ -105,7 +115,18 @@ public interface ISCIMv2
     Task<SCIMv2Response> ModifyAsync(string collection, string id, PatchOperation[] patches, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Replace a resource using PUT (PUT /collection/:id)
+    /// Replace a resource completely from JSON (PUT /collection/:id)
+    /// Generic method that works with any registered collection
+    /// </summary>
+    /// <param name="collection">Collection name</param>
+    /// <param name="id">Resource ID</param>
+    /// <param name="json">JSON representation of the resource</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 Response with updated resource</returns>
+    Task<SCIMv2Response> ReplaceAsync(string collection, string id, string json, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Replace a resource completely (PUT /collection/:id)
     /// </summary>
     /// <param name="collection">Collection name</param>
     /// <param name="id">Resource ID</param>

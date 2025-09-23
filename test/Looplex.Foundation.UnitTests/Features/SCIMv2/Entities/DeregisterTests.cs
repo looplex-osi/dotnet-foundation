@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Looplex.Foundation.SCIMv2;
 using Looplex.Foundation.SCIMv2.Entities;
 using Looplex.Foundation.SCIMv2.Modules;
+using Looplex.Foundation.UnitTests.Features.SCIMv2.TestHelpers;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,11 +15,34 @@ namespace Looplex.Foundation.UnitTests.Features.SCIMv2.Entities
     [TestClass]
     public class DeregisterTests
     {
+        #region Helper Methods
+        
+        /// <summary>
+        /// Creates a configured SCIMv2 service with registered repositories
+        /// </summary>
+        /// <returns>Configured SCIMv2 service</returns>
+        private static Looplex.Foundation.SCIMv2.SCIMv2 CreateConfiguredSCIMv2()
+        {
+            var scimService = new Looplex.Foundation.SCIMv2.SCIMv2();
+            
+            // Register services manually (since auto-registration was removed)
+            var userRepository = new Looplex.Foundation.UnitTests.Features.SCIMv2.TestHelpers.InMemoryResourceRepository<User>();
+            var groupRepository = new Looplex.Foundation.UnitTests.Features.SCIMv2.TestHelpers.InMemoryResourceRepository<Group>();
+            var userService = new Looplex.Foundation.SCIMv2.Modules.UserService(userRepository);
+            var groupService = new Looplex.Foundation.SCIMv2.Modules.GroupService(groupRepository);
+            
+            scimService.Register(userService, "Users");
+            scimService.Register(groupService, "Groups");
+            
+            return scimService;
+        }
+        
+        #endregion
         [TestMethod]
         public void TestDeregisterSingleCollection()
         {
             // Arrange
-            var scimService = new Looplex.Foundation.SCIMv2.SCIMv2();
+            var scimService = CreateConfiguredSCIMv2();
             
             // Verify initial state
             var initialCollections = scimService.GetRegisteredCollections().ToList();
@@ -43,7 +67,7 @@ namespace Looplex.Foundation.UnitTests.Features.SCIMv2.Entities
         public void TestDeregisterNonExistentCollection()
         {
             // Arrange
-            var scimService = new Looplex.Foundation.SCIMv2.SCIMv2();
+            var scimService = CreateConfiguredSCIMv2();
 
             // Act - Deregister non-existent collection
             var result = scimService.Deregister("NonExistentCollection");
@@ -56,7 +80,7 @@ namespace Looplex.Foundation.UnitTests.Features.SCIMv2.Entities
         public void TestDeregisterWithEmptyCollectionName()
         {
             // Arrange
-            var scimService = new Looplex.Foundation.SCIMv2.SCIMv2();
+            var scimService = CreateConfiguredSCIMv2();
 
             // Act & Assert - Should throw ArgumentException
             Assert.ThrowsException<ArgumentException>(() => scimService.Deregister(""));
@@ -67,7 +91,7 @@ namespace Looplex.Foundation.UnitTests.Features.SCIMv2.Entities
         public void TestDeregisterAll()
         {
             // Arrange
-            var scimService = new Looplex.Foundation.SCIMv2.SCIMv2();
+            var scimService = CreateConfiguredSCIMv2();
             
             // Verify initial state
             var initialCollections = scimService.GetRegisteredCollections().ToList();
@@ -87,7 +111,7 @@ namespace Looplex.Foundation.UnitTests.Features.SCIMv2.Entities
         public void TestDeregisterAllOnEmptyService()
         {
             // Arrange
-            var scimService = new Looplex.Foundation.SCIMv2.SCIMv2();
+            var scimService = CreateConfiguredSCIMv2();
             scimService.DeregisterAll(); // Clear all
 
             // Act - Deregister all on empty service
@@ -101,14 +125,15 @@ namespace Looplex.Foundation.UnitTests.Features.SCIMv2.Entities
         public void TestReRegisterAfterDeregister()
         {
             // Arrange
-            var scimService = new Looplex.Foundation.SCIMv2.SCIMv2();
+            var scimService = CreateConfiguredSCIMv2();
             
             // Deregister Users
             scimService.Deregister("Users");
             Assert.IsFalse(scimService.IsCollectionRegistered("Users"), "Users should be deregistered");
 
-            // Act - Re-register Users
-            scimService.Register<User>("Users");
+            // Act - Re-register Users with explicit service
+            var userService = new UserService(new InMemoryResourceRepository<User>());
+            scimService.Register(userService, "Users");
 
             // Assert
             Assert.IsTrue(scimService.IsCollectionRegistered("Users"), "Users should be registered again");
@@ -118,7 +143,7 @@ namespace Looplex.Foundation.UnitTests.Features.SCIMv2.Entities
         public void TestDeregisterAndQueryBehavior()
         {
             // Arrange
-            var scimService = new Looplex.Foundation.SCIMv2.SCIMv2();
+            var scimService = CreateConfiguredSCIMv2();
             
             // Deregister Users
             scimService.Deregister("Users");
@@ -136,7 +161,7 @@ namespace Looplex.Foundation.UnitTests.Features.SCIMv2.Entities
         public void TestDeregisterAndCreateBehavior()
         {
             // Arrange
-            var scimService = new Looplex.Foundation.SCIMv2.SCIMv2();
+            var scimService = CreateConfiguredSCIMv2();
             
             // Deregister Users
             scimService.Deregister("Users");
@@ -164,7 +189,7 @@ namespace Looplex.Foundation.UnitTests.Features.SCIMv2.Entities
             
             Assert.AreEqual(404, result.StatusCode, "Create should return 404 for deregistered collection");
             Assert.IsNotNull(result.Error, "Error should be present");
-            Assert.IsTrue(result.Error.Detail.Contains("not registered"), "Error should indicate collection not registered");
+            Assert.IsTrue(result.Error.Detail.Contains("not registered"), $"Error should indicate collection not registered. Actual error: '{result.Error.Detail}'");
         }
     }
 }
