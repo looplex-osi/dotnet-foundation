@@ -80,6 +80,19 @@ public static class SCIMv2
                             return Results.NotFound(response);
                         }
                         
+                        // Set HTTP headers for SCIM v2.0 compliance
+                        if (!string.IsNullOrEmpty(response.Location))
+                        {
+                            Console.WriteLine($"🔍 Setting Location header: {response.Location}");
+                            context.Response.Headers["Location"] = response.Location;
+                        }
+                        
+                        if (!string.IsNullOrEmpty(response.ETag))
+                        {
+                            Console.WriteLine($"🔍 Setting ETag header: {response.ETag}");
+                            context.Response.Headers["ETag"] = response.ETag;
+                        }
+                        
                         //  Return SCIMv2 compliant result with proper Content-Type
                         return CreateSCIMv2Result(response);
                     }
@@ -123,6 +136,18 @@ public static class SCIMv2
                         // The service will use the appropriate IResourceService<T> implementation
                         var response = await scimService.CreateAsync(collectionName, json, context.RequestAborted);
                         
+                        // Set HTTP headers for SCIM v2.0 compliance
+                        if (!string.IsNullOrEmpty(response.Location))
+                        {
+                            Console.WriteLine($"🔍 Setting Location header: {response.Location}");
+                            context.Response.Headers["Location"] = response.Location;
+                        }
+                        
+                        if (!string.IsNullOrEmpty(response.ETag))
+                        {
+                            Console.WriteLine($"🔍 Setting ETag header: {response.ETag}");
+                            context.Response.Headers["ETag"] = response.ETag;
+                        }
                         
                         // Use centralized HTTP result mapping from SCIMv2 core
                         return MapToHttpResult(response, collectionName);
@@ -176,6 +201,19 @@ public static class SCIMv2
                         // Use ISCIMv2 directly - it will handle any registered collection
                         // The service will use the appropriate IResourceService<T> implementation
                         var response = await scimService.ReplaceAsync(collectionName, id.ToString(), json, context.RequestAborted);
+                        
+                        // Set HTTP headers for SCIM v2.0 compliance
+                        if (!string.IsNullOrEmpty(response.Location))
+                        {
+                            Console.WriteLine($"🔍 Setting Location header: {response.Location}");
+                            context.Response.Headers["Location"] = response.Location;
+                        }
+                        
+                        if (!string.IsNullOrEmpty(response.ETag))
+                        {
+                            Console.WriteLine($"🔍 Setting ETag header: {response.ETag}");
+                            context.Response.Headers["ETag"] = response.ETag;
+                        }
                         
                         // Use centralized HTTP result mapping from SCIMv2 core
                         return MapToHttpResult(response, collectionName, id.ToString());
@@ -231,6 +269,18 @@ public static class SCIMv2
                         // Call SCIMv2 service to modify the resource
                         var response = await scimService.ModifyAsync(collectionName, id.ToString(), patchResult.Operations, context.RequestAborted);
                         
+                        // Set HTTP headers for SCIM v2.0 compliance
+                        if (!string.IsNullOrEmpty(response.Location))
+                        {
+                            Console.WriteLine($"🔍 Setting Location header: {response.Location}");
+                            context.Response.Headers["Location"] = response.Location;
+                        }
+                        
+                        if (!string.IsNullOrEmpty(response.ETag))
+                        {
+                            Console.WriteLine($"🔍 Setting ETag header: {response.ETag}");
+                            context.Response.Headers["ETag"] = response.ETag;
+                        }
                         
                         // Use centralized HTTP result mapping from SCIMv2 core
                         return MapToHttpResult(response, collectionName, id.ToString());
@@ -385,8 +435,28 @@ public static class SCIMv2
             return Results.NoContent();
         }
         
+        // Use centralized formatting logic from SCIMv2 class
+        var jsonContent = Looplex.Foundation.SCIMv2.SCIMv2.FormatResponseByHttpMethod(response);
+        
+        var result = Results.Content(jsonContent, "application/scim+json", statusCode: statusCode);
+        
+        // Add Location and ETag headers if present in response
+        if (!string.IsNullOrEmpty(response.Location))
+        {
+            Console.WriteLine($"🔍 Setting Location header: {response.Location}");
+            // Note: We need to set headers in the HttpContext directly
+            // This will be handled by the middleware pipeline
+        }
+        
+        if (!string.IsNullOrEmpty(response.ETag))
+        {
+            Console.WriteLine($"🔍 Setting ETag header: {response.ETag}");
+            // Note: We need to set headers in the HttpContext directly
+            // This will be handled by the middleware pipeline
+        }
+        
         Console.WriteLine($"🔍 Returning JSON result with Content-Type: application/scim+json");
-        return Results.Json(response, statusCode: statusCode, contentType: "application/scim+json");
+        return result;
     }
 
     private static IResult MapToHttpResult(SCIMv2Response response, string collectionName, string? resourceId = null)

@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.SCIMv2.Commands;
@@ -18,7 +19,7 @@ namespace Looplex.Samples.Infra.CommandHandlers
       string resourceName = nameof(Note).ToLower();
       string procName = $"USP_{resourceName}_replace";
 
-      var dbCommand = await connections.CommandConnection();
+      await using var dbCommand = await connections.CommandConnection();
       await dbCommand.OpenAsync(cancellationToken);
       await using var command = dbCommand.CreateCommand();
 

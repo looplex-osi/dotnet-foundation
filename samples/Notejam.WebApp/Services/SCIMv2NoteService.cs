@@ -7,133 +7,343 @@ using Looplex.Samples.Application;
 namespace Looplex.Samples.WebApp.Services;
 
 /// <summary>
-/// SCIMv2 Note service - independent of MediatR
-/// Direct implementation for SCIMv2 endpoints
+/// SCIMv2 Note service using BaseResourceService with stored procedures
 /// </summary>
-public class SCIMv2NoteService : IResourceService<Note>
+public class SCIMv2NoteService : BaseResourceService<Note>
 {
-    private readonly INoteRepository _noteRepository;
+    private readonly ILogger<SCIMv2NoteService> _logger;
 
-    public SCIMv2NoteService(INoteRepository noteRepository)
+    public SCIMv2NoteService(IResourceRepository<Note> repository, ILogger<SCIMv2NoteService> logger) : base(repository)
     {
-        _noteRepository = noteRepository;
+        _logger = logger;
+        Console.WriteLine("🔍 SCIMv2NoteService constructor called");
+        Console.WriteLine($"🔍 Repository type: {repository?.GetType().Name}");
+        _logger.LogInformation("🔍 SCIMv2NoteService constructor called with repository: {RepositoryType}", repository?.GetType().Name);
+        
+        // Add method signature logging
+        Console.WriteLine("🔍 Available methods:");
+        Console.WriteLine("🔍 - UpdateAsync(string id, string json, CancellationToken cancellationToken)");
+        Console.WriteLine("🔍 - UpdateAsync(Guid id, Note resource, PatchOperation[] patches, CancellationToken cancellationToken)");
     }
 
-    public string CollectionName => "notes";
+    public override string CollectionName => "notes";
 
-    /// <summary>
-    /// Create a new note from JSON
-    /// Generic method for middleware compatibility
-    /// </summary>
-    /// <param name="json">JSON representation of the note</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>ID of the created note</returns>
-    public async Task<Guid> CreateAsync(string json, CancellationToken cancellationToken = default)
+
+    public override async Task<Guid> Create(Note resource, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("🎬 SCIMv2NoteService.Create called with Note: Name='{Name}', Text='{Text}', Active={Active}, Status={Status}", 
+            resource.Name, resource.Text, resource.Active, resource.Status);
+        
         try
         {
-            System.Diagnostics.Debug.WriteLine($"SCIMv2NoteService.CreateAsync - JSON received: {json}");
-            
-            // Deserialize JSON to Note using Foundation's SCIMv2 serializer
-            var note = ActorJsonSerializer.DeserializeResource<Note>(json);
-            System.Diagnostics.Debug.WriteLine($"SCIMv2NoteService.CreateAsync - Note deserialized: {note?.Name}");
-            
-            // Call the repository directly to avoid recursion
-            var result = await _noteRepository.CreateNoteAsync(note, cancellationToken);
-            System.Diagnostics.Debug.WriteLine($"SCIMv2NoteService.CreateAsync - Repository result: {result}");
-            
+            _logger.LogInformation("🔄 Calling base Create method...");
+            var result = await base.Create(resource, cancellationToken);
+            _logger.LogInformation("✅ SCIMv2NoteService.Create completed successfully with ID: {Id}", result);
             return result;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"SCIMv2NoteService.CreateAsync - ERROR: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"SCIMv2NoteService.CreateAsync - StackTrace: {ex.StackTrace}");
+            _logger.LogError(ex, "💥 SCIMv2NoteService.Create failed: {ExceptionType}: {ExceptionMessage}", 
+                ex.GetType().Name, ex.Message);
             throw;
         }
     }
 
     /// <summary>
-    /// Replace a note from JSON
-    /// Generic method for middleware compatibility
+    /// CreateAsync method that the SCIM framework expects
+    /// Handles JSON deserialization and calls the base Create method
     /// </summary>
-    /// <param name="id">Note ID</param>
-    /// <param name="json">JSON representation of the note</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>True if successful</returns>
-    public async Task<bool> ReplaceAsync(string id, string json, CancellationToken cancellationToken = default)
+    public async Task<Guid> CreateAsync(string json, CancellationToken cancellationToken)
     {
-        // Deserialize JSON to Note using Foundation's SCIMv2 serializer
-        var note = ActorJsonSerializer.DeserializeResource<Note>(json);
+        _logger.LogInformation("🎬 SCIMv2NoteService.CreateAsync called with JSON: {Json}", json);
         
-        // Call the repository directly to avoid recursion
-        var rowsAffected = await _noteRepository.UpdateNoteAsync(Guid.Parse(id), note, cancellationToken);
-        return rowsAffected > 0;
-    }
-
-    public async Task<(IList<Note> Resources, int TotalCount)> QueryAsync(int startIndex, int count, 
-        string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
-    {
         try
         {
-            Console.WriteLine($"🔍 SCIMv2NoteService.QueryAsync - startIndex: {startIndex}, count: {count}, filter: {filter}");
+            _logger.LogInformation("🔄 Deserializing JSON to Note...");
             
-            // Calculate page from startIndex
-            var page = (startIndex - 1) / count + 1;
-            var pageSize = count;
+            // Deserialize JSON to Note object
+            var note = System.Text.Json.JsonSerializer.Deserialize<Note>(json, new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                PropertyNameCaseInsensitive = true
+            });
             
-            Console.WriteLine($"🔍 Calculated page: {page}, pageSize: {pageSize}");
+            if (note == null)
+            {
+                throw new ArgumentException("Failed to deserialize JSON to Note object");
+            }
             
-            var result = await _noteRepository.GetNotesAsync(filter, page, pageSize, cancellationToken);
+            _logger.LogInformation("✅ JSON deserialized successfully: Name='{Name}', Text='{Text}'", note.Name, note.Text);
             
-            Console.WriteLine($"🔍 Repository returned {result.Notes.Count} notes, TotalCount: {result.TotalCount}");
+            // Map SCIM fields to Note entity correctly
+            // SCIM 'name' field is ignored (not stored in database)
+            // SCIM 'text' field should map to Note.Text (markdown content)
+            // Only text will be stored in the markdown column
+            _logger.LogInformation("🔄 SCIM fields mapped: Name='{Name}' (ignored), Text='{Text}' (stored)", note.Name, note.Text);
             
-            // Log successful retrieval
-            Console.WriteLine($"🔍 Successfully retrieved {result.Notes.Count} notes");
+            // Note: The Note entity doesn't have PadGuid and CreatedBy properties
+            // These will be handled by the stored procedure with default values
+            _logger.LogInformation("🔄 SCIM Note created with fields: Name='{Name}', Text='{Text}', Active={Active}, Status={Status}", 
+                note.Name, note.Text, note.Active, note.Status);
             
-            return (result.Notes, result.TotalCount);
+            // Call the base Create method
+            var result = await Create(note, cancellationToken);
+            
+            _logger.LogInformation("✅ SCIMv2NoteService.CreateAsync completed successfully with ID: {Id}", result);
+            return result;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ ERROR in SCIMv2NoteService.QueryAsync: {ex.Message}");
-            Console.WriteLine($"❌ StackTrace: {ex.StackTrace}");
+            _logger.LogError(ex, "💥 SCIMv2NoteService.CreateAsync failed: {ExceptionType}: {ExceptionMessage}", 
+                ex.GetType().Name, ex.Message);
             throw;
         }
     }
 
-    public async Task<Guid> CreateAsync(Note resource, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// UpdateAsync method that the SCIM framework expects
+    /// Handles JSON deserialization and calls the base Update method
+    /// </summary>
+    public async Task<Note> UpdateAsync(string id, string json, CancellationToken cancellationToken)
     {
-        return await _noteRepository.CreateNoteAsync(resource, cancellationToken);
-    }
-
-    public async Task<Note?> RetrieveAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await _noteRepository.GetNoteByIdAsync(id, cancellationToken);
-    }
-
-    public async Task<bool> ReplaceAsync(Guid id, Note resource, CancellationToken cancellationToken = default)
-    {
-        var result = await _noteRepository.UpdateNoteAsync(id, resource, cancellationToken);
-        return result > 0;
-    }
-
-    public async Task<bool> ReplaceAsync(Guid id, IResource resource, CancellationToken cancellationToken = default)
-    {
-        if (resource is Note note)
+        Console.WriteLine("🔍 SCIMv2NoteService.UpdateAsync (string, string) called - ENTRADA");
+        Console.WriteLine($"🔍 ID: {id}");
+        Console.WriteLine($"🔍 JSON: {json}");
+        
+        _logger.LogInformation("🎬 SCIMv2NoteService.UpdateAsync (string, string) called with ID: {Id}, JSON: {Json}", id, json);
+        _logger.LogInformation("🔍 ID type: {IdType}, ID value: {IdValue}", id?.GetType().Name, id);
+        _logger.LogInformation("🔍 JSON length: {JsonLength}, JSON preview: {JsonPreview}", json?.Length, json?.Substring(0, Math.Min(100, json?.Length ?? 0)));
+        
+        try
         {
-            return await ReplaceAsync(id, note, cancellationToken);
+            _logger.LogInformation("🔄 Deserializing JSON to Note...");
+            
+            // Deserialize JSON to Note object
+            var note = System.Text.Json.JsonSerializer.Deserialize<Note>(json, new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                PropertyNameCaseInsensitive = true
+            });
+            
+            if (note == null)
+            {
+                _logger.LogError("❌ Failed to deserialize JSON to Note object");
+                throw new ArgumentException("Failed to deserialize JSON to Note object");
+            }
+            
+            _logger.LogInformation("✅ JSON deserialized successfully: Name='{Name}', Text='{Text}', Active={Active}, Status={Status}", 
+                note.Name, note.Text, note.Active, note.Status);
+            
+            // Parse ID to Guid
+            _logger.LogInformation("🔍 Parsing ID to Guid: {Id}", id);
+            var guidId = Guid.Parse(id);
+            _logger.LogInformation("✅ ID parsed successfully: {GuidId}", guidId);
+            
+            // Call the base Update method
+            _logger.LogInformation("🔄 Calling base.Update with Guid: {GuidId}, Note: {NoteName}", guidId, note.Name);
+            var success = await base.Update(guidId, note, new Newtonsoft.Json.Linq.JArray(), cancellationToken);
+            _logger.LogInformation("🔍 Base.Update returned: {Success}", success);
+            
+            if (success)
+            {
+                _logger.LogInformation("✅ SCIMv2NoteService.UpdateAsync completed successfully");
+                return note;
+            }
+            else
+            {
+                _logger.LogError("❌ Base.Update returned false - update failed");
+                throw new InvalidOperationException("Failed to update note");
+            }
         }
-        return false;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 SCIMv2NoteService.UpdateAsync failed: {ExceptionType}: {ExceptionMessage}", 
+                ex.GetType().Name, ex.Message);
+            throw;
+        }
     }
 
+    /// <summary>
+    /// UpdateAsync method that implements IResourceService<T> interface
+    /// </summary>
     public async Task<bool> UpdateAsync(Guid id, Note resource, PatchOperation[] patches, CancellationToken cancellationToken = default)
     {
-        // Simple implementation - just replace
-        return await ReplaceAsync(id, resource, cancellationToken);
+        Console.WriteLine("🔍 SCIMv2NoteService.UpdateAsync (interface) called - ENTRADA");
+        Console.WriteLine($"🔍 ID: {id}");
+        Console.WriteLine($"🔍 Resource: {resource?.Name}");
+        
+        _logger.LogInformation("🎬 SCIMv2NoteService.UpdateAsync (interface) called with ID: {Id}, Resource: {ResourceName}", id, resource?.Name);
+        
+        try
+        {
+            // Apply patches to the resource
+            _logger.LogInformation("🔄 Applying patches to resource...");
+            foreach (var patch in patches)
+            {
+                _logger.LogInformation("🔧 Applying patch: {Op} {Path} = {Value}", patch.Op, patch.Path, patch.Value);
+                
+                if (patch.Op == "replace")
+                {
+                    if (patch.Path == "name")
+                    {
+                        // Ignore name field as it's not stored in database
+                        _logger.LogInformation("⚠️ Ignoring patch for 'name' field as it's not stored in database");
+                    }
+                    else if (patch.Path == "text")
+                        resource.Text = patch.Value?.ToString() ?? resource.Text;
+                    else if (patch.Path == "active")
+                        resource.Active = bool.Parse(patch.Value?.ToString() ?? "true");
+                    else if (patch.Path == "status")
+                        resource.Status = int.Parse(patch.Value?.ToString() ?? "1");
+                }
+            }
+            
+            _logger.LogInformation("✅ Patches applied successfully. Updated resource: Name='{Name}', Text='{Text}'", resource.Name, resource.Text);
+            
+            // Call the base Update method with the patched resource
+            _logger.LogInformation("🔄 Calling base.Update with Guid: {GuidId}, Note: {NoteName}", id, resource?.Name);
+            var success = await base.Update(id, resource, new Newtonsoft.Json.Linq.JArray(), cancellationToken);
+            _logger.LogInformation("🔍 Base.Update returned: {Success}", success);
+            
+            if (success)
+            {
+                _logger.LogInformation("✅ SCIMv2NoteService.UpdateAsync (interface) completed successfully");
+                return true;
+            }
+            else
+            {
+                _logger.LogError("❌ Base.Update returned false - update failed");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 SCIMv2NoteService.UpdateAsync (interface) failed: {ExceptionType}: {ExceptionMessage}", 
+                ex.GetType().Name, ex.Message);
+            throw;
+        }
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// ReplaceAsync method that the SCIM framework calls for PUT requests
+    /// Handles JSON deserialization and calls the base ReplaceAsync method
+    /// </summary>
+    public async Task<bool> ReplaceAsync(string id, string json, CancellationToken cancellationToken)
     {
-        var result = await _noteRepository.DeleteNoteAsync(id, cancellationToken);
-        return result > 0;
+        Console.WriteLine("🔍 SCIMv2NoteService.ReplaceAsync (string, string) called - ENTRADA PRINCIPAL");
+        Console.WriteLine($"🔍 ID: {id}");
+        Console.WriteLine($"🔍 JSON: {json}");
+        
+        _logger.LogInformation("🎬 SCIMv2NoteService.ReplaceAsync (string, string) called with ID: {Id}, JSON: {Json}", id, json);
+        _logger.LogInformation("🔍 ID type: {IdType}, ID value: {IdValue}", id?.GetType().Name, id);
+        _logger.LogInformation("🔍 JSON length: {JsonLength}, JSON preview: {JsonPreview}", json?.Length, json?.Substring(0, Math.Min(100, json?.Length ?? 0)));
+        
+        try
+        {
+            _logger.LogInformation("🔄 Deserializing JSON to Note...");
+            var note = System.Text.Json.JsonSerializer.Deserialize<Note>(json, new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (note == null)
+            {
+                _logger.LogError("Failed to deserialize JSON to Note");
+                throw new ArgumentException("Invalid JSON format for Note");
+            }
+
+            _logger.LogInformation("✅ JSON deserialized successfully: Name='{NoteName}', Text='{NoteText}'", note.Name, note.Text);
+
+            // Parse string ID to Guid
+            var guidId = Guid.Parse(id);
+            _logger.LogInformation("🔄 Calling base.ReplaceAsync with Guid: {GuidId}, Note: {NoteName}", guidId, note.Name);
+            
+            // Call the base ReplaceAsync method
+            var success = await base.ReplaceAsync(guidId, note, cancellationToken);
+            
+            if (success)
+            {
+                _logger.LogInformation("✅ SCIMv2NoteService.ReplaceAsync (string, string) completed successfully");
+                return true;
+            }
+            else
+            {
+                _logger.LogError("❌ Base.ReplaceAsync returned false - replace failed");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 SCIMv2NoteService.ReplaceAsync (string, string) failed: {ExceptionType}: {ExceptionMessage}", 
+                ex.GetType().Name, ex.Message);
+            throw;
+        }
     }
+
+    public async Task<Note?> ModifyAsync(Guid id, PatchOperation[] patches, CancellationToken cancellationToken)
+    {
+        Console.WriteLine("🔍 SCIMv2NoteService.ModifyAsync called - ENTRADA PRINCIPAL");
+        Console.WriteLine($"🔍 ID: {id}");
+        Console.WriteLine($"🔍 Patches Count: {patches?.Length}");
+        
+        _logger.LogInformation("🎬 SCIMv2NoteService.ModifyAsync called with ID: {Id}, Patches Count: {PatchesCount}", id, patches?.Length);
+        
+        try
+        {
+            _logger.LogInformation("🔄 Processing PATCH operations...");
+            
+            // Get current resource
+            var currentResource = await base.RetrieveAsync(id, cancellationToken);
+            if (currentResource == null)
+            {
+                _logger.LogWarning("❌ Resource not found for ID: {Id}", id);
+                return null;
+            }
+            
+            _logger.LogInformation("✅ Current resource found: Name='{Name}', Text='{Text}'", currentResource.Name, currentResource.Text);
+            
+            // Apply patches
+            foreach (var patch in patches)
+            {
+                _logger.LogInformation("🔧 Applying patch: {Op} {Path} = {Value}", patch.Op, patch.Path, patch.Value);
+                
+                if (patch.Op == "replace")
+                {
+                    if (patch.Path == "name")
+                        currentResource.Name = patch.Value?.ToString() ?? currentResource.Name;
+                    else if (patch.Path == "text")
+                        currentResource.Text = patch.Value?.ToString() ?? currentResource.Text;
+                    else if (patch.Path == "active")
+                        currentResource.Active = bool.Parse(patch.Value?.ToString() ?? "true");
+                    else if (patch.Path == "status")
+                        currentResource.Status = int.Parse(patch.Value?.ToString() ?? "1");
+                }
+            }
+            
+            _logger.LogInformation("✅ Patches applied successfully");
+            
+            // Update the resource
+            var success = await base.UpdateAsync(id, currentResource, patches, cancellationToken);
+            var updatedResource = success ? currentResource : null;
+            
+            if (updatedResource != null)
+            {
+                _logger.LogInformation("✅ SCIMv2NoteService.ModifyAsync completed successfully");
+                return updatedResource;
+            }
+            else
+            {
+                _logger.LogError("❌ UpdateAsync returned null - modify failed");
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 SCIMv2NoteService.ModifyAsync failed: {ExceptionType}: {ExceptionMessage}", 
+                ex.GetType().Name, ex.Message);
+            throw;
+        }
+    }
+
 }

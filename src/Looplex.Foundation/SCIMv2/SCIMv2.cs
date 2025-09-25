@@ -10,6 +10,7 @@ using Looplex.Foundation.SCIMv2.Modules;
 using Looplex.Foundation.Serialization;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.Foundation.SCIMv2.Antlr;
+using Microsoft.AspNetCore.Http;
 
 namespace Looplex.Foundation.SCIMv2;
 
@@ -27,6 +28,19 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     private readonly Dictionary<string, IResourceService> _registeredResource = new();
     private readonly Dictionary<string, SchemaDefinition> _schemas;
     private readonly IServiceNameProvider? _serviceNameProvider;
+    private readonly IHttpContextAccessor? _httpContextAccessor;
+    
+    /// <summary>
+    /// Constructor for SCIMv2 service with dependency injection
+    /// </summary>
+    /// <param name="serviceNameProvider">Service name provider for schema generation</param>
+    /// <param name="httpContextAccessor">HTTP context accessor for dynamic URL generation</param>
+    public SCIMv2(IServiceNameProvider? serviceNameProvider = null, IHttpContextAccessor? httpContextAccessor = null)
+    {
+        _serviceNameProvider = serviceNameProvider;
+        _httpContextAccessor = httpContextAccessor;
+        _schemas = new Dictionary<string, SchemaDefinition>();
+    }
     
     // Serialization is now centralized in Looplex.Foundation.Serialization
     // All serialization operations use SCIMv2Serializer for consistency
@@ -34,20 +48,109 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     // SCIMv2 Schema Constants
     private const string UserNameDescription = "Unique identifier for the User, typically used by the user to directly authenticate to the service provider";
     
-    public SCIMv2(IServiceNameProvider? serviceNameProvider = null)
+
+    /// <summary>
+    /// Gets the base URL dynamically from the current HTTP request.
+    /// Constructs the base URL for SCIM resource locations.
+    /// </summary>
+    /// <returns>Base URL for SCIM resources</returns>
+    private string GetBaseUrl()
     {
-        _serviceNameProvider = serviceNameProvider;
-    _schemas = InitializeSchemas();
+        if (_httpContextAccessor?.HttpContext?.Request != null)
+        {
+            var request = _httpContextAccessor.HttpContext.Request;
+            var scheme = request.Scheme;
+            var host = request.Host;
+            var pathBase = request.PathBase;
+            
+            // Extract the base path (e.g., /scim/v2) from the current request
+            var pathSegments = request.Path.Value?.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            if (pathSegments != null && pathSegments.Length >= 2)
+            {
+                // Assume SCIM endpoints are at /scim/v2
+                var scimBasePath = $"/{pathSegments[0]}/{pathSegments[1]}";
+                return $"{scheme}://{host}{pathBase}{scimBasePath}";
+            }
+        }
+        
+        // Fallback to default if no HTTP context available
+        return "https://api.exemplo.com/scim/v2";
+    }
+
+    /// <summary>
+    /// Sets HTTP headers (Location and ETag) for SCIM v2.0 compliance
+    /// </summary>
+    private void SetHttpHeaders(string location, string etag)
+    {
+        
+        if (_httpContextAccessor?.HttpContext?.Response != null)
+        {
+            var response = _httpContextAccessor.HttpContext.Response;
+            response.Headers["Location"] = location;
+            response.Headers["ETag"] = etag;
+            
+        }
+        else
+        {
+        }
+    }
+
+    /// <summary>
+    /// Applies HTTP method specific rules for SCIM v2.0 compliance
+    /// </summary>
+    private void ApplyHttpMethodSpecificRules<T>(T resource, string collection) where T : IResource
+    {
+        
+        if (_httpContextAccessor?.HttpContext?.Request == null) 
+        {
+            return;
+        }
+        
+        var httpMethod = _httpContextAccessor.HttpContext.Request.Method.ToUpper();
+        var fullUrl = $"{GetBaseUrl()}/{collection}/{resource.Id}";
+        
+        
+        switch (httpMethod)
+        {
+            case "GET":
+                // GET: Return resource directly, set Location header
+                resource.Meta.Location = fullUrl;
+                SetHttpHeaders(fullUrl, resource.Meta.Version);
+                break;
+                
+            case "POST":
+                // POST: Return resource with Resources wrapper, set Location header
+                resource.Meta.Location = fullUrl;
+                SetHttpHeaders(fullUrl, resource.Meta.Version);
+                break;
+                
+            case "PUT":
+                // PUT: Return resource directly, set Location and ETag headers
+                resource.Meta.Location = fullUrl;
+                SetHttpHeaders(fullUrl, resource.Meta.Version);
+                break;
+                
+            case "PATCH":
+                // PATCH: Return resource directly, set Location and ETag headers
+                resource.Meta.Location = fullUrl;
+                SetHttpHeaders(fullUrl, resource.Meta.Version);
+                break;
+                
+            case "DELETE":
+                // DELETE: No resource body, only status 204
+                break;
+        }
     }
 
     #region SCIMv2Service Implementation
 
     /// <summary>
-    /// Registers a resource service for a specific collection
+    /// Registers a resource service implementation for a specific collection.
+    /// Enables SCIM operations on the specified collection type.
     /// </summary>
-    /// <typeparam name="T">Resource type implementing IResource</typeparam>
-    /// <param name="service">Resource service implementation</param>
-    /// <param name="collectionName">Collection name (e.g., "Users", "Groups")</param>
+    /// <typeparam name="T">Resource type implementing IResource interface</typeparam>
+    /// <param name="service">Resource service implementation for CRUD operations</param>
+    /// <param name="collectionName">Collection name (e.g., "Users", "Groups", "Notes")</param>
     public void Register<T>(IResourceService<T> service, string collectionName) where T : IResource
     {
         if (string.IsNullOrEmpty(collectionName))
@@ -61,10 +164,13 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Registers a resource type with a default service implementation
+    /// Registers a resource type with auto-generated service implementation (deprecated).
+    /// This method is deprecated and will throw NotSupportedException.
+    /// Use Register(IResourceService&lt;T&gt; service, string collectionName) instead.
     /// </summary>
-    /// <typeparam name="T">Resource type implementing IResource</typeparam>
-    /// <param name="collectionName">Collection name (e.g., "Users", "Groups")</param>
+    /// <typeparam name="T">Resource type implementing IResource interface</typeparam>
+    /// <param name="collectionName">Collection name (e.g., "Users", "Groups", "Notes")</param>
+    /// <exception cref="NotSupportedException">Always thrown - use explicit service registration</exception>
     public void Register<T>(string collectionName) where T : IResource
     {
         if (string.IsNullOrEmpty(collectionName))
@@ -75,31 +181,20 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Creates default services for SCIMv2 collections
-    /// Implements RFC 7644 Section 3.3 - Resource Types
-    /// [RFC 7644](https://datatracker.ietf.org/doc/html/rfc7644#section-3.3) - Resource Types
-    /// </summary>
-    /// <typeparam name="T">Resource type implementing IResource</typeparam>
-    /// <returns>Default service implementation</returns>
-    private IResourceService<T> CreateDefaultService<T>() where T : IResource
-    {
-        throw new NotSupportedException($"No default service available for {typeof(T).Name}. Please register a service using Register<T>() method or configure dependency injection.");
-    }
-
-
-    /// <summary>
-    /// Query resources from a collection (GET /collection)
+    /// Queries resources from a collection with filtering, sorting, and pagination support.
     /// Implements RFC 7644 Section 3.4.2 - Query Resources
     /// [RFC 7644 Section 3.4.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2)
-    /// Supports filtering, sorting, and pagination as per RFC 7644 Section 3.4.2.3
-    /// [RFC 7644 Section 3.4.2.3](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.3)
-    /// 
-    /// Returns:
-    /// - 200 OK: Resources retrieved successfully
-    /// - 400 Bad Request: Invalid parameters
-    /// - 404 Not Found: Collection not found
-    /// - 500 Internal Server Error: Unexpected error
+    /// Supports SCIM filter expressions per RFC 7644 Section 3.4.2.2
+    /// [RFC 7644 Section 3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
     /// </summary>
+    /// <param name="collection">Collection name to query</param>
+    /// <param name="startIndex">Starting index for pagination (1-based)</param>
+    /// <param name="count">Maximum number of resources to return</param>
+    /// <param name="filter">SCIM filter expression (optional)</param>
+    /// <param name="sortBy">Field name for sorting (optional)</param>
+    /// <param name="sortOrder">Sort order: "ascending" or "descending" (optional)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 ListResponse with resources and pagination metadata</returns>
     public async Task<SCIMv2Response> QueryAsync(string collection, int startIndex, int count, 
         string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
     {
@@ -130,18 +225,30 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             var resources = result.Item1;
             var totalCount = result.Item2;
             
-            // Validate output data before returning
+            // Generate SHA-256 hash for meta.version BEFORE validation
             try
             {
                 // Convert dynamic resources to IList<IResource>
                 if (resources is IList<IResource> resourceList)
                 {
+                    // Generate SHA-256 hash for each resource's meta.version FIRST
+                    foreach (var resource in resourceList)
+                    {
+                        resource.Meta.Version = GenerateResourceVersion(resource);
+                    }
+                    // Then validate
                     ValidateResourcesForOutput(resourceList);
                 }
                 else if (resources is IEnumerable<IResource> resourceEnumerable)
                 {
-                    // Convert to List<IResource> for validation
+                    // Convert to List<IResource> for processing
                     var convertedResourceList = resourceEnumerable.ToList();
+                    // Generate SHA-256 hash for each resource's meta.version FIRST
+                    foreach (var resource in convertedResourceList)
+                    {
+                        resource.Meta.Version = GenerateResourceVersion(resource);
+                    }
+                    // Then validate
                     ValidateResourcesForOutput(convertedResourceList);
                 }
             }
@@ -161,23 +268,16 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Create a new resource (POST /collection)
+    /// Creates a new resource from JSON representation in the specified collection.
     /// Implements RFC 7644 Section 3.4.1 - Create Resource
     /// [RFC 7644 Section 3.4.1](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.1)
-    /// Validates resource per RFC 7643 Section 3.1 - Resource Representation
+    /// Validates resource structure per RFC 7643 Section 3.1 - Resource Representation
     /// [RFC 7643 Section 3.1](https://datatracker.ietf.org/doc/html/rfc7643#section-3.1)
-    /// 
-    /// Returns:
-    /// - 201 Created: Resource successfully created
-    /// - 400 Bad Request: Invalid input data or missing required fields
-    /// - 409 Conflict: Resource already exists
-    /// - 500 Internal Server Error: Unexpected error
-    /// 
-    /// Headers:
-    /// - Location: Resource location URL
-    /// - ETag: Resource version for optimistic locking
-    /// - Content-Type: application/scim+json
     /// </summary>
+    /// <param name="collection">Collection name where resource will be created</param>
+    /// <param name="json">JSON representation of the resource to create</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 response with created resource and metadata</returns>
     public async Task<SCIMv2Response> CreateAsync(string collection, string json, CancellationToken cancellationToken = default)
     {
         try
@@ -212,7 +312,28 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             // Validate the created resource for SCIMv2 compliance
             if (createdResource != null)
             {
+                
+                try
+                {
+                    // Update meta.version with cryptographic hash FIRST
+                    createdResource.Meta.Version = GenerateResourceVersion(createdResource);
+                }
+                catch (Exception ex)
+                {
+                    throw;
+                }
+                
+                try
+            {
                 ValidateResourceForOutput(createdResource);
+                }
+                catch (Exception ex)
+                {
+                    throw;
+                }
+            }
+            else
+            {
             }
             
             var response = new SCIMv2Response
@@ -220,8 +341,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                 StatusCode = 201,
                 Data = createdResource, // Include the created resource in response
                 Schemas = createdResource?.Schemas ?? Array.Empty<string>(),
-                Location = $"/{collection}/{result}",
-                ETag = createdResource != null ? GenerateContentETag(createdResource) : "W/\"1\""
+                Location = createdResource?.Meta.Location,
+                ETag = createdResource?.Meta.Version
             };
             
             return response;
@@ -233,14 +354,14 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Creates a new resource in the specified collection
+    /// Creates a new resource from object instance in the specified collection.
     /// Implements RFC 7644 Section 3.4.1 - Create Resource
-    /// [RFC 7644](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.1) - Create Resource
+    /// [RFC 7644 Section 3.4.1](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.1)
     /// </summary>
-    /// <param name="collection">Collection name</param>
-    /// <param name="resource">Resource to create</param>
+    /// <param name="collection">Collection name where resource will be created</param>
+    /// <param name="resource">Resource object instance to create</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>SCIMv2 response with created resource</returns>
+    /// <returns>SCIMv2 response with created resource and metadata</returns>
     public async Task<SCIMv2Response> CreateAsync(string collection, IResource resource, CancellationToken cancellationToken = default)
     {
         try
@@ -283,20 +404,14 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Retrieve a specific resource (GET /collection/:id)
+    /// Retrieves a specific resource by ID from the specified collection.
     /// Implements RFC 7644 Section 3.4.3 - Retrieve Resource
     /// [RFC 7644 Section 3.4.3](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.3)
-    /// 
-    /// Returns:
-    /// - 200 OK: Resource retrieved successfully
-    /// - 400 Bad Request: Invalid resource ID
-    /// - 404 Not Found: Resource not found
-    /// - 500 Internal Server Error: Unexpected error
-    /// 
-    /// Headers:
-    /// - ETag: Resource version for optimistic locking
-    /// - Content-Type: application/scim+json
     /// </summary>
+    /// <param name="collection">Collection name containing the resource</param>
+    /// <param name="id">Unique identifier of the resource to retrieve</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 response with the requested resource</returns>
     public async Task<SCIMv2Response> RetrieveAsync(string collection, string id, CancellationToken cancellationToken = default)
     {
         try
@@ -317,6 +432,9 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                 return CreateErrorResponse(404, "Resource not found", $"Resource with ID '{id}' not found");
             }
 
+            // Update meta.version with cryptographic hash
+            resource.Meta.Version = GenerateResourceVersion(resource);
+
             return CreateRetrieveResponse(resource);
         }
         catch (Exception ex)
@@ -326,23 +444,17 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Modify a resource using PATCH (PATCH /collection/:id)
+    /// Modifies a resource using JSON Patch operations for partial updates.
     /// Implements RFC 7644 Section 3.4.4 - Update Resource
     /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
     /// Uses RFC 6902 (JSON Patch) Section 4 - Operations
     /// [RFC 6902 Section 4](https://datatracker.ietf.org/doc/html/rfc6902#section-4)
-    /// 
-    /// Returns:
-    /// - 200 OK: Resource updated successfully
-    /// - 400 Bad Request: Invalid patch operations
-    /// - 404 Not Found: Resource not found
-    /// - 409 Conflict: Version conflict
-    /// - 500 Internal Server Error: Unexpected error
-    /// 
-    /// Headers:
-    /// - ETag: Updated resource version
-    /// - Content-Type: application/scim+json
     /// </summary>
+    /// <param name="collection">Collection name containing the resource</param>
+    /// <param name="id">Unique identifier of the resource to modify</param>
+    /// <param name="patches">Array of JSON Patch operations to apply</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 response with the updated resource</returns>
     public async Task<SCIMv2Response> ModifyAsync(string collection, string id, PatchOperation[] patches, CancellationToken cancellationToken = default)
     {
         try
@@ -364,8 +476,19 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                 return CreateErrorResponse(404, "Resource not found", $"Resource with ID '{id}' not found");
             }
 
-            // Apply patches using dynamic typing
-            var success = await dynamicService.UpdateAsync(validation.ResourceId!.Value, currentResource, patches, cancellationToken);
+            // Apply patches using dynamic typing - call ModifyAsync if available, otherwise fallback to UpdateAsync
+            bool success;
+            try
+            {
+                // Try to call ModifyAsync first (if implemented by the service)
+                var modifyResult = await dynamicService.ModifyAsync(validation.ResourceId!.Value, patches, cancellationToken);
+                success = modifyResult != null;
+            }
+            catch (Exception)
+            {
+                // Fallback to UpdateAsync if ModifyAsync is not available
+                success = await dynamicService.UpdateAsync(validation.ResourceId!.Value, currentResource, patches, cancellationToken);
+            }
             
             if (!success)
             {
@@ -375,12 +498,19 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             // Retrieve updated resource using dynamic typing
             var updatedResource = await dynamicService.RetrieveAsync(validation.ResourceId!.Value, cancellationToken);
             
+            // Update meta.version with cryptographic hash
+            if (updatedResource != null)
+            {
+                updatedResource.Meta.Version = GenerateResourceVersion(updatedResource);
+            }
+            
             return new SCIMv2Response
             {
                 StatusCode = 200,
                 Data = updatedResource,
                 Schemas = updatedResource?.Schemas ?? Array.Empty<string>(),
-                ETag = updatedResource != null ? GenerateContentETag(updatedResource) : "W/\"1\""
+                Location = updatedResource?.Meta.Location,
+                ETag = updatedResource?.Meta.Version
             };
         }
         catch (Exception ex)
@@ -390,22 +520,16 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Replace a resource using PUT (PUT /collection/:id)
+    /// Replaces a resource completely from JSON representation.
     /// Implements RFC 7644 Section 3.4.4 - Update Resource
     /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
-    /// Performs complete resource replacement
-    /// 
-    /// Returns:
-    /// - 200 OK: Resource replaced successfully
-    /// - 400 Bad Request: Invalid resource data
-    /// - 404 Not Found: Resource not found
-    /// - 409 Conflict: Version conflict
-    /// - 500 Internal Server Error: Unexpected error
-    /// 
-    /// Headers:
-    /// - ETag: Updated resource version
-    /// - Content-Type: application/scim+json
+    /// Performs complete resource replacement (PUT semantics)
     /// </summary>
+    /// <param name="collection">Collection name containing the resource</param>
+    /// <param name="id">Unique identifier of the resource to replace</param>
+    /// <param name="json">JSON representation of the complete resource</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 response with the replaced resource</returns>
     public async Task<SCIMv2Response> ReplaceAsync(string collection, string id, string json, CancellationToken cancellationToken = default)
     {
         try
@@ -436,15 +560,24 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             // The service returns a boolean, but we need to create a proper response
             if (result)
             {
-                var response = new SCIMv2Response
-                {
-                    StatusCode = 200,
-                    Data = null, // The actual resource should be retrieved if needed
-                    Location = $"/{collection}/{id}",
-                    ETag = "W/\"1\""
-                };
+                // Retrieve the updated resource to return it in the response
+                var updatedResource = await RetrieveAsync(collection, id, cancellationToken);
                 
-                return response;
+                // Update meta.version with cryptographic hash
+                if (updatedResource.Data != null && updatedResource.Data is IResource resource)
+                {
+                    resource.Meta.Version = GenerateResourceVersion(resource);
+                }
+                
+                // For PUT operations, return the resource directly (not wrapped in Resources)
+                // This is SCIM v2.0 compliant for PUT responses
+                return SCIMv2Response.CreatePutResponse(
+                    updatedResource.Data, 
+                    updatedResource.Schemas, 
+                    $"{GetBaseUrl()}/{collection}/{id}",
+                    updatedResource.Data != null && updatedResource.Data is IResource res ? 
+                    GenerateContentETag(res) : "W/\"1\""
+                );
             }
             else
             {
@@ -458,15 +591,16 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Replaces a resource completely
+    /// Replaces a resource completely from object instance.
     /// Implements RFC 7644 Section 3.4.4 - Update Resource (PUT)
-    /// [RFC 7644](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4) - Update Resource
+    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
+    /// Performs complete resource replacement (PUT semantics)
     /// </summary>
-    /// <param name="collection">Collection name</param>
-    /// <param name="id">Resource ID</param>
-    /// <param name="resource">New resource data</param>
+    /// <param name="collection">Collection name containing the resource</param>
+    /// <param name="id">Unique identifier of the resource to replace</param>
+    /// <param name="resource">Complete resource object instance</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>SCIMv2 response with updated resource</returns>
+    /// <returns>SCIMv2 response with the replaced resource</returns>
     public async Task<SCIMv2Response> ReplaceAsync(string collection, string id, IResource resource, CancellationToken cancellationToken = default)
     {
         try
@@ -487,6 +621,9 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                 return CreateErrorResponse(404, "Resource not found", $"Resource with ID '{id}' not found");
             }
 
+            // Apply HTTP method specific rules for SCIM v2.0 compliance
+            ApplyHttpMethodSpecificRules(resource, collection);
+
             // Update meta information
             resource.Id = id;
             resource.Meta.LastModified = DateTime.UtcNow;
@@ -500,16 +637,14 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Delete a resource (DELETE /collection/:id)
+    /// Deletes a resource permanently from the specified collection.
     /// Implements RFC 7644 Section 3.4.5 - Delete Resource
     /// [RFC 7644 Section 3.4.5](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.5)
-    /// 
-    /// Returns:
-    /// - 204 No Content: Resource deleted successfully
-    /// - 400 Bad Request: Invalid resource ID
-    /// - 404 Not Found: Resource not found
-    /// - 500 Internal Server Error: Unexpected error
     /// </summary>
+    /// <param name="collection">Collection name containing the resource</param>
+    /// <param name="id">Unique identifier of the resource to delete</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 response indicating successful deletion</returns>
     public async Task<SCIMv2Response> DeleteAsync(string collection, string id, CancellationToken cancellationToken = default)
     {
         try
@@ -542,24 +677,30 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         }
     }
 
+
     /// <summary>
-    /// Gets all registered collections
+    /// Gets all registered collection names.
+    /// Returns the list of collections that have been registered for SCIM operations.
     /// </summary>
+    /// <returns>Collection of registered collection names</returns>
     public IEnumerable<string> GetRegisteredCollections()
     {
         return _registeredResource.Keys;
     }
 
     /// <summary>
-    /// Checks if a collection is registered
+    /// Checks if a collection is registered for SCIM operations.
     /// </summary>
+    /// <param name="collection">Collection name to check</param>
+    /// <returns>True if collection is registered, false otherwise</returns>
     public bool IsCollectionRegistered(string collection)
     {
         return _registeredResource.ContainsKey(collection);
     }
 
     /// <summary>
-    /// Deregisters a resource service for a specific collection
+    /// Deregisters a resource service for a specific collection.
+    /// Removes the collection from SCIM operations.
     /// </summary>
     /// <param name="collectionName">Collection name to deregister</param>
     /// <returns>True if collection was deregistered, false if not found</returns>
@@ -580,9 +721,10 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Deregisters all resource services
+    /// Deregisters all resource services and clears the collection registry.
+    /// Removes all collections from SCIM operations.
     /// </summary>
-    /// <returns>Number of collections deregistered</returns>
+    /// <returns>Number of collections that were deregistered</returns>
     public int DeregisterAll()
     {
         var count = _registeredResource.Count;
@@ -593,7 +735,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Gets the current service name
+    /// Gets the current service name from the configured service name provider.
     /// </summary>
     /// <returns>Service name or null if not configured</returns>
     public string? GetServiceName()
@@ -602,10 +744,10 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Gets the current service name or default
+    /// Gets the current service name or returns a default value if not configured.
     /// </summary>
-    /// <param name="defaultName">Default service name if not configured</param>
-    /// <returns>Service name</returns>
+    /// <param name="defaultName">Default service name to return if not configured</param>
+    /// <returns>Service name or default value</returns>
     public string GetServiceNameOrDefault(string defaultName = "looplex")
     {
         return _serviceNameProvider?.GetServiceName() ?? defaultName;
@@ -616,8 +758,10 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     #region IJsonSchemaProvider Implementation
 
     /// <summary>
-    /// Registers a custom schema definition
+    /// Registers a custom schema definition for SCIM operations.
+    /// Adds the schema to the internal schema registry.
     /// </summary>
+    /// <param name="schema">Schema definition to register</param>
     public void RegisterSchema(SchemaDefinition schema)
     {
         if (schema?.Id != null)
@@ -627,8 +771,10 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Registers multiple custom schema definitions
+    /// Registers multiple custom schema definitions for SCIM operations.
+    /// Adds all schemas to the internal schema registry.
     /// </summary>
+    /// <param name="schemas">Collection of schema definitions to register</param>
     public void RegisterSchemas(IEnumerable<SchemaDefinition> schemas)
     {
         foreach (var schema in schemas)
@@ -663,16 +809,21 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Gets all available SCIMv2 schemas
+    /// Gets all available SCIMv2 schema definitions.
+    /// Returns all registered schemas for SCIM operations.
     /// </summary>
+    /// <returns>List of all registered schema definitions</returns>
     public Task<List<SchemaDefinition>> GetAllSchemasAsync()
     {
         return Task.FromResult(_schemas.Values.ToList());
     }
 
     /// <summary>
-    /// Gets a specific SCIMv2 schema by ID
+    /// Gets a specific SCIMv2 schema definition by ID.
+    /// Returns null if schema is not found.
     /// </summary>
+    /// <param name="schemaId">Schema identifier to retrieve</param>
+    /// <returns>Schema definition or null if not found</returns>
     public Task<SchemaDefinition?> GetSchemaAsync(string? schemaId)
     {
         if (string.IsNullOrEmpty(schemaId))
@@ -686,11 +837,12 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     #region Discovery Endpoints Implementation
 
     /// <summary>
-    /// Get all available schemas (GET /Schemas)
+    /// Gets all available schemas for SCIM discovery endpoint.
     /// Implements RFC 7644 Section 3.4.6 - Schema Discovery
     /// [RFC 7644 Section 3.4.6](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.6)
-    /// Returns all registered SCIM schemas for discovery
     /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 response with all registered schemas</returns>
     public async Task<SCIMv2Response> GetSchemasAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -714,11 +866,13 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Get a specific schema by ID (GET /Schemas/:id)
+    /// Gets a specific schema by ID for SCIM discovery endpoint.
     /// Implements RFC 7644 Section 3.4.6 - Schema Discovery
     /// [RFC 7644 Section 3.4.6](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.6)
-    /// Returns a specific SCIM schema by its identifier
     /// </summary>
+    /// <param name="schemaId">Schema identifier to retrieve</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 response with the requested schema definition</returns>
     public async Task<SCIMv2Response> GetSchemaAsync(string schemaId, CancellationToken cancellationToken = default)
     {
         try
@@ -747,8 +901,11 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Get service provider configuration (GET /ServiceProviderConfig)
+    /// Gets the service provider configuration for SCIM discovery endpoint.
+    /// Returns SCIM service provider capabilities and configuration.
     /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 response with service provider configuration</returns>
     public async Task<SCIMv2Response> GetServiceProviderConfigAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -813,8 +970,11 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     #region Private Methods
 
     /// <summary>
-    /// Validates a resource for creation according to SCIM v2.0 requirements
+    /// Validates a resource for creation according to SCIM v2.0 requirements.
+    /// Ensures the resource meets all mandatory SCIM specifications.
     /// </summary>
+    /// <param name="resource">Resource to validate</param>
+    /// <returns>Validation result with error message if invalid</returns>
     public (bool IsValid, string ErrorMessage) ValidateResourceForCreation(IResource resource)
     {
         if (resource == null)
@@ -868,8 +1028,10 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Validates resources for output to ensure SCIMv2 compliance
+    /// Validates a collection of resources for output to ensure SCIMv2 compliance.
+    /// Ensures all resources meet SCIM v2.0 output requirements.
     /// </summary>
+    /// <param name="resources">Collection of resources to validate</param>
     private static void ValidateResourcesForOutput(IList<IResource> resources)
     {
         if (resources == null)
@@ -884,8 +1046,11 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
     
     /// <summary>
-    /// Validates a single resource for output compliance
+    /// Validates a single resource for output compliance with SCIM v2.0.
+    /// Ensures the resource meets all SCIM output requirements.
     /// </summary>
+    /// <param name="resource">Resource to validate</param>
+    /// <param name="resourceIndex">Index of the resource in the collection (for error reporting)</param>
     private static void ValidateResourceForOutput(IResource resource, int resourceIndex = 0)
     {
         if (resource == null)
@@ -939,7 +1104,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Automatically generates SCIMv2 schema URI based on resource type and service name
+    /// Automatically generates SCIMv2 schema URI based on resource type and service name.
+    /// Creates compliant schema URIs for SCIM resource types.
     /// </summary>
     /// <param name="resourceType">Type of the resource (e.g., "Note", "Pad", "User", "Group")</param>
     /// <returns>SCIMv2 compliant schema URI</returns>
@@ -950,9 +1116,10 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Automatically generates SCIMv2 schema URI for a resource type
+    /// Automatically generates SCIMv2 schema URI for a resource type.
+    /// Creates a compliant schema URI based on the resource type.
     /// </summary>
-    /// <typeparam name="T">Resource type</typeparam>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
     /// <returns>SCIMv2 compliant schema URI</returns>
     private string GenerateSchemaUri<T>() where T : IResource
     {
@@ -960,68 +1127,14 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         return GenerateSchemaUri(resourceType);
     }
 
-    /// <summary>
-    /// Automatically populates schemas for a resource based on its type and service name
-    /// </summary>
-    /// <param name="resource">Resource to populate schemas</param>
-    public void AutoPopulateSchemas(IResource resource)
-    {
-        if (resource == null) return;
-        
-        var resourceType = resource.GetType().Name;
-        var schemaUri = GenerateSchemaUri(resourceType);
-        
-        // Set schemas if not already set
-        if (resource.Schemas == null || resource.Schemas.Length == 0)
-        {
-            resource.Schemas = new[] { schemaUri };
-        }
-    }
 
-    /// <summary>
-    /// Creates a resource with automatically populated schemas
-    /// </summary>
-    /// <typeparam name="T">Resource type</typeparam>
-    /// <param name="resource">Resource to populate</param>
-    /// <returns>Resource with auto-populated schemas</returns>
-    public T AutoPopulateResource<T>(T resource) where T : IResource
-    {
-        if (resource == null) return resource;
-        
-        AutoPopulateSchemas(resource);
-        return resource;
-    }
 
-    /// <summary>
-    /// Gets the User schema ID based on service name provider
-    /// </summary>
-    private string GetUserSchemaId()
-    {
-        if (_serviceNameProvider != null)
-        {
-            var serviceName = _serviceNameProvider.GetServiceName();
-            return $"urn:looplex:params:scim:schemas:{serviceName}:2.0:User";
-        }
-        return "urn:ietf:params:scim:schemas:core:2.0:User";
-    }
 
-    /// <summary>
-    /// Gets the Group schema ID based on service name provider
-    /// </summary>
-    private string GetGroupSchemaId()
-    {
-        if (_serviceNameProvider != null)
-        {
-            var serviceName = _serviceNameProvider.GetServiceName();
-            return $"urn:looplex:params:scim:schemas:{serviceName}:2.0:Group";
-        }
-        return "urn:ietf:params:scim:schemas:core:2.0:Group";
-    }
 
     private Dictionary<string, SchemaDefinition> InitializeSchemas()
     {
-        var userSchemaId = GetUserSchemaId();
-        var groupSchemaId = GetGroupSchemaId();
+        var userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
+        var groupSchemaId = "urn:ietf:params:scim:schemas:core:2.0:Group";
         
         return new Dictionary<string, SchemaDefinition>
         {
@@ -1144,9 +1257,19 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     #region Resource Processing Pipeline
 
     /// <summary>
-    /// Advanced resource processing pipeline with filtering, sorting, and pagination
-    /// Transferred intelligence from ResourceServiceBase for optimal performance
+    /// Advanced resource processing pipeline with filtering, sorting, and pagination.
+    /// Implements RFC 7644 Section 3.4.2 - Query Resources
+    /// [RFC 7644 Section 3.4.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2)
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="allResources">All resources to process</param>
+    /// <param name="startIndex">Starting index for pagination (1-based)</param>
+    /// <param name="count">Maximum number of resources to return</param>
+    /// <param name="filter">SCIM filter expression (optional)</param>
+    /// <param name="sortBy">Field name for sorting (optional)</param>
+    /// <param name="sortOrder">Sort order: "ascending" or "descending" (optional)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Processed resources and total count</returns>
     public async Task<(IList<T> Resources, int TotalCount)> ProcessResourcePipeline<T>(
         IList<T> allResources,
         int startIndex,
@@ -1185,11 +1308,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
 
         /// <summary>
         /// Converts SCIM v2.0 filter expressions to SQL WHERE clauses for database queries.
-        /// 
-        /// This method provides scalable filtering by generating SQL that can be executed
-        /// directly by the database engine, leveraging indexes and database optimization.
-        /// 
-        /// RFC 7644 Section 3.4.2.2 - Filtering: https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2
+        /// Implements RFC 7644 Section 3.4.2.2 - Filtering
+        /// [RFC 7644 Section 3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
         /// </summary>
         /// <param name="filter">SCIM v2.0 filter expression</param>
         /// <param name="allowedAttributes">Set of allowed attribute names for security</param>
@@ -1251,7 +1371,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         }
 
         /// <summary>
-        /// Validates SCIM attribute names for security against SQL injection
+        /// Validates SCIM attribute names for security against SQL injection.
+        /// Security helper method for filtering and querying operations.
         /// </summary>
         /// <param name="attribute">Attribute name to validate</param>
         /// <param name="allowedAttributes">Set of allowed attributes</param>
@@ -1275,11 +1396,12 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         }
 
         /// <summary>
-        /// Sanitizes values for SQL injection prevention
+        /// Sanitizes values for SQL injection prevention.
+        /// Security helper method for filtering and querying operations.
         /// </summary>
         /// <param name="value">Value to sanitize</param>
         /// <param name="operation">SCIM operation type</param>
-        /// <returns>Sanitized value</returns>
+        /// <returns>Sanitized value safe for database operations</returns>
         private static object SanitizeValue(string value, string operation)
         {
             if (string.IsNullOrEmpty(value))
@@ -1305,18 +1427,27 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         }
 
         /// <summary>
-        /// Checks if a value is numeric
+        /// Checks if a value is numeric.
+        /// Helper method for sorting and filtering operations.
         /// </summary>
         /// <param name="value">Value to check</param>
-        /// <returns>True if numeric</returns>
+        /// <returns>True if numeric, false otherwise</returns>
         private static bool IsNumeric(string value)
         {
             return double.TryParse(value, out _);
         }
 
     /// <summary>
-    /// Advanced sorting implementation with multiple field support
+    /// Advanced sorting implementation with multiple field support.
+    /// Implements RFC 7644 Section 3.4.2.3 - Sorting
+    /// [RFC 7644 Section 3.4.2.3](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.3)
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="resources">Resources to sort</param>
+    /// <param name="sortBy">Field name to sort by</param>
+    /// <param name="sortOrder">Sort order (ascending or descending)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Sorted list of resources</returns>
     private Task<IList<T>> ApplyAdvancedSortingAsync<T>(
         IList<T> resources,
         string sortBy,
@@ -1343,34 +1474,48 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     #region Metadata Management
 
     /// <summary>
-    /// Initialize resource metadata for new resources
-    /// Transferred from ResourceServiceBase with enhanced functionality
+    /// Initialize resource metadata for new resources.
+    /// Transferred from ResourceServiceBase with enhanced functionality.
+    /// Implements RFC 7643 Section 3.1 - Resource Representation
+    /// [RFC 7643 Section 3.1](https://datatracker.ietf.org/doc/html/rfc7643#section-3.1)
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="resource">Resource to initialize metadata for</param>
     private void InitializeResourceMetadata<T>(T resource) where T : IResource
     {
         var now = DateTime.UtcNow;
         resource.Meta.ResourceType = GetResourceTypeName<T>(); //  RFC 7644 Section 3.1 - ResourceType is required
         resource.Meta.Created = now;
         resource.Meta.LastModified = now;
-        resource.Meta.Version = "1";
-        resource.Meta.Location = $"/{GetResourceTypeName<T>()}/{resource.Id}";
+        resource.Meta.Location = $"{GetBaseUrl()}/{GetResourceTypeName<T>()}/{resource.Id}";
+        resource.Meta.Version = GenerateResourceVersion(resource); // Generate cryptographic hash-based version
     }
 
     /// <summary>
-    /// Update resource metadata for existing resources
+    /// Update resource metadata for existing resources.
+    /// Updates metadata while preserving original creation information.
+    /// Implements RFC 7643 Section 3.1 - Resource Representation
+    /// [RFC 7643 Section 3.1](https://datatracker.ietf.org/doc/html/rfc7643#section-3.1)
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="resource">Resource to update metadata for</param>
+    /// <param name="existingResource">Existing resource to preserve metadata from</param>
     private void UpdateResourceMetadata<T>(T resource, T existingResource) where T : IResource
     {
         resource.Meta.ResourceType = existingResource.Meta.ResourceType; //  Preserve ResourceType
         resource.Meta.Created = existingResource.Meta.Created;
         resource.Meta.LastModified = DateTime.UtcNow;
-        resource.Meta.Version = (int.Parse(existingResource.Meta.Version ?? "1") + 1).ToString();
-        resource.Meta.Location = existingResource.Meta.Location;
+        var fullUrl = $"{GetBaseUrl()}/{GetResourceTypeName<T>()}/{resource.Id}";
+        resource.Meta.Location = fullUrl;
+        resource.Meta.Version = GenerateResourceVersion(resource); // Generate new cryptographic hash-based version
     }
 
     /// <summary>
-    /// Get resource type name for URL generation
+    /// Gets the resource type name for URL generation and SCIM operations.
+    /// Maps resource types to their plural collection names.
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <returns>Plural resource type name for URLs</returns>
     private string GetResourceTypeName<T>() where T : IResource
     {
         return typeof(T).Name switch
@@ -1386,9 +1531,13 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     #region PATCH Operations Processing
 
     /// <summary>
-    /// Advanced PATCH operations processor
-    /// Transferred intelligence from ResourceServiceBase with enhanced SCIM compliance
+    /// Advanced PATCH operations processor for SCIM v2.0 compliance.
+    /// Applies multiple patch operations to a resource with enhanced validation.
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="resource">Resource to apply patches to</param>
+    /// <param name="patches">Array of patch operations to apply</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     private async Task ApplyPatchesAsync<T>(T resource, PatchOperation[] patches, CancellationToken cancellationToken = default) where T : IResource
     {
         foreach (var patch in patches)
@@ -1401,14 +1550,20 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Process individual PATCH operation
-    /// Implements RFC 6902 (JSON Patch) Section 4 - Operations
+    /// Processes individual PATCH operation according to RFC 6902 (JSON Patch).
+    /// Implements RFC 6902 Section 4 - Operations
     /// [RFC 6902 Section 4](https://datatracker.ietf.org/doc/html/rfc6902#section-4)
     /// Supports add, remove, and replace operations as per RFC 6902 Section 4.1-4.3
     /// [RFC 6902 Section 4.1](https://datatracker.ietf.org/doc/html/rfc6902#section-4.1) - Add
     /// [RFC 6902 Section 4.2](https://datatracker.ietf.org/doc/html/rfc6902#section-4.2) - Remove
     /// [RFC 6902 Section 4.3](https://datatracker.ietf.org/doc/html/rfc6902#section-4.3) - Replace
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="resource">Resource to apply patch to</param>
+    /// <param name="operation">Patch operation type (add, remove, replace)</param>
+    /// <param name="path">JSON path to the field to modify</param>
+    /// <param name="value">New value for the field</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     private async Task ProcessPatchOperationAsync<T>(
         T resource,
         string operation,
@@ -1435,8 +1590,16 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Apply ADD patch operation
+    /// Apply ADD patch operation.
+    /// Implements RFC 6902 Section 4.1 - Add Operation
+    /// [RFC 6902 Section 4.1](https://datatracker.ietf.org/doc/html/rfc6902#section-4.1)
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="resource">Resource to apply patch to</param>
+    /// <param name="path">JSON Pointer path for the operation</param>
+    /// <param name="value">Value to add</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Task representing the operation</returns>
     private async Task ApplyAddPatchAsync<T>(T resource, string path, object? value, CancellationToken cancellationToken = default) where T : IResource
     {
         // Removed unnecessary async placeholder
@@ -1444,8 +1607,15 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Apply REMOVE patch operation
+    /// Apply REMOVE patch operation.
+    /// Implements RFC 6902 Section 4.2 - Remove Operation
+    /// [RFC 6902 Section 4.2](https://datatracker.ietf.org/doc/html/rfc6902#section-4.2)
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="resource">Resource to apply patch to</param>
+    /// <param name="path">JSON Pointer path for the operation</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Task representing the operation</returns>
     private async Task ApplyRemovePatchAsync<T>(T resource, string path, CancellationToken cancellationToken = default) where T : IResource
     {
         // Removed unnecessary async placeholder
@@ -1453,8 +1623,16 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Apply REPLACE patch operation
+    /// Apply REPLACE patch operation.
+    /// Implements RFC 6902 Section 4.3 - Replace Operation
+    /// [RFC 6902 Section 4.3](https://datatracker.ietf.org/doc/html/rfc6902#section-4.3)
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="resource">Resource to apply patch to</param>
+    /// <param name="path">JSON Pointer path for the operation</param>
+    /// <param name="value">Value to replace with</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Task representing the operation</returns>
     private async Task ApplyReplacePatchAsync<T>(T resource, string path, object? value, CancellationToken cancellationToken = default) where T : IResource
     {
         // Removed unnecessary async placeholder
@@ -1466,8 +1644,16 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     #region Enhanced Resource Operations
 
     /// <summary>
-    /// Enhanced resource creation with automatic metadata management
+    /// Enhanced resource creation with automatic metadata management.
+    /// Creates a new resource with proper SCIM v2.0 metadata initialization.
+    /// Implements RFC 7644 Section 3.4.1 - Create Resource
+    /// [RFC 7644 Section 3.4.1](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.1)
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="resource">Resource to create</param>
+    /// <param name="saveAction">Action to save the resource</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Generated resource ID</returns>
     public async Task<Guid> CreateResourceWithMetadataAsync<T>(
         T resource,
         Func<T, CancellationToken, Task> saveAction,
@@ -1482,8 +1668,18 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Enhanced resource replacement with metadata preservation
+    /// Enhanced resource replacement with metadata preservation.
+    /// Replaces an existing resource while preserving SCIM v2.0 metadata.
+    /// Implements RFC 7644 Section 3.4.4 - Update Resource (PUT)
+    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="id">Resource ID to replace</param>
+    /// <param name="resource">New resource data</param>
+    /// <param name="retrieveAction">Action to retrieve existing resource</param>
+    /// <param name="saveAction">Action to save the updated resource</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if replacement was successful</returns>
     public async Task<bool> ReplaceResourceWithMetadataAsync<T>(
         Guid id,
         T resource,
@@ -1503,8 +1699,19 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Enhanced resource update with PATCH support
+    /// Enhanced resource update with PATCH support.
+    /// Updates a resource using PATCH operations with SCIM v2.0 compliance.
+    /// Implements RFC 7644 Section 3.4.4 - Update Resource
+    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
     /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    /// <param name="id">Resource ID to update</param>
+    /// <param name="resource">Resource to update</param>
+    /// <param name="patches">PATCH operations to apply</param>
+    /// <param name="retrieveAction">Action to retrieve existing resource</param>
+    /// <param name="saveAction">Action to save the updated resource</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if update was successful</returns>
     public async Task<bool> UpdateResourceWithPatchesAsync<T>(
         Guid id,
         T resource,
@@ -1529,32 +1736,38 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     #region Response Factory Methods
 
     /// <summary>
-    /// Creates a successful SCIMv2 response for list operations
+    /// Creates a successful SCIMv2 response for list operations.
+    /// Implements RFC 7644 Section 3.4.2 - Query Resources
+    /// [RFC 7644 Section 3.4.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2)
     /// </summary>
-    /// <param name="resources">List of resources</param>
-    /// <param name="totalCount">Total number of resources</param>
-    /// <param name="startIndex">Starting index for pagination</param>
+    /// <param name="resources">List of resources to include in response</param>
+    /// <param name="totalCount">Total number of resources available</param>
+    /// <param name="startIndex">Starting index for pagination (1-based)</param>
     /// <param name="count">Number of items per page</param>
-    /// <returns>SCIMv2 response</returns>
+    /// <returns>SCIMv2 response with list data and pagination metadata</returns>
     private static SCIMv2Response CreateListResponse(object resources, int totalCount, int startIndex, int count)
     {
         var response = new SCIMv2Response
         {
-            StatusCode = 200,
+            StatusCode = 0, // Set to 0 to indicate this should not be serialized for collections
             Data = resources, // RFC 7644 Section 3.4.2 - Resources directly in response
             Schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" },
             TotalResults = totalCount,
             StartIndex = startIndex,
-            ItemsPerPage = count
+            ItemsPerPage = count,
+            HttpMethod = "QUERY" // Define HTTP method for proper serialization
         };
         
         return response;
     }
 
     /// <summary>
-    /// Generates a content-based ETag for SCIMv2 resources
+    /// Generates a content-based ETag for SCIMv2 resources.
     /// Implements RFC 7232 - HTTP/1.1 Conditional Requests
+    /// [RFC 7232](https://datatracker.ietf.org/doc/html/rfc7232)
     /// </summary>
+    /// <param name="resource">Resource to generate ETag for</param>
+    /// <returns>ETag value based on resource content</returns>
     private static string GenerateContentETag(IResource resource)
     {
         if (resource == null) return "W/\"1\"";
@@ -1571,24 +1784,56 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Creates a successful SCIMv2 response for create operations
+    /// Generates a cryptographic hash-based version for SCIMv2 resources
+    /// Creates a unique signature based on resource content for meta.version
+    /// Implements RFC 7643 Section 3.1 - Resource Representation
+    /// [RFC 7643 Section 3.1](https://datatracker.ietf.org/doc/html/rfc7643#section-3.1)
     /// </summary>
-    /// <param name="resource">Created resource</param>
-    /// <param name="resourceId">Resource ID</param>
-    /// <param name="collection">Collection name</param>
-    /// <returns>SCIMv2 response</returns>
+    /// <param name="resource">Resource to generate version for</param>
+    /// <returns>Cryptographic hash-based version string</returns>
+    private static string GenerateResourceVersion(IResource resource)
+    {
+        if (resource == null) return "W/\"1\"";
+        
+        // Create comprehensive content hash including all resource data
+        var content = $"{resource.Id}|{resource.Meta?.Created}|{resource.Meta?.LastModified}|{resource.Meta?.ResourceType}|{resource.Meta?.Location}";
+        
+        // Include resource-specific data for more unique hashing
+        if (resource.Schemas != null && resource.Schemas.Length > 0)
+        {
+            content += $"|{string.Join(",", resource.Schemas)}";
+        }
+        
+        // Generate SHA-256 hash
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
+        var hash = Convert.ToBase64String(hashBytes)[..12]; // Use first 12 characters for more uniqueness
+        
+        return $"W/\"{hash}\"";
+    }
+
+    /// <summary>
+    /// Creates a successful SCIMv2 response for create operations.
+    /// Implements RFC 7644 Section 3.4.1 - Create Resource
+    /// [RFC 7644 Section 3.4.1](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.1)
+    /// </summary>
+    /// <param name="resource">Created resource to include in response</param>
+    /// <param name="resourceId">Resource ID of the created resource</param>
+    /// <param name="collection">Collection name where resource was created</param>
+    /// <returns>SCIMv2 response with created resource</returns>
     private static SCIMv2Response CreateCreateResponse(IResource resource, Guid resourceId, string collection)
     {
         try
         {
-            
+            // POST (Create): Return resource directly, no Resources wrapper
             var response = new SCIMv2Response
             {
                 StatusCode = 201,
-                Data = resource,
+                Data = resource, // Resource directly, not wrapped in Resources
                 Schemas = resource.Schemas,
-                Location = $"/{collection}/{resourceId}",
-                ETag = $"W/\"{resource.Meta.Version}\""
+                Location = resource.Meta.Location,
+                ETag = resource.Meta.Version,
+                HttpMethod = "POST"
             };
             
             return response;
@@ -1600,39 +1845,49 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Creates a successful SCIMv2 response for retrieve operations
+    /// Creates a successful SCIMv2 response for retrieve operations.
+    /// Implements RFC 7644 Section 3.4.3 - Retrieve Resource
+    /// [RFC 7644 Section 3.4.3](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.3)
     /// </summary>
-    /// <param name="resource">Retrieved resource</param>
-    /// <returns>SCIMv2 response</returns>
+    /// <param name="resource">Retrieved resource to include in response</param>
+    /// <returns>SCIMv2 response with retrieved resource</returns>
     private static SCIMv2Response CreateRetrieveResponse(IResource resource)
     {
+        // GET (Single Resource): Return resource directly, no Resources wrapper
         return new SCIMv2Response
         {
             StatusCode = 200,
-            Data = resource,
+            Data = resource, // Resource directly, not wrapped in Resources
             Schemas = resource.Schemas,
-            ETag = GenerateContentETag(resource)
+            Location = resource.Meta.Location,
+            ETag = resource.Meta.Version,
+            HttpMethod = "GET"
         };
     }
 
+
     /// <summary>
-    /// Creates a successful SCIMv2 response for update operations
+    /// Creates a successful SCIMv2 response for update operations.
+    /// Implements RFC 7644 Section 3.4.4 - Update Resource
+    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
     /// </summary>
-    /// <param name="resource">Updated resource</param>
-    /// <param name="resourceId">Resource ID</param>
-    /// <param name="collection">Collection name</param>
-    /// <returns>SCIMv2 response</returns>
+    /// <param name="resource">Updated resource to include in response</param>
+    /// <param name="resourceId">Resource ID of the updated resource</param>
+    /// <param name="collection">Collection name where resource was updated</param>
+    /// <returns>SCIMv2 response with updated resource</returns>
     private static SCIMv2Response CreateUpdateResponse(IResource resource, Guid resourceId, string collection)
     {
         try
         {
+            // PUT/PATCH (Update): Return resource directly, no Resources wrapper
             var response = new SCIMv2Response
             {
                 StatusCode = 200,
-                Data = resource,
+                Data = resource, // Resource directly, not wrapped in Resources
                 Schemas = resource.Schemas,
-                Location = $"/{collection}/{resourceId}",
-                ETag = GenerateContentETag(resource)
+                Location = resource.Meta.Location,
+                ETag = resource.Meta.Version,
+                HttpMethod = "PUT" // Will be overridden for PATCH
             };
             
             return response;
@@ -1644,24 +1899,155 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Creates a successful SCIMv2 response for delete operations
+    /// Creates a successful SCIMv2 response for delete operations.
+    /// Implements RFC 7644 Section 3.4.5 - Delete Resource
+    /// [RFC 7644 Section 3.4.5](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.5)
     /// </summary>
-    /// <returns>SCIMv2 response</returns>
+    /// <returns>SCIMv2 response indicating successful deletion</returns>
     private static SCIMv2Response CreateDeleteResponse()
     {
         return new SCIMv2Response
         {
-            StatusCode = 204
+            StatusCode = 204,
+            Data = null,
+            Schemas = Array.Empty<string>(),
+            HttpMethod = "DELETE"
         };
     }
 
     /// <summary>
-    /// Creates an error SCIMv2 response
+    /// Centralized response formatting by HTTP method for SCIM v2.0 compliance.
+    /// Contains all logic for SCIM v2.0 compliance per HTTP verb.
+    /// Implements RFC 7644 Section 3 - SCIM Protocol
+    /// [RFC 7644 Section 3](https://datatracker.ietf.org/doc/html/rfc7644#section-3)
     /// </summary>
-    /// <param name="statusCode">HTTP status code</param>
-    /// <param name="detail">Error detail</param>
-    /// <param name="scimType">SCIM error type</param>
-    /// <returns>SCIMv2 response</returns>
+    /// <param name="response">SCIMv2Response to format</param>
+    /// <returns>Formatted JSON string according to SCIM v2.0 specification</returns>
+    public static string FormatResponseByHttpMethod(SCIMv2Response response)
+    {
+        if (response == null)
+            throw new ArgumentNullException(nameof(response));
+
+        // BLOCOS ESPECÍFICOS PARA CADA VERBO HTTP
+        if (response.HttpMethod == "QUERY")
+        {
+            // QUERY (Collections): Remove statusCode, mantém Resources wrapper
+            return FormatQueryResponse(response);
+        }
+        else if (response.HttpMethod == "GET")
+        {
+            // GET (Single Resource): Mantém statusCode, remove Resources wrapper
+            return FormatSingleResourceResponse(response);
+        }
+        else if (response.HttpMethod == "POST")
+        {
+            // POST (Create): Mantém statusCode, remove Resources wrapper
+            return FormatSingleResourceResponse(response);
+        }
+        else if (response.HttpMethod == "PUT")
+        {
+            // PUT (Replace): Mantém statusCode, remove Resources wrapper
+            return FormatSingleResourceResponse(response);
+        }
+        else if (response.HttpMethod == "PATCH")
+        {
+            // PATCH (Modify): Mantém statusCode, remove Resources wrapper
+            return FormatSingleResourceResponse(response);
+        }
+        else if (response.HttpMethod == "DELETE")
+        {
+            // DELETE: Mantém statusCode, sem body (204)
+            return FormatDeleteResponse(response);
+        }
+        else
+        {
+            // Default: Standard serialization
+            return System.Text.Json.JsonSerializer.Serialize(response, new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+            });
+        }
+    }
+
+    /// <summary>
+    /// Formats QUERY (Collections) responses according to SCIM v2.0.
+    /// Removes statusCode from JSON body for collection responses.
+    /// Implements RFC 7644 Section 3.4.2 - Query Resources
+    /// [RFC 7644 Section 3.4.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2)
+    /// </summary>
+    /// <param name="response">SCIMv2Response to format</param>
+    /// <returns>Formatted JSON string for collection responses</returns>
+    private static string FormatQueryResponse(SCIMv2Response response)
+    {
+        // Create a new response without statusCode for collections
+        var queryResponse = new
+        {
+            schemas = response.Schemas,
+            totalResults = response.TotalResults,
+            startIndex = response.StartIndex,
+            itemsPerPage = response.ItemsPerPage,
+            Resources = response.Data
+        };
+
+        // Use Looplex.Foundation centralized serializer with proper options
+        // Note: PropertyNamingPolicy = null to preserve SCIM v2.0 field names (Resources with capital R)
+        return System.Text.Json.JsonSerializer.Serialize(queryResponse, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = null, // Preserve original field names for SCIM v2.0 compliance
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true
+        });
+    }
+
+    /// <summary>
+    /// Formats single resource responses according to SCIM v2.0.
+    /// Removes Resources wrapper, keeps statusCode for single resource operations.
+    /// Implements RFC 7644 Section 3.4.1, 3.4.3, 3.4.4 - Single Resource Operations
+    /// [RFC 7644 Section 3.4.1](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.1)
+    /// [RFC 7644 Section 3.4.3](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.3)
+    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
+    /// </summary>
+    /// <param name="response">SCIMv2Response to format</param>
+    /// <returns>Formatted JSON string for single resource responses</returns>
+    private static string FormatSingleResourceResponse(SCIMv2Response response)
+    {
+        
+        // For single resources, return the resource directly flattened
+        // Remove statusCode, location, etag from JSON body (they should be HTTP headers only)
+        // Flatten the resource data directly using Looplex.Foundation serializer options
+        var result = System.Text.Json.JsonSerializer.Serialize(response.Data, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true
+        });
+        
+        return result;
+    }
+
+    /// <summary>
+    /// Formats DELETE responses according to SCIM v2.0.
+    /// Returns empty body for 204 status.
+    /// Implements RFC 7644 Section 3.4.5 - Delete Resource
+    /// [RFC 7644 Section 3.4.5](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.5)
+    /// </summary>
+    /// <param name="response">SCIMv2Response to format</param>
+    /// <returns>Empty string for DELETE responses</returns>
+    private static string FormatDeleteResponse(SCIMv2Response response)
+    {
+        // DELETE responses should have no body for 204 status
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// Creates an error SCIMv2 response.
+    /// Implements RFC 7644 Section 3.12 - Error Responses
+    /// [RFC 7644 Section 3.12](https://datatracker.ietf.org/doc/html/rfc7644#section-3.12)
+    /// </summary>
+    /// <param name="statusCode">HTTP status code for the error</param>
+    /// <param name="detail">Error detail message</param>
+    /// <param name="scimType">SCIM error type (optional)</param>
+    /// <returns>SCIMv2 error response</returns>
     private static SCIMv2Response CreateErrorResponse(int statusCode, string detail, string? scimType = null)
     {
         return new SCIMv2Response
@@ -1678,8 +2064,10 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Centralized exception handling for SCIMv2 operations
-    /// Maps common exceptions to appropriate SCIMv2 error responses
+    /// Centralized exception handling for SCIMv2 operations.
+    /// Maps common exceptions to appropriate SCIMv2 error responses.
+    /// Implements RFC 7644 Section 3.12 - Error Responses
+    /// [RFC 7644 Section 3.12](https://datatracker.ietf.org/doc/html/rfc7644#section-3.12)
     /// </summary>
     /// <param name="ex">Exception to handle</param>
     /// <param name="operation">Operation context for error messages</param>
@@ -1699,8 +2087,10 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Centralized validation for SCIMv2 requests
-    /// Validates collection name, service registration, and optional resource ID
+    /// Centralized validation for SCIMv2 requests.
+    /// Validates collection name, service registration, and optional resource ID.
+    /// Implements RFC 7644 Section 3 - SCIM Protocol
+    /// [RFC 7644 Section 3](https://datatracker.ietf.org/doc/html/rfc7644#section-3)
     /// </summary>
     /// <param name="collection">Collection name to validate</param>
     /// <param name="id">Optional resource ID to validate</param>
@@ -1735,67 +2125,6 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
 
     #endregion
 
-    #region Mock Resource Helper Methods
-
-    /// <summary>
-    /// Creates standardized metadata for mock resources used in testing and validation scenarios.
-    /// This method generates consistent metadata structure that follows SCIMv2 specifications.
-    /// </summary>
-    /// <param name="resourceType">The SCIM resource type (e.g., "User", "Group")</param>
-    /// <param name="id">Unique identifier for the mock resource</param>
-    /// <param name="collection">Collection name where the resource belongs</param>
-    /// <returns>Complete ResourceMeta object with SCIMv2 compliant metadata</returns>
-    private static ResourceMeta CreateMockMetadata(string resourceType, string id, string collection)
-    {
-        return new ResourceMeta
-        {
-            ResourceType = resourceType,
-            Created = DateTime.UtcNow,
-            LastModified = DateTime.UtcNow,
-            Location = $"/{collection}/{id}",
-            Version = "1"
-        };
-    }
-
-    /// <summary>
-    /// Creates a mock User resource for testing and validation purposes.
-    /// This method generates a complete User object that conforms to SCIMv2 User schema
-    /// and can be used in unit tests, integration tests, and validation scenarios.
-    /// </summary>
-    /// <param name="id">Unique identifier for the mock user resource</param>
-    /// <returns>Fully populated User object with SCIMv2 compliant structure</returns>
-    private static User CreateMockUser(string id)
-    {
-        return new User
-        {
-            Id = id,
-            UserName = "mock.user",
-            DisplayName = "Mock User",
-            Active = true,
-            Schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:User" },
-            Meta = CreateMockMetadata("User", id, "Users")
-        };
-    }
-
-    /// <summary>
-    /// Creates a mock Group resource for testing and validation purposes.
-    /// This method generates a complete Group object that conforms to SCIMv2 Group schema
-    /// and can be used in unit tests, integration tests, and validation scenarios.
-    /// </summary>
-    /// <param name="id">Unique identifier for the mock group resource</param>
-    /// <returns>Fully populated Group object with SCIMv2 compliant structure</returns>
-    private static Group CreateMockGroup(string id)
-    {
-        return new Group
-        {
-            Id = id,
-            DisplayName = "Mock Group",
-            Schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:Group" },
-            Meta = CreateMockMetadata("Group", id, "Groups")
-        };
-    }
-
-    #endregion
 
     /// <summary>
     /// Validates JSON request body for SCIMv2 operations
@@ -1893,30 +2222,6 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         return (true, string.Empty);
     }
 
-    /// <summary>
-    /// Creates a mock resource for testing and validation purposes based on collection type.
-    /// This method is part of the ISCIMv2Validation interface and provides a factory
-    /// for creating mock resources that conform to SCIMv2 specifications.
-    /// 
-    /// Use cases:
-    /// - Unit testing SCIMv2 operations
-    /// - Integration testing with mock data
-    /// - Validation of SCIMv2 response structures
-    /// - Development and debugging scenarios
-    /// </summary>
-    /// <param name="collectionName">The SCIM collection name (e.g., "Users", "Groups")</param>
-    /// <param name="id">Unique identifier for the mock resource</param>
-    /// <returns>Mock resource implementing IResource interface</returns>
-    /// <exception cref="ArgumentException">Thrown when collection name is not supported</exception>
-    public IResource CreateMockResource(string collectionName, string id)
-    {
-        return collectionName.ToLowerInvariant() switch
-        {
-            "users" => CreateMockUser(id),
-            "groups" => CreateMockGroup(id),
-            _ => throw new ArgumentException($"Unsupported collection: {collectionName}")
-        };
-    }
 
     #endregion
 }

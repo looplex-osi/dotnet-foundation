@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.SCIMv2.Queries;
 using Looplex.Samples.Application;
@@ -136,7 +137,7 @@ public class NoteRepository(IDbConnections connections, ILogger<NoteRepository> 
         {
             logger.LogInformation("Creating new note with Name: {NoteName}", note.Name);
 
-            var dbCommand = await connections.CommandConnection();
+            await using var dbCommand = await connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
 
             command.CommandType = CommandType.Text;
@@ -183,7 +184,7 @@ public class NoteRepository(IDbConnections connections, ILogger<NoteRepository> 
         {
             logger.LogInformation("Updating note with ID: {NoteId}", id);
 
-            var dbCommand = await connections.CommandConnection();
+            await using var dbCommand = await connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
 
             command.CommandType = CommandType.Text;
@@ -227,7 +228,7 @@ public class NoteRepository(IDbConnections connections, ILogger<NoteRepository> 
         {
             logger.LogInformation("Deleting note with ID: {NoteId}", id);
 
-            var dbCommand = await connections.CommandConnection();
+            await using var dbCommand = await connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
 
             command.CommandType = CommandType.Text;
@@ -441,7 +442,7 @@ public class NoteRepository(IDbConnections connections, ILogger<NoteRepository> 
     {
         try
         {
-            var dbCommand = await connections.CommandConnection();
+            await using var dbCommand = await connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
 
             command.CommandType = CommandType.Text;

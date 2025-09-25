@@ -3,38 +3,70 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Looplex.Foundation.SCIMv2.Modules
+namespace Looplex.Foundation.SCIMv2.Modules;
+
+/// <summary>
+/// Generic repository interface for SCIM resource data persistence operations.
+/// Implements Repository Pattern for abstracting data access layer.
+/// Provides CRUD operations with pagination and filtering support per RFC 7644.
+/// [RFC 7644 Section 3.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4) - SCIM Protocol Operations
+/// </summary>
+/// <typeparam name="T">Resource type implementing SCIM resource contract</typeparam>
+public interface IResourceRepository<T> where T : class
 {
     /// <summary>
-    /// Repository interface for SCIMv2 resources
+    /// Retrieves a specific resource by its unique identifier.
+    /// Implements RFC 7644 Section 3.4.3 - Retrieve Resource
+    /// [RFC 7644 Section 3.4.3](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.3)
     /// </summary>
-    /// <typeparam name="T">Resource type</typeparam>
-    public interface IResourceRepository<T> where T : class
-    {
-        /// <summary>
-        /// Query resources with filtering and pagination
-        /// </summary>
-        Task<(IList<T> Resources, int TotalCount)> QueryAsync(int startIndex, int count, string? filter, CancellationToken cancellationToken = default);
+    /// <param name="id">Unique identifier of the resource to retrieve</param>
+    /// <param name="cancellationToken">Cancellation token for async operation</param>
+    /// <returns>Resource instance or null if not found</returns>
+    Task<T?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Get a resource by ID
-        /// </summary>
-        Task<T?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Creates a new resource in the data store.
+    /// Implements RFC 7644 Section 3.4.1 - Create Resource
+    /// [RFC 7644 Section 3.4.1](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.1)
+    /// </summary>
+    /// <param name="resource">Resource instance to create</param>
+    /// <param name="cancellationToken">Cancellation token for async operation</param>
+    /// <returns>Created resource with generated identifier and metadata</returns>
+    Task<T> CreateAsync(T resource, CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Create a new resource
-        /// </summary>
-        Task<T> CreateAsync(T resource, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Updates an existing resource in the data store.
+    /// Implements RFC 7644 Section 3.4.4 - Update Resource (PUT semantics)
+    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
+    /// </summary>
+    /// <param name="id">Unique identifier of the resource to update</param>
+    /// <param name="resource">Updated resource instance</param>
+    /// <param name="cancellationToken">Cancellation token for async operation</param>
+    /// <returns>Updated resource instance</returns>
+    Task<T> UpdateAsync(string id, T resource, CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Update an existing resource
-        /// </summary>
-        Task<T> UpdateAsync(string id, T resource, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Permanently deletes a resource from the data store.
+    /// Implements RFC 7644 Section 3.4.5 - Delete Resource
+    /// [RFC 7644 Section 3.4.5](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.5)
+    /// </summary>
+    /// <param name="id">Unique identifier of the resource to delete</param>
+    /// <param name="cancellationToken">Cancellation token for async operation</param>
+    /// <returns>True if resource was successfully deleted, false otherwise</returns>
+    Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Delete a resource
-        /// </summary>
-        Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default);
-    }
+    /// <summary>
+    /// Queries resources with pagination and filtering support.
+    /// Implements RFC 7644 Section 3.4.2 - Query Resources
+    /// [RFC 7644 Section 3.4.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2)
+    /// Supports SCIM filter expressions per RFC 7644 Section 3.4.2.2
+    /// [RFC 7644 Section 3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
+    /// </summary>
+    /// <param name="startIndex">Starting index for pagination (1-based)</param>
+    /// <param name="count">Maximum number of resources to return</param>
+    /// <param name="filter">SCIM filter expression (optional)</param>
+    /// <param name="cancellationToken">Cancellation token for async operation</param>
+    /// <returns>Tuple containing list of resources and total count for pagination</returns>
+    Task<(IList<T> Resources, int TotalCount)> QueryAsync(
+        int startIndex, int count, string? filter, CancellationToken cancellationToken = default);
 }
-

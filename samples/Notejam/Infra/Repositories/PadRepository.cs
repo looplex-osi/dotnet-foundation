@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 using Looplex.Foundation.Ports;
 using Looplex.Foundation.Helpers;
 using Looplex.Foundation.SCIMv2.Queries;
@@ -45,7 +46,7 @@ public class PadRepository : IPadRepository
         {
             _logger.LogInformation("Getting pads with filter: {Filter}", filter);
 
-            var dbCommand = await _connections.CommandConnection();
+            await using var dbCommand = await _connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
 
             command.CommandType = CommandType.Text;
@@ -77,7 +78,7 @@ public class PadRepository : IPadRepository
         {
             _logger.LogInformation("Getting pads with filter: '{Filter}', page: {Page}, size: {PageSize}", filter, page, pageSize);
 
-            var dbCommand = await _connections.CommandConnection();
+            await using var dbCommand = await _connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
 
             command.CommandType = CommandType.Text;
@@ -107,7 +108,7 @@ public class PadRepository : IPadRepository
         {
             _logger.LogInformation("Getting pad by ID: {PadId}", id);
 
-            var dbCommand = await _connections.CommandConnection();
+            await using var dbCommand = await _connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
 
             command.CommandType = CommandType.Text;
@@ -152,7 +153,7 @@ public class PadRepository : IPadRepository
         {
             _logger.LogInformation("Getting pad by ID for update: {PadId}", id);
 
-            var dbCommand = await _connections.CommandConnection();
+            await using var dbCommand = await _connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
 
             command.CommandType = CommandType.Text;
@@ -197,7 +198,7 @@ public class PadRepository : IPadRepository
         {
             _logger.LogInformation("Creating new pad with Name: {PadName}", pad.Name);
 
-            var dbCommand = await _connections.CommandConnection();
+            await using var dbCommand = await _connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
 
             command.CommandType = CommandType.Text;
@@ -243,7 +244,7 @@ public class PadRepository : IPadRepository
         {
             _logger.LogInformation("Updating pad with ID: {PadId}", id);
 
-            var dbCommand = await _connections.CommandConnection();
+            await using var dbCommand = await _connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
 
             command.CommandType = CommandType.Text;
@@ -287,7 +288,7 @@ public class PadRepository : IPadRepository
         {
             _logger.LogInformation("Deleting pad with ID: {PadId}", id);
 
-            var dbCommand = await _connections.CommandConnection();
+            await using var dbCommand = await _connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
 
             command.CommandType = CommandType.Text;

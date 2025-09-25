@@ -88,8 +88,13 @@ public static class Program
     // builder.Services.AddScoped<Looplex.Foundation.SearchContent.ISearchContentService, Looplex.Foundation.SearchContent.SearchContentService>();
     
     // Register Repository Pattern as SINGLETON to match SCIMv2 services
-    builder.Services.AddSingleton<INoteRepository, Looplex.Samples.Infra.Repositories.NoteRepository>();
-    builder.Services.AddSingleton<IPadRepository, Looplex.Samples.Infra.Repositories.PadRepository>();
+    // Using stored procedure repositories for better performance
+    builder.Services.AddSingleton<INoteRepository, Looplex.Samples.Infra.Repositories.NoteRepositoryStoredProcedure>();
+    builder.Services.AddSingleton<IPadRepository, Looplex.Samples.Infra.Repositories.PadRepositoryStoredProcedure>();
+    
+    // Register SCIMv2 Resource Repositories for stored procedure implementation
+    builder.Services.AddSingleton<Looplex.Foundation.SCIMv2.Modules.IResourceRepository<Note>, Looplex.Samples.Infra.Repositories.NoteRepositoryStoredProcedure>();
+    builder.Services.AddSingleton<Looplex.Foundation.SCIMv2.Modules.IResourceRepository<Pad>, Looplex.Samples.Infra.Repositories.PadRepositoryStoredProcedure>();
 
     // Register new SCIMv2 Resource Services as SINGLETON (NEW ARCHITECTURE)
     // Using independent services that don't depend on MediatR
@@ -147,6 +152,11 @@ public static class Program
     {
         Console.WriteLine($"🔍 REQUEST: {context.Request.Method} {context.Request.Path}");
         Console.WriteLine($"🔍 Headers: {string.Join(", ", context.Request.Headers.Select(h => $"{h.Key}={h.Value}"))}");
+        
+        if (context.Request.Path.StartsWithSegments("/notes") && context.Request.Method == "PUT")
+        {
+            Console.WriteLine($"🔍 PUT /notes DETECTED - Rastreando trilha...");
+        }
         
         await next();
         

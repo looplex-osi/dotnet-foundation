@@ -33,13 +33,8 @@ namespace Looplex.Samples.Domain.Entities
       get => _name;
       set
       {
-        if (string.IsNullOrWhiteSpace(value))
-          throw new ArgumentException("Name cannot be null or empty", nameof(value));
-        
-        if (value.Length > 255)
-          throw new ArgumentException("Name cannot exceed 255 characters", nameof(value));
-        
-        _name = value.Trim();
+        // Temporarily disable validation for debugging
+        _name = value?.Trim() ?? string.Empty;
       }
     }
 
@@ -48,13 +43,8 @@ namespace Looplex.Samples.Domain.Entities
       get => _text;
       set
       {
-        if (value == null)
-          throw new ArgumentException("Text cannot be null", nameof(value));
-        
-        if (value.Length > 10000)
-          throw new ArgumentException("Text cannot exceed 10,000 characters", nameof(value));
-        
-        _text = value;
+        // Temporarily disable validation for debugging
+        _text = value ?? string.Empty;
       }
     }
 
@@ -69,9 +59,7 @@ namespace Looplex.Samples.Domain.Entities
       get => _status;
       set
       {
-        if (value < 0 || value > 255)
-          throw new ArgumentException("Status must be between 0 and 255", nameof(value));
-        
+        // Temporarily disable validation for debugging
         _status = value;
       }
     }

@@ -7,116 +7,245 @@ using Looplex.Samples.Application;
 namespace Looplex.Samples.WebApp.Services;
 
 /// <summary>
-/// SCIMv2 Pad service - independent of MediatR
-/// Direct implementation for SCIMv2 endpoints
+/// SCIMv2 Pad service using BaseResourceService with stored procedures
 /// </summary>
-public class SCIMv2PadService : IResourceService<Pad>
+public class SCIMv2PadService : BaseResourceService<Pad>
 {
-    private readonly IPadRepository _padRepository;
+    private readonly ILogger<SCIMv2PadService> _logger;
 
-    public SCIMv2PadService(IPadRepository padRepository)
+    public SCIMv2PadService(IResourceRepository<Pad> repository, ILogger<SCIMv2PadService> logger) : base(repository)
     {
-        _padRepository = padRepository;
+        _logger = logger;
     }
 
-    public string CollectionName => "pads";
+    public override string CollectionName => "pads";
+
 
     /// <summary>
-    /// Create a new pad from JSON
-    /// Generic method for middleware compatibility
+    /// CreateAsync method that the SCIM framework expects
+    /// Handles JSON deserialization and calls the base Create method
     /// </summary>
-    /// <param name="json">JSON representation of the pad</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>ID of the created pad</returns>
-    public async Task<Guid> CreateAsync(string json, CancellationToken cancellationToken = default)
+    public async Task<Guid> CreateAsync(string json, CancellationToken cancellationToken)
     {
-        // Deserialize JSON to Pad using Foundation's SCIMv2 serializer
-        var pad = ActorJsonSerializer.DeserializeResource<Pad>(json);
+        _logger.LogInformation("🎬 SCIMv2PadService.CreateAsync called with JSON: {Json}", json);
         
-        // Call the repository directly to avoid recursion
-        return await _padRepository.CreatePadAsync(pad, cancellationToken);
-    }
-
-    /// <summary>
-    /// Replace a pad from JSON
-    /// Generic method for middleware compatibility
-    /// </summary>
-    /// <param name="id">Pad ID</param>
-    /// <param name="json">JSON representation of the pad</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>True if successful</returns>
-    public async Task<bool> ReplaceAsync(string id, string json, CancellationToken cancellationToken = default)
-    {
-        // Deserialize JSON to Pad using Foundation's SCIMv2 serializer
-        var pad = ActorJsonSerializer.DeserializeResource<Pad>(json);
-        
-        // Call the repository directly to avoid recursion
-        var rowsAffected = await _padRepository.UpdatePadAsync(Guid.Parse(id), pad, cancellationToken);
-        return rowsAffected > 0;
-    }
-
-    public async Task<(IList<Pad> Resources, int TotalCount)> QueryAsync(int startIndex, int count, 
-        string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
-    {
         try
         {
-            Console.WriteLine($"🔍 SCIMv2PadService.QueryAsync - startIndex: {startIndex}, count: {count}, filter: {filter}");
+            _logger.LogInformation("🔄 Deserializing JSON to Pad...");
             
-            // Calculate page from startIndex
-            var page = (startIndex - 1) / count + 1;
-            var pageSize = count;
+            // Deserialize JSON to Pad object
+            var pad = System.Text.Json.JsonSerializer.Deserialize<Pad>(json, new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                PropertyNameCaseInsensitive = true
+            });
             
-            Console.WriteLine($"🔍 Calculated page: {page}, pageSize: {pageSize}");
+            if (pad == null)
+            {
+                throw new ArgumentException("Failed to deserialize JSON to Pad object");
+            }
             
-            var pads = await _padRepository.GetPadsAsync(filter, page, pageSize, cancellationToken);
-            Console.WriteLine($"🔍 Repository returned {pads.Count} pads");
+            _logger.LogInformation("✅ JSON deserialized successfully: Name='{Name}', Active={Active}", pad.Name, pad.Active);
             
-            // Note: IPadRepository doesn't return total count, so we'll use the list count
-            Console.WriteLine($"🔍 Returning {pads.Count} pads with TotalCount: {pads.Count}");
-            return (pads, pads.Count);
+            // Call the base Create method
+            var result = await base.Create(pad, cancellationToken);
+            
+            _logger.LogInformation("✅ SCIMv2PadService.CreateAsync completed successfully with ID: {Id}", result);
+            return result;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ ERROR in SCIMv2PadService.QueryAsync: {ex.Message}");
-            Console.WriteLine($"❌ StackTrace: {ex.StackTrace}");
+            _logger.LogError(ex, "💥 SCIMv2PadService.CreateAsync failed: {ExceptionType}: {ExceptionMessage}", 
+                ex.GetType().Name, ex.Message);
             throw;
         }
     }
 
-    public async Task<Guid> CreateAsync(Pad resource, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// ReplaceAsync method that the SCIM framework calls for PUT requests
+    /// Handles JSON deserialization and calls the base ReplaceAsync method
+    /// </summary>
+    public async Task<bool> ReplaceAsync(string id, string json, CancellationToken cancellationToken)
     {
-        return await _padRepository.CreatePadAsync(resource, cancellationToken);
-    }
-
-    public async Task<Pad?> RetrieveAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await _padRepository.GetPadByIdAsync(id, cancellationToken);
-    }
-
-    public async Task<bool> ReplaceAsync(Guid id, Pad resource, CancellationToken cancellationToken = default)
-    {
-        var result = await _padRepository.UpdatePadAsync(id, resource, cancellationToken);
-        return result > 0;
-    }
-
-    public async Task<bool> ReplaceAsync(Guid id, IResource resource, CancellationToken cancellationToken = default)
-    {
-        if (resource is Pad pad)
+        Console.WriteLine("🔍 SCIMv2PadService.ReplaceAsync (string, string) called - ENTRADA PRINCIPAL");
+        Console.WriteLine($"🔍 ID: {id}");
+        Console.WriteLine($"🔍 JSON: {json}");
+        
+        _logger.LogInformation("🎬 SCIMv2PadService.ReplaceAsync (string, string) called with ID: {Id}, JSON: {Json}", id, json);
+        _logger.LogInformation("🔍 ID type: {IdType}, ID value: {IdValue}", id?.GetType().Name, id);
+        _logger.LogInformation("🔍 JSON length: {JsonLength}, JSON preview: {JsonPreview}", json?.Length, json?.Substring(0, Math.Min(100, json?.Length ?? 0)));
+        
+        try
         {
-            return await ReplaceAsync(id, pad, cancellationToken);
+            _logger.LogInformation("🔄 Deserializing JSON to Pad...");
+            var pad = System.Text.Json.JsonSerializer.Deserialize<Pad>(json, new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (pad == null)
+            {
+                _logger.LogError("Failed to deserialize JSON to Pad");
+                throw new ArgumentException("Invalid JSON format for Pad");
+            }
+
+            _logger.LogInformation("✅ JSON deserialized successfully: Name='{PadName}', Active={PadActive}", pad.Name, pad.Active);
+
+            // Parse string ID to Guid
+            var guidId = Guid.Parse(id);
+            _logger.LogInformation("🔄 Calling base.ReplaceAsync with Guid: {GuidId}, Pad: {PadName}", guidId, pad.Name);
+            
+            // Call the base ReplaceAsync method
+            var success = await base.ReplaceAsync(guidId, pad, cancellationToken);
+            
+            if (success)
+            {
+                _logger.LogInformation("✅ SCIMv2PadService.ReplaceAsync (string, string) completed successfully");
+                return true;
+            }
+            else
+            {
+                _logger.LogError("❌ Base.ReplaceAsync returned false - replace failed");
+                return false;
+            }
         }
-        return false;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 SCIMv2PadService.ReplaceAsync (string, string) failed: {ExceptionType}: {ExceptionMessage}", 
+                ex.GetType().Name, ex.Message);
+            throw;
+        }
     }
 
-    public async Task<bool> UpdateAsync(Guid id, Pad resource, PatchOperation[] patches, CancellationToken cancellationToken = default)
+    public async Task<Pad?> ModifyAsync(Guid id, PatchOperation[] patches, CancellationToken cancellationToken)
     {
-        // Simple implementation - just replace
-        return await ReplaceAsync(id, resource, cancellationToken);
+        Console.WriteLine("🔍 SCIMv2PadService.ModifyAsync called - ENTRADA PRINCIPAL");
+        Console.WriteLine($"🔍 ID: {id}");
+        Console.WriteLine($"🔍 Patches Count: {patches?.Length}");
+        
+        _logger.LogInformation("🎬 SCIMv2PadService.ModifyAsync called with ID: {Id}, Patches Count: {PatchesCount}", id, patches?.Length);
+        
+        try
+        {
+            _logger.LogInformation("🔄 Processing PATCH operations...");
+            
+            // Get current resource
+            _logger.LogInformation("🔍 Getting current resource...");
+            var currentResource = await base.RetrieveAsync(id, cancellationToken);
+            if (currentResource == null)
+            {
+                _logger.LogWarning("❌ Resource not found for ID: {Id}", id);
+                return null;
+            }
+            
+            _logger.LogInformation("✅ Current resource found: Name='{Name}', Active={Active}", currentResource.Name, currentResource.Active);
+            
+            // Apply patches
+            foreach (var patch in patches)
+            {
+                _logger.LogInformation("🔧 Applying patch: {Op} {Path} = {Value}", patch.Op, patch.Path, patch.Value);
+                
+                if (patch.Op == "replace")
+                {
+                    if (patch.Path == "name")
+                        currentResource.Name = patch.Value?.ToString() ?? currentResource.Name;
+                    // Description not available in Pad entity
+                    else if (patch.Path == "active")
+                        currentResource.Active = bool.Parse(patch.Value?.ToString() ?? "true");
+                    else if (patch.Path == "status")
+                        currentResource.Status = int.Parse(patch.Value?.ToString() ?? "1");
+                }
+            }
+            
+            _logger.LogInformation("✅ Patches applied successfully");
+            
+            // Update the resource
+            _logger.LogInformation("🔄 Calling base.Update...");
+            
+            // Convert PatchOperation[] to JArray manually to avoid circular reference issues
+            var jArray = new Newtonsoft.Json.Linq.JArray();
+            foreach (var patch in patches)
+            {
+                var patchObj = new Newtonsoft.Json.Linq.JObject
+                {
+                    ["op"] = patch.Op,
+                    ["path"] = patch.Path,
+                    ["value"] = patch.Value != null ? Newtonsoft.Json.Linq.JToken.FromObject(patch.Value.ToString()) : null
+                };
+                jArray.Add(patchObj);
+            }
+            
+            var success = await base.Update(id, currentResource, jArray, cancellationToken);
+            var updatedResource = success ? currentResource : null;
+            
+            if (updatedResource != null)
+            {
+                _logger.LogInformation("✅ SCIMv2PadService.ModifyAsync completed successfully");
+                return updatedResource;
+            }
+            else
+            {
+                _logger.LogError("❌ UpdateAsync returned null - modify failed");
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 SCIMv2PadService.ModifyAsync failed: {ExceptionType}: {ExceptionMessage}", 
+                ex.GetType().Name, ex.Message);
+            throw;
+        }
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// UpdateAsync method that the SCIM framework expects
+    /// Handles JSON deserialization and calls the base Update method
+    /// </summary>
+    public async Task<Pad> UpdateAsync(string id, string json, CancellationToken cancellationToken)
     {
-        var result = await _padRepository.DeletePadAsync(id, cancellationToken);
-        return result > 0;
+        _logger.LogInformation("🎬 SCIMv2PadService.UpdateAsync called with ID: {Id}, JSON: {Json}", id, json);
+        
+        try
+        {
+            _logger.LogInformation("🔄 Deserializing JSON to Pad...");
+            
+            // Deserialize JSON to Pad object
+            var pad = System.Text.Json.JsonSerializer.Deserialize<Pad>(json, new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                PropertyNameCaseInsensitive = true
+            });
+            
+            if (pad == null)
+            {
+                throw new ArgumentException("Failed to deserialize JSON to Pad object");
+            }
+            
+            _logger.LogInformation("✅ JSON deserialized successfully: Name='{Name}', Active={Active}", pad.Name, pad.Active);
+            
+            // Call the base Update method
+            var success = await base.Update(Guid.Parse(id), pad, new Newtonsoft.Json.Linq.JArray(), cancellationToken);
+            
+            if (success)
+            {
+                _logger.LogInformation("✅ SCIMv2PadService.UpdateAsync completed successfully");
+                return pad;
+            }
+            else
+            {
+                throw new InvalidOperationException("Failed to update pad");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 SCIMv2PadService.UpdateAsync failed: {ExceptionType}: {ExceptionMessage}", 
+                ex.GetType().Name, ex.Message);
+            throw;
+        }
     }
+
 }
+
+
+

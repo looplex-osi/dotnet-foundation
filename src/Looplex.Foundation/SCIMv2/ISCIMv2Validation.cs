@@ -28,13 +28,5 @@ public interface ISCIMv2Validation
     /// <returns>Validation result with error message if invalid</returns>
     (bool IsValid, string ErrorMessage) ValidateCollection(string collectionName);
 
-    /// <summary>
-    /// Creates a mock resource for testing purposes
-    /// This should be replaced with proper resource creation in production
-    /// </summary>
-    /// <param name="collectionName">Collection name</param>
-    /// <param name="id">Resource ID</param>
-    /// <returns>Mock resource</returns>
-    IResource CreateMockResource(string collectionName, string id);
 
 }
