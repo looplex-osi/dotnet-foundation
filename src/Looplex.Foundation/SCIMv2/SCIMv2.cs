@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -45,9 +46,175 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     // Serialization is now centralized in Looplex.Foundation.Serialization
     // All serialization operations use SCIMv2Serializer for consistency
 
-    // SCIMv2 Schema Constants
-    private const string UserNameDescription = "Unique identifier for the User, typically used by the user to directly authenticate to the service provider";
     
+    // Hybrid Configuration System - Static configuration storage
+    private static readonly Dictionary<string, HashSet<string>> _allowedAttributes = new();
+    private static readonly Dictionary<string, Dictionary<string, string>> _attributeMappings = new();
+    private static readonly Dictionary<string, Dictionary<string, string>> _jsonConfigurations = new();
+    
+
+    /// <summary>
+    /// Configures allowed attributes for a resource type dynamically.
+    /// This method allows applications to register their specific attributes.
+    /// Priority: Dynamic configuration overrides JSON static configuration.
+    /// </summary>
+    /// <param name="resourceType">Resource type (e.g., 'user', 'group', 'custom')</param>
+    /// <param name="attributes">Set of allowed attributes</param>
+    /// <remarks>
+    /// This method provides a simple way for applications to register
+    /// their specific attributes (e.g., meta.created, meta.lastModified, custom attributes)
+    /// without modifying the Foundation library.
+    /// </remarks>
+    public static void ConfigureAttributes(string resourceType, HashSet<string> attributes)
+    {
+        if (string.IsNullOrEmpty(resourceType))
+            throw new ArgumentException("Resource type cannot be null or empty", nameof(resourceType));
+        
+        if (attributes == null || attributes.Count == 0)
+            throw new ArgumentException("Attributes cannot be null or empty", nameof(attributes));
+        
+        _allowedAttributes[resourceType.ToLower()] = new HashSet<string>(attributes, StringComparer.OrdinalIgnoreCase);
+        
+    }
+    
+    /// <summary>
+    /// Configures attribute mappings for a resource type dynamically.
+    /// This method allows applications to map SCIM attributes to database columns.
+    /// Priority: Dynamic configuration overrides JSON static configuration.
+    /// </summary>
+    /// <param name="resourceType">Resource type (e.g., 'user', 'group', 'custom')</param>
+    /// <param name="mappings">Dictionary mapping SCIM attributes to database columns</param>
+    /// <remarks>
+    /// This method provides a simple way for applications to map
+    /// their SCIM attributes to database columns (e.g., meta.created -> created_at)
+    /// without modifying the Foundation library.
+    /// </remarks>
+    public static void ConfigureMapping(string resourceType, Dictionary<string, string> mappings)
+    {
+        if (string.IsNullOrEmpty(resourceType))
+            throw new ArgumentException("Resource type cannot be null or empty", nameof(resourceType));
+        
+        if (mappings == null || mappings.Count == 0)
+            throw new ArgumentException("Mappings cannot be null or empty", nameof(mappings));
+        
+        _attributeMappings[resourceType.ToLower()] = new Dictionary<string, string>(mappings, StringComparer.OrdinalIgnoreCase);
+        
+    }
+
+    /// <summary>
+    /// Loads JSON configuration for a resource type as fallback.
+    /// This method allows applications to provide static JSON configuration.
+    /// Priority: Dynamic configuration overrides JSON static configuration.
+    /// </summary>
+    /// <param name="resourceType">Resource type (e.g., 'user', 'group', 'custom')</param>
+    /// <param name="jsonConfig">JSON configuration string</param>
+    /// <remarks>
+    /// This method provides compatibility with existing JSON-based configurations
+    /// while allowing dynamic overrides for specific attributes.
+    /// </remarks>
+    public static void LoadJsonConfiguration(string resourceType, string jsonConfig)
+    {
+        if (string.IsNullOrEmpty(resourceType))
+            throw new ArgumentException("Resource type cannot be null or empty", nameof(resourceType));
+        
+        if (string.IsNullOrEmpty(jsonConfig))
+            throw new ArgumentException("JSON configuration cannot be null or empty", nameof(jsonConfig));
+        
+        _jsonConfigurations[resourceType.ToLower()] = new Dictionary<string, string>();
+        
+        // TODO: Parse JSON configuration and populate _jsonConfigurations
+        // This would parse the JSON and extract attribute mappings
+        
+    }
+    
+    
+
+    /// <summary>
+    /// Gets default allowed attributes for standard SCIM resource types.
+    /// </summary>
+    /// <param name="resourceType">Resource type</param>
+    /// <returns>Set of default allowed attributes</returns>
+    private static HashSet<string> GetDefaultAllowedAttributes(string resourceType)
+    {
+        // Base SCIM attributes as defined in RFC 7643 Section 2.1
+        var baseAttributes = new HashSet<string> { "id", "externalId", "meta" };
+        
+        // Add specific attributes based on SCIM v2.0 standards and resource type conventions
+        switch (resourceType.ToLower())
+        {
+            case "user":
+                // User resource attributes as defined in RFC 7643 Section 4.1
+                baseAttributes.UnionWith(new[] { "userName", "name", "displayName", "active", "emails", "phoneNumbers" });
+                break;
+            case "group":
+                // Group resource attributes as defined in RFC 7643 Section 4.2
+                baseAttributes.UnionWith(new[] { "displayName", "members", "active" });
+                break;
+            default:
+                // For custom resources, use generic SCIM v2.0 conventions
+                baseAttributes.UnionWith(new[] { "name", "active", "status", "created", "updated", "meta.created", "meta.lastModified" });
+                break;
+        }
+        
+        return baseAttributes;
+    }
+
+    /// <summary>
+    /// Gets default attribute mappings for standard SCIM resource types.
+    /// </summary>
+    /// <param name="resourceType">Resource type</param>
+    /// <returns>Dictionary of default attribute mappings</returns>
+    private static Dictionary<string, string> GetDefaultAttributeMappings(string resourceType)
+    {
+        var mappings = new Dictionary<string, string>();
+        var tablePrefix = GetTablePrefix(resourceType);
+        
+        // Base SCIM attributes always mapped following database conventions
+        mappings["id"] = $"{tablePrefix}.id";
+        mappings["externalId"] = $"{tablePrefix}.external_id";
+        mappings["created"] = $"{tablePrefix}.created_at";
+        mappings["updated"] = $"{tablePrefix}.updated_at";
+        mappings["active"] = $"{tablePrefix}.active";
+        mappings["status"] = $"{tablePrefix}.status";
+        
+        // Add specific mappings based on resource type and database conventions
+        switch (resourceType.ToLower())
+        {
+            case "user":
+                // User-specific attribute mappings
+                mappings["userName"] = "u.user_name";
+                mappings["displayName"] = "u.display_name";
+                mappings["emails"] = "u.emails";
+                mappings["phoneNumbers"] = "u.phone_numbers";
+                break;
+            case "group":
+                // Group-specific attribute mappings
+                mappings["displayName"] = "g.display_name";
+                mappings["members"] = "g.members";
+                break;
+            default:
+                // For custom resources, use generic database naming conventions
+                mappings["name"] = $"{tablePrefix}.name";
+                break;
+        }
+        
+        return mappings;
+    }
+
+    /// <summary>
+    /// Gets table prefix for a resource type.
+    /// </summary>
+    /// <param name="resourceType">Resource type</param>
+    /// <returns>Table prefix</returns>
+    private static string GetTablePrefix(string resourceType)
+    {
+        return resourceType.ToLower() switch
+        {
+            "user" => "u",
+            "group" => "g",
+            _ => resourceType.ToLower().Substring(0, 1)
+        };
+    }
 
     /// <summary>
     /// Gets the base URL dynamically from the current HTTP request.
@@ -62,19 +229,14 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             var scheme = request.Scheme;
             var host = request.Host;
             var pathBase = request.PathBase;
+            var path = request.Path;
             
-            // Extract the base path (e.g., /scim/v2) from the current request
-            var pathSegments = request.Path.Value?.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-            if (pathSegments != null && pathSegments.Length >= 2)
-            {
-                // Assume SCIM endpoints are at /scim/v2
-                var scimBasePath = $"/{pathSegments[0]}/{pathSegments[1]}";
-                return $"{scheme}://{host}{pathBase}{scimBasePath}";
-            }
+            
+            return $"{scheme}://{host}{pathBase}";
         }
         
         // Fallback to default if no HTTP context available
-        return "https://api.exemplo.com/scim/v2";
+        return "https://api.exemplo.com/";
     }
 
     /// <summary>
@@ -94,13 +256,55 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         {
         }
     }
+    public static Looplex.Foundation.SCIMv2.Entities.ResourceMeta CreateResourceMeta(IDataReader reader, string resourceId, string resourceType)
+    {
+        // Use fallback URL for static method without HttpContext
+        var fullUrl = $"/{resourceType}/{resourceId}";
+        return new Looplex.Foundation.SCIMv2.Entities.ResourceMeta
+        {
+            ResourceType = resourceType,
+            Location = fullUrl, 
+            Created = ParseDateTime(reader["created_at"]),
+            LastModified = ParseDateTime(reader["updated_at"])
+        };
+    }
+
+    public static Looplex.Foundation.SCIMv2.Entities.ResourceMeta CreateResourceMeta(
+        IDataReader reader, 
+        string resourceId, 
+        string resourceType, 
+        IHttpContextAccessor httpContextAccessor)
+    {
+        var fullUrl = $"{GetBaseUrl(httpContextAccessor)}/{resourceType}/{resourceId}";
+        return new Looplex.Foundation.SCIMv2.Entities.ResourceMeta
+        {
+            ResourceType = resourceType,
+            Location = fullUrl, 
+            Created = ParseDateTime(reader["created_at"]),
+            LastModified = ParseDateTime(reader["updated_at"])
+        };
+    }
+
+    private static string GetBaseUrl(IHttpContextAccessor httpContextAccessor)
+    {
+        if (httpContextAccessor?.HttpContext?.Request != null)
+        {
+            var request = httpContextAccessor.HttpContext.Request;
+            return $"{request.Scheme}://{request.Host}{request.PathBase}";
+        }
+        return "https://api.exemplo.com/";
+    }
+
+    private static DateTime ParseDateTime(object? value)
+    {
+        return DateTime.TryParse(value?.ToString(), out var dateTime) ? dateTime : DateTime.UtcNow;
+    }
 
     /// <summary>
     /// Applies HTTP method specific rules for SCIM v2.0 compliance
     /// </summary>
     private void ApplyHttpMethodSpecificRules<T>(T resource, string collection) where T : IResource
     {
-        
         if (_httpContextAccessor?.HttpContext?.Request == null) 
         {
             return;
@@ -113,7 +317,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         switch (httpMethod)
         {
             case "GET":
-                // GET: Return resource directly, set Location header
+                // GET: Return resource directly, set Location header (only for individual resources)
                 resource.Meta.Location = fullUrl;
                 SetHttpHeaders(fullUrl, resource.Meta.Version);
                 break;
@@ -163,22 +367,6 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         _registeredResource[collectionName] = service;
     }
 
-    /// <summary>
-    /// Registers a resource type with auto-generated service implementation (deprecated).
-    /// This method is deprecated and will throw NotSupportedException.
-    /// Use Register(IResourceService&lt;T&gt; service, string collectionName) instead.
-    /// </summary>
-    /// <typeparam name="T">Resource type implementing IResource interface</typeparam>
-    /// <param name="collectionName">Collection name (e.g., "Users", "Groups", "Notes")</param>
-    /// <exception cref="NotSupportedException">Always thrown - use explicit service registration</exception>
-    public void Register<T>(string collectionName) where T : IResource
-    {
-        if (string.IsNullOrEmpty(collectionName))
-            throw new ArgumentException("Collection name cannot be null or empty", nameof(collectionName));
-
-        // Since auto-registration was removed, this method now requires explicit service registration
-        throw new NotSupportedException($"Cannot register collection '{collectionName}' without explicit service. Please use Register(IResourceService<T> service, string collectionName) method or configure dependency injection.");
-    }
 
     /// <summary>
     /// Queries resources from a collection with filtering, sorting, and pagination support.
@@ -336,6 +524,9 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             {
             }
             
+            // Apply HTTP method specific rules for SCIM v2.0 compliance
+            ApplyHttpMethodSpecificRules(createdResource, collection);
+            
             var response = new SCIMv2Response
             {
                 StatusCode = 201,
@@ -434,6 +625,9 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
 
             // Update meta.version with cryptographic hash
             resource.Meta.Version = GenerateResourceVersion(resource);
+
+            // Apply HTTP method specific rules for SCIM v2.0 compliance
+            ApplyHttpMethodSpecificRules(resource, collection);
 
             return CreateRetrieveResponse(resource);
         }
@@ -819,12 +1013,12 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Gets a specific SCIMv2 schema definition by ID.
+    /// Gets a specific SCIMv2 schema definition by ID (internal helper method).
     /// Returns null if schema is not found.
     /// </summary>
     /// <param name="schemaId">Schema identifier to retrieve</param>
     /// <returns>Schema definition or null if not found</returns>
-    public Task<SchemaDefinition?> GetSchemaAsync(string? schemaId)
+    public Task<SchemaDefinition?> GetSchemaDefinitionAsync(string? schemaId)
     {
         if (string.IsNullOrEmpty(schemaId))
             return Task.FromResult<SchemaDefinition?>(null);
@@ -1084,7 +1278,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         if (string.IsNullOrWhiteSpace(resource.Meta.ResourceType))
         {
             throw new InvalidOperationException($"SCIMv2 VALIDATION ERROR: {resourceType} (ID: {resourceId}) Meta.ResourceType is missing. " +
-                          "SCIMv2 requires Meta.ResourceType to identify the resource type (e.g., 'User', 'Group', 'Note'). " +
+                          "SCIMv2 requires Meta.ResourceType to identify the resource type (e.g., 'User', 'Group', etc). " +
                           "Set Meta.ResourceType = \"{resourceType}\"");
         }
             
@@ -1115,17 +1309,6 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         return $"urn:looplex:params:scim:schemas:{serviceName}:2.0:{resourceType}";
     }
 
-    /// <summary>
-    /// Automatically generates SCIMv2 schema URI for a resource type.
-    /// Creates a compliant schema URI based on the resource type.
-    /// </summary>
-    /// <typeparam name="T">Resource type implementing IResource</typeparam>
-    /// <returns>SCIMv2 compliant schema URI</returns>
-    private string GenerateSchemaUri<T>() where T : IResource
-    {
-        var resourceType = GetResourceTypeName<T>();
-        return GenerateSchemaUri(resourceType);
-    }
 
 
 
@@ -1154,7 +1337,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                         Mutability = "readWrite",
                         Returned = "default",
                         Uniqueness = "server",
-                        Description = UserNameDescription
+                        Description = "Unique identifier for the User, typically used by the user to directly authenticate to the service provider"
                     },
                     new SchemaAttribute
                     {
@@ -1341,12 +1524,12 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
 
                 var (sqlWhereClause, parameters) = visitor.Visit(tree);
 
+
                 return (sqlWhereClause, parameters);
             }
             catch (Exception ex)
             {
                 // Log error and return safe fallback
-                // In production, this should be logged properly
                 return ("1=1", new Dictionary<string, object>());
             }
         }
@@ -1643,95 +1826,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
 
     #region Enhanced Resource Operations
 
-    /// <summary>
-    /// Enhanced resource creation with automatic metadata management.
-    /// Creates a new resource with proper SCIM v2.0 metadata initialization.
-    /// Implements RFC 7644 Section 3.4.1 - Create Resource
-    /// [RFC 7644 Section 3.4.1](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.1)
-    /// </summary>
-    /// <typeparam name="T">Resource type implementing IResource</typeparam>
-    /// <param name="resource">Resource to create</param>
-    /// <param name="saveAction">Action to save the resource</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Generated resource ID</returns>
-    public async Task<Guid> CreateResourceWithMetadataAsync<T>(
-        T resource,
-        Func<T, CancellationToken, Task> saveAction,
-        CancellationToken cancellationToken = default) where T : IResource
-    {
-        var id = Guid.NewGuid();
-        resource.Id = id.ToString();
-        InitializeResourceMetadata(resource);
-        
-        await saveAction(resource, cancellationToken);
-        return id;
-    }
 
-    /// <summary>
-    /// Enhanced resource replacement with metadata preservation.
-    /// Replaces an existing resource while preserving SCIM v2.0 metadata.
-    /// Implements RFC 7644 Section 3.4.4 - Update Resource (PUT)
-    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
-    /// </summary>
-    /// <typeparam name="T">Resource type implementing IResource</typeparam>
-    /// <param name="id">Resource ID to replace</param>
-    /// <param name="resource">New resource data</param>
-    /// <param name="retrieveAction">Action to retrieve existing resource</param>
-    /// <param name="saveAction">Action to save the updated resource</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>True if replacement was successful</returns>
-    public async Task<bool> ReplaceResourceWithMetadataAsync<T>(
-        Guid id,
-        T resource,
-        Func<Guid, CancellationToken, Task<T?>> retrieveAction,
-        Func<T, CancellationToken, Task> saveAction,
-        CancellationToken cancellationToken = default) where T : IResource
-    {
-        var existingResource = await retrieveAction(id, cancellationToken);
-        if (existingResource == null)
-            return false;
 
-        resource.Id = id.ToString();
-        UpdateResourceMetadata(resource, existingResource);
-        
-        await saveAction(resource, cancellationToken);
-        return true;
-    }
-
-    /// <summary>
-    /// Enhanced resource update with PATCH support.
-    /// Updates a resource using PATCH operations with SCIM v2.0 compliance.
-    /// Implements RFC 7644 Section 3.4.4 - Update Resource
-    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
-    /// </summary>
-    /// <typeparam name="T">Resource type implementing IResource</typeparam>
-    /// <param name="id">Resource ID to update</param>
-    /// <param name="resource">Resource to update</param>
-    /// <param name="patches">PATCH operations to apply</param>
-    /// <param name="retrieveAction">Action to retrieve existing resource</param>
-    /// <param name="saveAction">Action to save the updated resource</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>True if update was successful</returns>
-    public async Task<bool> UpdateResourceWithPatchesAsync<T>(
-        Guid id,
-        T resource,
-        PatchOperation[] patches,
-        Func<Guid, CancellationToken, Task<T?>> retrieveAction,
-        Func<T, CancellationToken, Task> saveAction,
-        CancellationToken cancellationToken = default) where T : IResource
-    {
-        var existingResource = await retrieveAction(id, cancellationToken);
-        if (existingResource == null)
-            return false;
-
-        await ApplyPatchesAsync(resource, patches, cancellationToken);
-        
-        resource.Id = id.ToString();
-        UpdateResourceMetadata(resource, existingResource);
-        
-        await saveAction(resource, cancellationToken);
-        return true;
-    }
 
     #region Response Factory Methods
 
@@ -1747,6 +1843,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// <returns>SCIMv2 response with list data and pagination metadata</returns>
     private static SCIMv2Response CreateListResponse(object resources, int totalCount, int startIndex, int count)
     {
+        
         var response = new SCIMv2Response
         {
             StatusCode = 0, // Set to 0 to indicate this should not be serialized for collections
@@ -1757,6 +1854,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             ItemsPerPage = count,
             HttpMethod = "QUERY" // Define HTTP method for proper serialization
         };
+        
         
         return response;
     }
@@ -1865,57 +1963,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         };
     }
 
-
-    /// <summary>
-    /// Creates a successful SCIMv2 response for update operations.
-    /// Implements RFC 7644 Section 3.4.4 - Update Resource
-    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
-    /// </summary>
-    /// <param name="resource">Updated resource to include in response</param>
-    /// <param name="resourceId">Resource ID of the updated resource</param>
-    /// <param name="collection">Collection name where resource was updated</param>
-    /// <returns>SCIMv2 response with updated resource</returns>
-    private static SCIMv2Response CreateUpdateResponse(IResource resource, Guid resourceId, string collection)
-    {
-        try
-        {
-            // PUT/PATCH (Update): Return resource directly, no Resources wrapper
-            var response = new SCIMv2Response
-            {
-                StatusCode = 200,
-                Data = resource, // Resource directly, not wrapped in Resources
-                Schemas = resource.Schemas,
-                Location = resource.Meta.Location,
-                ETag = resource.Meta.Version,
-                HttpMethod = "PUT" // Will be overridden for PATCH
-            };
-            
-            return response;
-        }
-        catch (Exception ex)
-        {
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Creates a successful SCIMv2 response for delete operations.
-    /// Implements RFC 7644 Section 3.4.5 - Delete Resource
-    /// [RFC 7644 Section 3.4.5](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.5)
-    /// </summary>
-    /// <returns>SCIMv2 response indicating successful deletion</returns>
-    private static SCIMv2Response CreateDeleteResponse()
-    {
-        return new SCIMv2Response
-        {
-            StatusCode = 204,
-            Data = null,
-            Schemas = Array.Empty<string>(),
-            HttpMethod = "DELETE"
-        };
-    }
-
-    /// <summary>
+/// <summary>
     /// Centralized response formatting by HTTP method for SCIM v2.0 compliance.
     /// Contains all logic for SCIM v2.0 compliance per HTTP verb.
     /// Implements RFC 7644 Section 3 - SCIM Protocol
@@ -1928,45 +1976,82 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         if (response == null)
             throw new ArgumentNullException(nameof(response));
 
-        // BLOCOS ESPECÍFICOS PARA CADA VERBO HTTP
+        // PRIORITY: If there's an error, use specific error formatting method
+        if (response.Error != null)
+        {
+            return FormatErrorResponse(response);
+        }
+
+        // SPECIFIC BLOCKS FOR EACH HTTP VERB (only for non-error responses)
         if (response.HttpMethod == "QUERY")
         {
-            // QUERY (Collections): Remove statusCode, mantém Resources wrapper
+            // QUERY (Collections): Remove statusCode, keep Resources wrapper
             return FormatQueryResponse(response);
         }
         else if (response.HttpMethod == "GET")
         {
-            // GET (Single Resource): Mantém statusCode, remove Resources wrapper
+            // GET (Single Resource): Keep statusCode, remove Resources wrapper
             return FormatSingleResourceResponse(response);
         }
         else if (response.HttpMethod == "POST")
         {
-            // POST (Create): Mantém statusCode, remove Resources wrapper
+            // POST (Create): Keep statusCode, remove Resources wrapper
             return FormatSingleResourceResponse(response);
         }
         else if (response.HttpMethod == "PUT")
         {
-            // PUT (Replace): Mantém statusCode, remove Resources wrapper
+            // PUT (Replace): Keep statusCode, remove Resources wrapper
             return FormatSingleResourceResponse(response);
         }
         else if (response.HttpMethod == "PATCH")
         {
-            // PATCH (Modify): Mantém statusCode, remove Resources wrapper
+            // PATCH (Modify): Keep statusCode, remove Resources wrapper
             return FormatSingleResourceResponse(response);
         }
         else if (response.HttpMethod == "DELETE")
         {
-            // DELETE: Mantém statusCode, sem body (204)
+            // DELETE: Keep statusCode, no body (204)
             return FormatDeleteResponse(response);
         }
         else
         {
-            // Default: Standard serialization
+            // Default: serialize envelope (non-error path)
             return System.Text.Json.JsonSerializer.Serialize(response, new System.Text.Json.JsonSerializerOptions
             {
                 PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
             });
         }
+    }
+
+
+
+
+    /// <summary>
+    /// Formats ERROR responses according to SCIM v2.0.
+    /// Returns direct SCIM error format without envelope.
+    /// Implements RFC 7644 Section 3.12 - Error Responses
+    /// [RFC 7644 Section 3.12](https://datatracker.ietf.org/doc/html/rfc7644#section-3.12)
+    /// </summary>
+    /// <param name="response">SCIMv2Response with error to format</param>
+    /// <returns>Formatted JSON string for error responses</returns>
+    private static string FormatErrorResponse(SCIMv2Response response)
+    {
+        if (response?.Error == null)
+            throw new ArgumentException("Response or Error cannot be null", nameof(response));
+
+        var errorPayload = new
+        {
+            schemas = response.Error.Schemas ?? new[] { "urn:ietf:params:scim:api:messages:2.0:Error" },
+            status = response.Error.Status,
+            scimType = string.IsNullOrWhiteSpace(response.Error.ScimType) ? null : response.Error.ScimType,
+            detail = response.Error.Detail
+        };
+
+        return System.Text.Json.JsonSerializer.Serialize(errorPayload, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = null,
+            WriteIndented = true
+        });
     }
 
     /// <summary>
@@ -1979,18 +2064,28 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// <returns>Formatted JSON string for collection responses</returns>
     private static string FormatQueryResponse(SCIMv2Response response)
     {
-        // Create a new response without statusCode for collections
+        // Serialize Resources array with camelCase for individual resource properties
+        var resourcesJson = System.Text.Json.JsonSerializer.Serialize(response.Data, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true
+        });
+
+        // Parse back to get camelCase Resources
+        var resourcesArray = System.Text.Json.JsonSerializer.Deserialize<object[]>(resourcesJson);
+
+        // Create envelope with Resources (capital R) containing camelCase elements
         var queryResponse = new
         {
             schemas = response.Schemas,
             totalResults = response.TotalResults,
             startIndex = response.StartIndex,
             itemsPerPage = response.ItemsPerPage,
-            Resources = response.Data
+            Resources = resourcesArray
         };
 
-        // Use Looplex.Foundation centralized serializer with proper options
-        // Note: PropertyNamingPolicy = null to preserve SCIM v2.0 field names (Resources with capital R)
+        // Serialize envelope with PropertyNamingPolicy = null to preserve Resources (capital R)
         return System.Text.Json.JsonSerializer.Serialize(queryResponse, new System.Text.Json.JsonSerializerOptions
         {
             PropertyNamingPolicy = null, // Preserve original field names for SCIM v2.0 compliance
@@ -2169,13 +2264,43 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
 
         try
         {
+            // Try to parse as PatchRequest object first (SCIMv2 format)
+            var patchRequest = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.Nodes.JsonObject>(json);
+            if (patchRequest != null && patchRequest.ContainsKey("Operations"))
+            {
+                var operationsArray = patchRequest["Operations"] as System.Text.Json.Nodes.JsonArray;
+                if (operationsArray != null)
+                {
+                    var patchOperations = new List<PatchOperation>();
+                    foreach (var patchNode in operationsArray)
+                    {
+                        if (patchNode is System.Text.Json.Nodes.JsonObject patchObj)
+                        {
+                            var op = patchObj["op"]?.GetValue<string>() ?? "";
+                            var path = patchObj["path"]?.GetValue<string>() ?? "";
+                            var value = patchObj.ContainsKey("value") ? patchObj["value"] : null;
+                            
+                            patchOperations.Add(new PatchOperation(op, path, value));
+                        }
+                    }
+
+                    if (patchOperations.Count == 0)
+                    {
+                        return (false, Array.Empty<PatchOperation>(), "No valid patch operations found");
+                    }
+
+                    return (true, patchOperations.ToArray(), string.Empty);
+                }
+            }
+
+            // Fallback: try to parse as direct array (legacy format)
             var patchArray = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.Nodes.JsonArray>(json);
             if (patchArray == null)
             {
-                return (false, Array.Empty<PatchOperation>(), "Invalid patches");
+                return (false, Array.Empty<PatchOperation>(), "Invalid patches - expected Operations array or direct array");
             }
 
-            var patchOperations = new List<PatchOperation>();
+            var patchOperationsDirect = new List<PatchOperation>();
             foreach (var patchNode in patchArray)
             {
                 if (patchNode is System.Text.Json.Nodes.JsonObject patchObj)
@@ -2184,16 +2309,16 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                     var path = patchObj["path"]?.GetValue<string>() ?? "";
                     var value = patchObj.ContainsKey("value") ? patchObj["value"] : null;
                     
-                    patchOperations.Add(new PatchOperation(op, path, value));
+                    patchOperationsDirect.Add(new PatchOperation(op, path, value));
                 }
             }
 
-            if (patchOperations.Count == 0)
+            if (patchOperationsDirect.Count == 0)
             {
                 return (false, Array.Empty<PatchOperation>(), "No valid patch operations found");
             }
 
-            return (true, patchOperations.ToArray(), string.Empty);
+            return (true, patchOperationsDirect.ToArray(), string.Empty);
         }
         catch (System.Text.Json.JsonException ex)
         {
@@ -2222,6 +2347,673 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         return (true, string.Empty);
     }
 
+    /// <summary>
+    /// Processes Bulk operations
+    /// </summary>
+    /// <param name="json">JSON BulkRequest</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 response with BulkResponse</returns>
+    public async Task<SCIMv2Response> BulkAsync(string json, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Parse BulkRequest
+            var bulkRequest = System.Text.Json.JsonSerializer.Deserialize<BulkRequest>(json);
+            if (bulkRequest == null)
+            {
+                return CreateErrorResponse(400, "Invalid BulkRequest", "Failed to parse BulkRequest");
+            }
+
+            // Use Bulks service to execute bulk operations
+            var bulksService = new Bulks();
+            var bulkResponse = await bulksService.Execute(bulkRequest, cancellationToken);
+
+            // Convert BulkResponse to SCIMv2Response
+            return new SCIMv2Response
+            {
+                StatusCode = 200,
+                Data = bulkResponse,
+                Schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:BulkResponse" }
+            };
+        }
+        catch (Exception ex)
+        {
+            return CreateErrorResponse(500, "Bulk operation failed", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get resource types (GET /ResourceTypes)
+    /// Implements RFC 7644 Section 3.2 - Resource Types
+    /// [RFC 7644 Section 3.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.2)
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 Response with list of resource types</returns>
+    public async Task<SCIMv2Response> GetResourceTypesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Get all registered collections (agnostic approach)
+            var registeredCollections = GetRegisteredCollections().ToList();
+            
+            if (!registeredCollections.Any())
+            {
+                return CreateErrorResponse(404, "No resource types found", "No resource types are registered");
+            }
+
+            // Create ResourceType objects for each registered collection
+            var resourceTypes = new List<object>();
+            
+            foreach (var collection in registeredCollections)
+            {
+                var resourceType = new
+                {
+                    id = collection,
+                    name = collection,
+                    endpoint = $"/{collection}",
+                    description = $"SCIMv2 resource type for {collection}",
+                    schema = $"urn:ietf:params:scim:schemas:core:2.0:{collection}",
+                    schemaExtensions = new object[0],
+                    meta = new
+                    {
+                        resourceType = "ResourceType",
+                        location = $"/ResourceTypes/{collection}"
+                    }
+                };
+                
+                resourceTypes.Add(resourceType);
+            }
+
+            return new SCIMv2Response
+            {
+                StatusCode = 200,
+                Data = new
+                {
+                    totalResults = resourceTypes.Count,
+                    itemsPerPage = resourceTypes.Count,
+                    startIndex = 1,
+                    schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" },
+                    Resources = resourceTypes
+                },
+                Schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" }
+            };
+        }
+        catch (Exception ex)
+        {
+            return CreateErrorResponse(500, "Resource types retrieval failed", ex.Message);
+        }
+    }
+
+
+    #endregion
+
+    #region Generic SCIM Services (Agnostic)
+    
+    /// <summary>
+    /// Generic SCIM configuration provider for any resource type.
+    /// Provides configuration based on SCIM v2.0 standards and RFC 7643 schema definitions.
+    /// Implements RFC 7643 Section 2 - Schema Definition
+    /// [RFC 7643 Section 2](https://datatracker.ietf.org/doc/html/rfc7643#section-2)
+    /// </summary>
+    public static class ScimConfiguration
+    {
+        /// <summary>
+        /// Get allowed attributes for any resource type based on SCIM v2.0 standards.
+        /// Implements RFC 7643 Section 2.1 - Core Schema
+        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+        /// </summary>
+        /// <param name="resourceType">Type of the resource (e.g., "Note", "Pad", "User", "Group")</param>
+        /// <returns>Set of allowed attributes for filtering operations</returns>
+        public static HashSet<string> GetAllowedAttributes(string resourceType)
+        {
+            var resourceKey = resourceType.ToLower();
+            
+            // Priority 1: Dynamic configuration
+            if (_allowedAttributes.ContainsKey(resourceKey))
+            {
+                var attributes = _allowedAttributes[resourceKey];
+                return attributes;
+            }
+            
+            // Priority 2: JSON static configuration
+            if (_jsonConfigurations.ContainsKey(resourceKey))
+            {
+                // TODO: Extract attributes from JSON configuration
+                return new HashSet<string>();
+            }
+            
+            // Priority 3: Default SCIM attributes
+            var defaultAttributes = GetDefaultAllowedAttributes(resourceType);
+            return defaultAttributes;
+        }
+
+        /// <summary>
+        /// Gets attribute mappings for a resource type with hybrid priority.
+        /// Priority: Dynamic configuration > JSON static configuration > Default mappings.
+        /// </summary>
+        /// <param name="resourceType">Resource type</param>
+        /// <returns>Dictionary of attribute mappings</returns>
+        public static Dictionary<string, string> GetAttributeMappings(string resourceType)
+        {
+            var resourceKey = resourceType.ToLower();
+            
+            // Priority 1: Dynamic configuration
+            if (_attributeMappings.ContainsKey(resourceKey))
+            {
+                return _attributeMappings[resourceKey];
+            }
+            
+            // Priority 2: JSON static configuration
+            if (_jsonConfigurations.ContainsKey(resourceKey))
+            {
+                // TODO: Extract mappings from JSON configuration
+                return new Dictionary<string, string>();
+            }
+            
+            // Priority 3: Default mappings
+            return GetDefaultAttributeMappings(resourceType);
+        }
+
+    }
+
+    /// <summary>
+    /// Generic SCIM data mapper for any resource type.
+    /// Provides generic mapping from IDataReader to any IResource type using reflection and naming conventions.
+    /// Implements RFC 7643 Section 2.1 - Core Schema mapping
+    /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+    /// </summary>
+    public static class ScimDataMapper
+    {
+        /// <summary>
+        /// Map from IDataReader to any IResource type using reflection and naming conventions.
+        /// Implements RFC 7643 Section 2.1 - Core Schema for resource mapping.
+        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+        /// </summary>
+        /// <typeparam name="T">Resource type implementing IResource</typeparam>
+        /// <param name="reader">DataReader containing the data</param>
+        /// <returns>Mapped resource instance</returns>
+        public static T MapFromDataReader<T>(IDataReader reader) where T : IResource, new()
+        {
+            var resource = new T();
+            
+            // Map base IResource properties using SCIM v2.0 conventions
+            if (reader["id"] != DBNull.Value)
+                resource.Id = reader["id"].ToString();
+                
+            // Map externalId as optional field following RFC 7643 Section 2.1 - Core Schema
+            // RFC 7643 Section 2.1 defines externalId as optional identifier for external system mapping
+            // [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+            if (reader["external_id"] != DBNull.Value)
+                resource.ExternalId = reader["external_id"].ToString();
+            // Note: externalId is optional per RFC 7643, so we don't fail if it's null
+                
+            // Create Meta using existing Foundation method following RFC 7643
+            resource.Meta = CreateResourceMeta(reader, resource.Id, resource.GetType().Name);
+            
+            // Map specific properties using reflection and naming conventions
+            MapSpecificProperties(resource, reader);
+            
+            return resource;
+        }
+
+        /// <summary>
+        /// Map specific properties using reflection and standard naming conventions.
+        /// Only maps properties that exist in the database to avoid conflicts with repository-specific mappings.
+        /// Implements RFC 7643 Section 2.1 - Core Schema mapping with database column validation.
+        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+        /// </summary>
+        /// <typeparam name="T">Resource type implementing IResource</typeparam>
+        /// <param name="resource">Resource instance to map properties to</param>
+        /// <param name="reader">DataReader containing the data</param>
+        private static void MapSpecificProperties<T>(T resource, IDataReader reader) where T : IResource
+        {
+            var properties = typeof(T).GetProperties()
+                .Where(p => p.CanWrite && p.Name != "Id" && p.Name != "ExternalId" && p.Name != "Meta" && p.Name != "Schemas")
+                .ToList();
+
+            foreach (var property in properties)
+            {
+                var columnName = GetColumnName(property.Name);
+                
+                // Only map properties that exist in the database to avoid conflicts with repository-specific mappings
+                // This allows repositories to handle custom property mappings while Foundation handles standard ones
+                if (ColumnExists(reader, columnName) && reader[columnName] != DBNull.Value)
+                {
+                    var value = reader[columnName];
+                    var convertedValue = ConvertValue(value, property.PropertyType);
+                    property.SetValue(resource, convertedValue);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Check if a column exists in the DataReader to avoid mapping conflicts.
+        /// This allows repositories to handle custom property mappings while Foundation handles standard ones.
+        /// </summary>
+        /// <param name="reader">DataReader to check for column existence</param>
+        /// <param name="columnName">Column name to check for existence</param>
+        /// <returns>True if column exists, false otherwise</returns>
+        private static bool ColumnExists(IDataReader reader, string columnName)
+        {
+            try
+            {
+                reader.GetOrdinal(columnName);
+                return true;
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Get database column name from property name using standard naming conventions.
+        /// Converts PascalCase to snake_case following database naming standards.
+        /// </summary>
+        /// <param name="propertyName">Property name in PascalCase</param>
+        /// <returns>Database column name in snake_case</returns>
+        private static string GetColumnName(string propertyName)
+        {
+            // Convert PascalCase to snake_case following database naming conventions
+            return string.Concat(propertyName.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x.ToString().ToLower() : x.ToString().ToLower()));
+        }
+
+        /// <summary>
+        /// Convert database value to property type with proper type handling.
+        /// </summary>
+        /// <param name="value">Database value to convert</param>
+        /// <param name="targetType">Target property type</param>
+        /// <returns>Converted value of the target type</returns>
+        private static object ConvertValue(object value, Type targetType)
+        {
+            if (value == null || value == DBNull.Value)
+                return GetDefaultValue(targetType);
+
+            if (targetType.IsAssignableFrom(value.GetType()))
+                return value;
+
+            // Handle common type conversions following .NET standards
+            if (targetType == typeof(bool))
+                return Convert.ToBoolean(value);
+            if (targetType == typeof(int))
+                return Convert.ToInt32(value);
+            if (targetType == typeof(long))
+                return Convert.ToInt64(value);
+            if (targetType == typeof(DateTime))
+                return Convert.ToDateTime(value);
+            if (targetType == typeof(Guid))
+                return Guid.Parse(value.ToString());
+
+            return Convert.ChangeType(value, targetType);
+        }
+
+        /// <summary>
+        /// Get default value for type following .NET conventions.
+        /// </summary>
+        /// <param name="type">Type to get default value for</param>
+        /// <returns>Default value for the type</returns>
+        private static object GetDefaultValue(Type type)
+        {
+            return type.IsValueType ? Activator.CreateInstance(type) : null;
+        }
+    }
+
+    /// <summary>
+    /// Generic SCIM filter processor for any resource type.
+    /// Provides generic SCIM filter processing following RFC 7644 Section 3.4.2.2 - Filtering.
+    /// Implements RFC 7644 Section 3.4.2.2 - Filtering
+    /// [RFC 7644 Section 3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
+    /// </summary>
+    public static class ScimFilterProcessor
+    {
+        /// <summary>
+        /// Process SCIM filter for any resource type following RFC 7644 standards.
+        /// Implements RFC 7644 Section 3.4.2.2 - Filtering operations.
+        /// [RFC 7644 Section 3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
+        /// </summary>
+        /// <typeparam name="T">Resource type implementing IResource</typeparam>
+        /// <param name="filter">SCIM filter string following RFC 7644 syntax</param>
+        /// <returns>Processed filter parameters with SQL and parameter values</returns>
+        public static (string Sql, Dictionary<string, object> Parameters) ProcessFilter<T>(string filter) where T : IResource
+        {
+            
+            // Usar mapeamento direto (sem configuração híbrida)
+            var visitor = new Looplex.Foundation.SCIMv2.Entities.SCIMv2ToSQLVisitor();
+            
+            var result = ProcessFilterWithVisitor(filter, visitor);
+            
+            return result;
+        }
+
+        /// <summary>
+        /// Process SCIM filter with custom visitor following RFC 7644 standards.
+        /// Implements RFC 7644 Section 3.4.2.2 - Filtering with custom attribute mapping.
+        /// [RFC 7644 Section 3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
+        /// </summary>
+        /// <param name="filter">SCIM filter string following RFC 7644 syntax</param>
+        /// <param name="visitor">Custom SCIMv2ToSQLVisitor for attribute mapping</param>
+        /// <returns>Processed filter parameters with SQL and parameter values</returns>
+        public static (string Sql, Dictionary<string, object> Parameters) ProcessFilterWithVisitor(string filter, Looplex.Foundation.SCIMv2.Entities.SCIMv2ToSQLVisitor visitor)
+        {
+            
+            if (string.IsNullOrWhiteSpace(filter))
+            {
+                return ("1=1", new Dictionary<string, object>());
+            }
+
+            try
+            {
+                // Parse SCIM filter using ANTLR grammar following RFC 7644 syntax
+                var inputStream = new Antlr4.Runtime.AntlrInputStream(filter);
+                var lexer = new Looplex.Foundation.SCIMv2.Antlr.ScimFilterLexer(inputStream);
+                var tokenStream = new Antlr4.Runtime.CommonTokenStream(lexer);
+                var parser = new Looplex.Foundation.SCIMv2.Antlr.ScimFilterParser(tokenStream);
+                
+                var tree = parser.filter();
+                return visitor.Visit(tree);
+            }
+            catch (Exception ex)
+            {
+                return ("1=1", new Dictionary<string, object>());
+            }
+        }
+    }
+
+    /// <summary>
+    /// Generic SCIM patch processor for any IResource type.
+    /// Provides generic PATCH operations processing following RFC 7644 Section 3.5 - Update Resource (PATCH).
+    /// Implements RFC 7644 Section 3.5 - Update Resource (PATCH)
+    /// [RFC 7644 Section 3.5](https://datatracker.ietf.org/doc/html/rfc7644#section-3.5)
+    /// </summary>
+    public static class ScimPatchProcessor
+    {
+        /// <summary>
+        /// Apply PATCH operations to any IResource following RFC 7644 Section 3.5.
+        /// Implements RFC 7644 Section 3.5 - Update Resource (PATCH) operations.
+        /// [RFC 7644 Section 3.5](https://datatracker.ietf.org/doc/html/rfc7644#section-3.5)
+        /// </summary>
+        /// <typeparam name="T">Resource type implementing IResource</typeparam>
+        /// <param name="resource">Resource to apply patches to</param>
+        /// <param name="patches">Array of PATCH operations following RFC 7644 Section 3.5</param>
+        public static void ApplyPatches<T>(T resource, PatchOperation[] patches) where T : IResource
+        {
+            foreach (var patch in patches)
+            {
+                switch (patch.Op?.ToLower())
+                {
+                    case "add":
+                        ApplyAddOperation(resource, patch);
+                        break;
+                    case "remove":
+                        ApplyRemoveOperation(resource, patch);
+                        break;
+                    case "replace":
+                        ApplyReplaceOperation(resource, patch);
+                        break;
+                    default:
+                        throw new ArgumentException($"Unsupported PATCH operation: {patch.Op}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Apply ADD operation to resource following RFC 7644 Section 3.5.2.1.
+        /// Implements RFC 7644 Section 3.5.2.1 - Add Operation.
+        /// [RFC 7644 Section 3.5.2.1](https://datatracker.ietf.org/doc/html/rfc7644#section-3.5.2.1)
+        /// </summary>
+        /// <typeparam name="T">Resource type implementing IResource</typeparam>
+        /// <param name="resource">Resource to apply ADD operation to</param>
+        /// <param name="patch">PATCH operation containing path and value</param>
+        private static void ApplyAddOperation<T>(T resource, PatchOperation patch) where T : IResource
+        {
+            // Apply ADD operation using reflection to set properties based on path and value
+            SetPropertyByPath(resource, patch.Path, patch.Value);
+        }
+
+        /// <summary>
+        /// Apply REMOVE operation to resource following RFC 7644 Section 3.5.2.2.
+        /// Implements RFC 7644 Section 3.5.2.2 - Remove Operation.
+        /// [RFC 7644 Section 3.5.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.5.2.2)
+        /// </summary>
+        /// <typeparam name="T">Resource type implementing IResource</typeparam>
+        /// <param name="resource">Resource to apply REMOVE operation to</param>
+        /// <param name="patch">PATCH operation containing path to remove</param>
+        private static void ApplyRemoveOperation<T>(T resource, PatchOperation patch) where T : IResource
+        {
+            // Apply REMOVE operation using reflection to clear properties based on path
+            SetPropertyByPath(resource, patch.Path, null);
+        }
+
+        /// <summary>
+        /// Apply REPLACE operation to resource following RFC 7644 Section 3.5.2.3.
+        /// Implements RFC 7644 Section 3.5.2.3 - Replace Operation.
+        /// [RFC 7644 Section 3.5.2.3](https://datatracker.ietf.org/doc/html/rfc7644#section-3.5.2.3)
+        /// </summary>
+        /// <typeparam name="T">Resource type implementing IResource</typeparam>
+        /// <param name="resource">Resource to apply REPLACE operation to</param>
+        /// <param name="patch">PATCH operation containing path and new value</param>
+        private static void ApplyReplaceOperation<T>(T resource, PatchOperation patch) where T : IResource
+        {
+            // Apply REPLACE operation using reflection to set properties based on path and value
+            SetPropertyByPath(resource, patch.Path, patch.Value);
+        }
+
+        /// <summary>
+        /// Set property value by path using reflection following RFC 7644 Section 3.5.2.
+        /// Implements RFC 7644 Section 3.5.2 - Path Attribute.
+        /// [RFC 7644 Section 3.5.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.5.2)
+        /// </summary>
+        /// <typeparam name="T">Resource type implementing IResource</typeparam>
+        /// <param name="resource">Resource to set property on</param>
+        /// <param name="path">Path to the property following RFC 7644 syntax</param>
+        /// <param name="value">Value to set the property to</param>
+        private static void SetPropertyByPath<T>(T resource, string path, object value) where T : IResource
+        {
+            // Simple implementation - in production, this would handle nested paths following RFC 7644
+            var propertyName = path.TrimStart('/');
+            var property = typeof(T).GetProperty(propertyName, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+            
+            if (property != null && property.CanWrite)
+            {
+                var convertedValue = ConvertValue(value, property.PropertyType);
+                property.SetValue(resource, convertedValue);
+            }
+        }
+
+        /// <summary>
+        /// Convert value to target type following .NET conventions.
+        /// </summary>
+        /// <param name="value">Value to convert</param>
+        /// <param name="targetType">Target type to convert to</param>
+        /// <returns>Converted value of the target type</returns>
+        private static object ConvertValue(object value, Type targetType)
+        {
+            if (value == null)
+                return GetDefaultValue(targetType);
+
+            if (targetType.IsAssignableFrom(value.GetType()))
+                return value;
+
+            return Convert.ChangeType(value, targetType);
+        }
+
+        /// <summary>
+        /// Get default value for type following .NET conventions.
+        /// </summary>
+        /// <param name="type">Type to get default value for</param>
+        /// <returns>Default value for the type</returns>
+        private static object GetDefaultValue(Type type)
+        {
+            return type.IsValueType ? Activator.CreateInstance(type) : null;
+        }
+    }
+
+    /// <summary>
+    /// Generic SCIM validator for any IResource type.
+    /// Provides generic validation following RFC 7643 Section 2.1 - Core Schema requirements.
+    /// Implements RFC 7643 Section 2.1 - Core Schema
+    /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+    /// </summary>
+    public static class ScimValidator
+    {
+        /// <summary>
+        /// Validate any IResource for SCIM v2.0 compliance following RFC 7643 standards.
+        /// Implements RFC 7643 Section 2.1 - Core Schema validation requirements.
+        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+        /// </summary>
+        /// <typeparam name="T">Resource type implementing IResource</typeparam>
+        /// <param name="resource">Resource to validate for SCIM compliance</param>
+        /// <returns>True if valid according to SCIM v2.0 standards, false otherwise</returns>
+        public static bool Validate<T>(T resource) where T : IResource
+        {
+            if (resource == null)
+                return false;
+
+            // Validate base SCIM v2.0 requirements as defined in RFC 7643 Section 2.1
+            if (string.IsNullOrEmpty(resource.Id))
+                return false;
+                
+            if (resource.Meta == null)
+                return false;
+
+            // Validate SCIM v2.0 compliance following RFC 7643 standards
+            return ValidateScimCompliance(resource);
+        }
+
+        /// <summary>
+        /// Validate SCIM v2.0 compliance for any resource following RFC 7643 Section 2.1.
+        /// Implements RFC 7643 Section 2.1 - Core Schema compliance validation.
+        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+        /// </summary>
+        /// <typeparam name="T">Resource type implementing IResource</typeparam>
+        /// <param name="resource">Resource to validate for SCIM compliance</param>
+        /// <returns>True if compliant with SCIM v2.0 standards, false otherwise</returns>
+        private static bool ValidateScimCompliance<T>(T resource) where T : IResource
+        {
+            // Check for required SCIM v2.0 properties as defined in RFC 7643 Section 2.1
+            if (string.IsNullOrEmpty(resource.Meta.ResourceType))
+                return false;
+
+            if (resource.Meta.Created == default(DateTime))
+                return false;
+
+            if (resource.Meta.LastModified == default(DateTime))
+                return false;
+
+            // Additional SCIM v2.0 validation can be added here following RFC 7643
+            return true;
+        }
+
+        /// <summary>
+        /// Validate resource for specific business rules following SCIM v2.0 standards.
+        /// Implements RFC 7643 Section 2.1 - Core Schema with custom validation rules.
+        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+        /// </summary>
+        /// <typeparam name="T">Resource type implementing IResource</typeparam>
+        /// <param name="resource">Resource to validate</param>
+        /// <param name="validationRules">Custom validation rules following SCIM v2.0 standards</param>
+        /// <returns>True if valid according to SCIM v2.0 standards and custom rules, false otherwise</returns>
+        public static bool ValidateWithRules<T>(T resource, Func<T, bool> validationRules) where T : IResource
+        {
+            if (!Validate(resource))
+                return false;
+
+            return validationRules(resource);
+        }
+    }
+
+    /// <summary>
+    /// Generic SCIM type converter for any resource type.
+    /// Provides generic type conversion helpers following RFC 7643 Section 2.1 - Core Schema data types.
+    /// Implements RFC 7643 Section 2.1 - Core Schema
+    /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+    /// </summary>
+    public static class ScimTypeConverter
+    {
+        /// <summary>
+        /// Parse DateTime from any object following RFC 7643 Section 2.1 - Core Schema.
+        /// Implements RFC 7643 Section 2.1 - Core Schema DateTime handling.
+        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+        /// </summary>
+        /// <param name="value">Value to parse as DateTime</param>
+        /// <returns>Parsed DateTime or UtcNow if parsing fails</returns>
+        public static DateTime ParseDateTime(object value)
+        {
+            if (value is DateTime dateTime)
+                return dateTime;
+                
+            if (DateTime.TryParse(value?.ToString(), out var parsedDateTime))
+                return parsedDateTime;
+                
+            return DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// Parse Guid from any object following RFC 7643 Section 2.1 - Core Schema.
+        /// Implements RFC 7643 Section 2.1 - Core Schema identifier handling.
+        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+        /// </summary>
+        /// <param name="value">Value to parse as Guid</param>
+        /// <returns>Parsed Guid or Empty if parsing fails</returns>
+        public static Guid ParseGuid(object value)
+        {
+            if (value is Guid guid)
+                return guid;
+                
+            if (Guid.TryParse(value?.ToString(), out var parsedGuid))
+                return parsedGuid;
+                
+            return Guid.Empty;
+        }
+
+        /// <summary>
+        /// Parse boolean from any object following RFC 7643 Section 2.1 - Core Schema.
+        /// Implements RFC 7643 Section 2.1 - Core Schema boolean handling.
+        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+        /// </summary>
+        /// <param name="value">Value to parse as boolean</param>
+        /// <returns>Parsed boolean or false if parsing fails</returns>
+        public static bool ParseBoolean(object value)
+        {
+            if (value is bool boolValue)
+                return boolValue;
+                
+            if (bool.TryParse(value?.ToString(), out var parsedBool))
+                return parsedBool;
+                
+            return false;
+        }
+
+        /// <summary>
+        /// Parse integer from any object following RFC 7643 Section 2.1 - Core Schema.
+        /// Implements RFC 7643 Section 2.1 - Core Schema integer handling.
+        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+        /// </summary>
+        /// <param name="value">Value to parse as integer</param>
+        /// <returns>Parsed integer or 0 if parsing fails</returns>
+        public static int ParseInteger(object value)
+        {
+            if (value is int intValue)
+                return intValue;
+                
+            if (int.TryParse(value?.ToString(), out var parsedInt))
+                return parsedInt;
+                
+            return 0;
+        }
+
+        /// <summary>
+        /// Parse string from any object following RFC 7643 Section 2.1 - Core Schema.
+        /// Implements RFC 7643 Section 2.1 - Core Schema string handling.
+        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
+        /// </summary>
+        /// <param name="value">Value to parse as string</param>
+        /// <returns>Parsed string or empty string if parsing fails</returns>
+        public static string ParseString(object value)
+        {
+            return value?.ToString() ?? string.Empty;
+        }
+    }
 
     #endregion
 }

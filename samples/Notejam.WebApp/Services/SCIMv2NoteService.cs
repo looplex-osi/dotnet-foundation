@@ -16,14 +16,7 @@ public class SCIMv2NoteService : BaseResourceService<Note>
     public SCIMv2NoteService(IResourceRepository<Note> repository, ILogger<SCIMv2NoteService> logger) : base(repository)
     {
         _logger = logger;
-        Console.WriteLine("🔍 SCIMv2NoteService constructor called");
-        Console.WriteLine($"🔍 Repository type: {repository?.GetType().Name}");
         _logger.LogInformation("🔍 SCIMv2NoteService constructor called with repository: {RepositoryType}", repository?.GetType().Name);
-        
-        // Add method signature logging
-        Console.WriteLine("🔍 Available methods:");
-        Console.WriteLine("🔍 - UpdateAsync(string id, string json, CancellationToken cancellationToken)");
-        Console.WriteLine("🔍 - UpdateAsync(Guid id, Note resource, PatchOperation[] patches, CancellationToken cancellationToken)");
     }
 
     public override string CollectionName => "notes";
@@ -61,12 +54,8 @@ public class SCIMv2NoteService : BaseResourceService<Note>
         {
             _logger.LogInformation("🔄 Deserializing JSON to Note...");
             
-            // Deserialize JSON to Note object
-            var note = System.Text.Json.JsonSerializer.Deserialize<Note>(json, new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                PropertyNameCaseInsensitive = true
-            });
+            // Deserialize JSON to Note object using Foundation helper
+            var note = Looplex.Foundation.Serialization.ActorJsonSerializer.DeserializeResource<Note>(json);
             
             if (note == null)
             {
@@ -106,24 +95,14 @@ public class SCIMv2NoteService : BaseResourceService<Note>
     /// </summary>
     public async Task<Note> UpdateAsync(string id, string json, CancellationToken cancellationToken)
     {
-        Console.WriteLine("🔍 SCIMv2NoteService.UpdateAsync (string, string) called - ENTRADA");
-        Console.WriteLine($"🔍 ID: {id}");
-        Console.WriteLine($"🔍 JSON: {json}");
-        
         _logger.LogInformation("🎬 SCIMv2NoteService.UpdateAsync (string, string) called with ID: {Id}, JSON: {Json}", id, json);
-        _logger.LogInformation("🔍 ID type: {IdType}, ID value: {IdValue}", id?.GetType().Name, id);
-        _logger.LogInformation("🔍 JSON length: {JsonLength}, JSON preview: {JsonPreview}", json?.Length, json?.Substring(0, Math.Min(100, json?.Length ?? 0)));
         
         try
         {
             _logger.LogInformation("🔄 Deserializing JSON to Note...");
             
-            // Deserialize JSON to Note object
-            var note = System.Text.Json.JsonSerializer.Deserialize<Note>(json, new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                PropertyNameCaseInsensitive = true
-            });
+            // Deserialize JSON to Note object using Foundation helper
+            var note = Looplex.Foundation.Serialization.ActorJsonSerializer.DeserializeResource<Note>(json);
             
             if (note == null)
             {
@@ -168,10 +147,6 @@ public class SCIMv2NoteService : BaseResourceService<Note>
     /// </summary>
     public async Task<bool> UpdateAsync(Guid id, Note resource, PatchOperation[] patches, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine("🔍 SCIMv2NoteService.UpdateAsync (interface) called - ENTRADA");
-        Console.WriteLine($"🔍 ID: {id}");
-        Console.WriteLine($"🔍 Resource: {resource?.Name}");
-        
         _logger.LogInformation("🎬 SCIMv2NoteService.UpdateAsync (interface) called with ID: {Id}, Resource: {ResourceName}", id, resource?.Name);
         
         try
@@ -230,22 +205,12 @@ public class SCIMv2NoteService : BaseResourceService<Note>
     /// </summary>
     public async Task<bool> ReplaceAsync(string id, string json, CancellationToken cancellationToken)
     {
-        Console.WriteLine("🔍 SCIMv2NoteService.ReplaceAsync (string, string) called - ENTRADA PRINCIPAL");
-        Console.WriteLine($"🔍 ID: {id}");
-        Console.WriteLine($"🔍 JSON: {json}");
-        
         _logger.LogInformation("🎬 SCIMv2NoteService.ReplaceAsync (string, string) called with ID: {Id}, JSON: {Json}", id, json);
-        _logger.LogInformation("🔍 ID type: {IdType}, ID value: {IdValue}", id?.GetType().Name, id);
-        _logger.LogInformation("🔍 JSON length: {JsonLength}, JSON preview: {JsonPreview}", json?.Length, json?.Substring(0, Math.Min(100, json?.Length ?? 0)));
         
         try
         {
             _logger.LogInformation("🔄 Deserializing JSON to Note...");
-            var note = System.Text.Json.JsonSerializer.Deserialize<Note>(json, new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                PropertyNameCaseInsensitive = true
-            });
+            var note = Looplex.Foundation.Serialization.ActorJsonSerializer.DeserializeResource<Note>(json);
 
             if (note == null)
             {
@@ -283,10 +248,6 @@ public class SCIMv2NoteService : BaseResourceService<Note>
 
     public async Task<Note?> ModifyAsync(Guid id, PatchOperation[] patches, CancellationToken cancellationToken)
     {
-        Console.WriteLine("🔍 SCIMv2NoteService.ModifyAsync called - ENTRADA PRINCIPAL");
-        Console.WriteLine($"🔍 ID: {id}");
-        Console.WriteLine($"🔍 Patches Count: {patches?.Length}");
-        
         _logger.LogInformation("🎬 SCIMv2NoteService.ModifyAsync called with ID: {Id}, Patches Count: {PatchesCount}", id, patches?.Length);
         
         try
@@ -324,7 +285,10 @@ public class SCIMv2NoteService : BaseResourceService<Note>
             _logger.LogInformation("✅ Patches applied successfully");
             
             // Update the resource
-            var success = await base.UpdateAsync(id, currentResource, patches, cancellationToken);
+            _logger.LogInformation("🔄 Calling base.Update...");
+            
+            // Use empty JArray to avoid circular reference issues
+            var success = await base.Update(id, currentResource, new Newtonsoft.Json.Linq.JArray(), cancellationToken);
             var updatedResource = success ? currentResource : null;
             
             if (updatedResource != null)

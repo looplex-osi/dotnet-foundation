@@ -68,7 +68,7 @@ public static class SCIMv2
                 });
 
                 // GET /{collectionName}/{id} - Retrieve resource
-                group.MapGet("{id:guid}", async (Guid id, HttpContext context, ISCIMv2 scimService) =>
+                group.MapGet("{id}", async (string id, HttpContext context, ISCIMv2 scimService) =>
                 {
                     try
                     {
@@ -77,7 +77,8 @@ public static class SCIMv2
                         // Check if response has errors or is null
                         if (response == null || response.Error != null)
                         {
-                            return Results.NotFound(response);
+                            // Return SCIM v2.0 compliant error response
+                            return CreateSCIMv2Result(response, 404);
                         }
                         
                         // Set HTTP headers for SCIM v2.0 compliance
@@ -171,7 +172,7 @@ public static class SCIMv2
                 });
 
                 // PUT /{collectionName}/{id} - Replace resource
-                group.MapPut("{id:guid}", async (Guid id, HttpContext context, ISCIMv2 scimService, ISCIMv2Validation validationService) =>
+                group.MapPut("{id}", async (string id, HttpContext context, ISCIMv2 scimService, ISCIMv2Validation validationService) =>
                 {
                     try
                     {
@@ -237,7 +238,7 @@ public static class SCIMv2
                 });
 
                 // PATCH /{collectionName}/{id} - Update resource
-                group.MapPatch("{id:guid}", async (Guid id, HttpContext context, ISCIMv2 scimService, ISCIMv2Validation validationService) =>
+                group.MapPatch("{id}", async (string id, HttpContext context, ISCIMv2 scimService, ISCIMv2Validation validationService) =>
                 {
                     try
                     {
@@ -304,7 +305,7 @@ public static class SCIMv2
                 });
 
                 // DELETE /{collectionName}/{id} - Delete resource
-                group.MapDelete("{id:guid}", async (Guid id, HttpContext context, ISCIMv2 scimService) =>
+                group.MapDelete("{id}", async (string id, HttpContext context, ISCIMv2 scimService) =>
                 {
                     try
                     {
@@ -323,6 +324,7 @@ public static class SCIMv2
                         return Results.NotFound();
                     }
                 });
+
             });
     }
 
@@ -405,6 +407,77 @@ public static class SCIMv2
                         return Results.StatusCode(500);
                     }
                 });
+
+                // POST /Bulk - Global Bulk operations endpoint (RFC 7644 Section 3.7)
+                // https://datatracker.ietf.org/doc/html/rfc7644#section-3.7
+                group.MapPost("/Bulk", async (HttpContext context, ISCIMv2 scimService, ISCIMv2Validation validationService) =>
+                {
+                    try
+                    {
+                        // Read the request body
+                        using var reader = new StreamReader(context.Request.Body);
+                        var json = await reader.ReadToEndAsync();
+                        
+                        // Validate BulkRequest
+                        var validation = validationService.ValidateJsonRequest(json);
+                        if (!validation.IsValid)
+                        {
+                            var errorResponse = new SCIMv2Response
+                            {
+                                StatusCode = 400,
+                                Error = new SCIMv2Error
+                                {
+                                    Status = "400",
+                                    Detail = validation.ErrorMessage,
+                                    ScimType = "invalidSyntax",
+                                    Timestamp = DateTime.UtcNow.ToString("O")
+                                }
+                            };
+                            return CreateSCIMv2Result(errorResponse, 400);
+                        }
+                        
+                        // Process BulkRequest using SCIMv2 service
+                        var response = await scimService.BulkAsync(json, context.RequestAborted);
+                        
+                        return CreateSCIMv2Result(response);
+                    }
+                    catch (Exception ex)
+                    {
+                        var errorResponse = new SCIMv2Response
+                        {
+                            StatusCode = 500,
+                            Error = new SCIMv2Error
+                            {
+                                Status = "500",
+                                Detail = $"Error processing bulk request: {ex.Message}",
+                                ScimType = "internalError",
+                                Timestamp = DateTime.UtcNow.ToString("O")
+                            }
+                        };
+                        return CreateSCIMv2Result(errorResponse, 500);
+                    }
+                });
+
+                // GET /ResourceTypes - Resource types discovery (RFC 7644 Section 3.2)
+                // https://datatracker.ietf.org/doc/html/rfc7644#section-3.2
+                group.MapGet("/ResourceTypes", async (HttpContext context, ISCIMv2 scimService) =>
+                {
+                    try
+                    {
+                        var response = await scimService.GetResourceTypesAsync(context.RequestAborted);
+                        
+                        if (response.Error != null)
+                        {
+                            return Results.StatusCode(response.StatusCode);
+                        }
+                        
+                        return CreateSCIMv2Result(response);
+                    }
+                    catch (Exception)
+                    {
+                        return Results.StatusCode(500);
+                    }
+                });
             });
     }
 
@@ -435,8 +508,12 @@ public static class SCIMv2
             return Results.NoContent();
         }
         
-        // Use centralized formatting logic from SCIMv2 class
-        var jsonContent = Looplex.Foundation.SCIMv2.SCIMv2.FormatResponseByHttpMethod(response);
+        // Format response as JSON
+        var jsonContent = System.Text.Json.JsonSerializer.Serialize(response, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            WriteIndented = true
+        });
         
         var result = Results.Content(jsonContent, "application/scim+json", statusCode: statusCode);
         

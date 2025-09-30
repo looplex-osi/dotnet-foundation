@@ -47,6 +47,9 @@ public static class Program
     builder.Services.AddHealthChecks()
       .AddCheck<HealthCheck>("Default");
 
+    // Add HttpContextAccessor for SCIMv2 Location header generation
+    builder.Services.AddHttpContextAccessor();
+
     // Load environment variables from config.env file
     var envVars = Files.LoadEnv("config.env");
     foreach (var item in envVars)
@@ -80,6 +83,37 @@ public static class Program
       return new AzureSecretsService(null!, Policy.NoOpAsync<string>(), logger);
     });
     builder.Services.AddSingleton<IDbConnections, DbConnections>();
+    // Configure Foundation SCIMv2 BEFORE creating instances
+    Console.WriteLine("🔧 Configuring Foundation SCIMv2 for Notejam");
+    
+    // Configure Note attributes and mappings
+    Looplex.Foundation.SCIMv2.SCIMv2.ConfigureAttributes("Note", new HashSet<string> { 
+        "id", "externalId", "text", "active", "status", 
+        "meta.created", "meta.lastModified" 
+    });
+    
+    Looplex.Foundation.SCIMv2.SCIMv2.ConfigureMapping("Note", new Dictionary<string, string> {
+        { "meta.created", "n.created_at" },
+        { "meta.lastModified", "n.updated_at" },
+        { "active", "n.active" },
+        { "text", "n.markdown" }
+    });
+    
+    // Configure Pad attributes and mappings
+    Looplex.Foundation.SCIMv2.SCIMv2.ConfigureAttributes("Pad", new HashSet<string> { 
+        "id", "externalId", "name", "active", 
+        "meta.created", "meta.lastModified" 
+    });
+    
+    Looplex.Foundation.SCIMv2.SCIMv2.ConfigureMapping("Pad", new Dictionary<string, string> {
+        { "meta.created", "p.created_at" },
+        { "meta.lastModified", "p.updated_at" },
+        { "active", "p.active" },
+        { "name", "p.name" }
+    });
+    
+    Console.WriteLine("✅ Foundation SCIMv2 configured for Notejam");
+
     // Register SCIMv2 core services as SINGLETON to ensure same instance
     builder.Services.AddSingleton<ISCIMv2, Looplex.Foundation.SCIMv2.SCIMv2>();
     builder.Services.AddSingleton<ISCIMv2Validation, Looplex.Foundation.SCIMv2.SCIMv2>();
@@ -88,7 +122,7 @@ public static class Program
     // builder.Services.AddScoped<Looplex.Foundation.SearchContent.ISearchContentService, Looplex.Foundation.SearchContent.SearchContentService>();
     
     // Register Repository Pattern as SINGLETON to match SCIMv2 services
-    // Using stored procedure repositories for better performance
+    // Using stored procedure repositories directly for elegant Foundation approach
     builder.Services.AddSingleton<INoteRepository, Looplex.Samples.Infra.Repositories.NoteRepositoryStoredProcedure>();
     builder.Services.AddSingleton<IPadRepository, Looplex.Samples.Infra.Repositories.PadRepositoryStoredProcedure>();
     
@@ -145,6 +179,8 @@ public static class Program
         
         scimService.Register<Note>(noteService, "notes");
         scimService.Register<Pad>(padService, "pads");
+        
+        // Foundation SCIMv2 already configured during service registration
     }
 
     // Add detailed logging middleware

@@ -166,4 +166,19 @@ public interface ISCIMv2
     /// <returns>SCIMv2 Response with service provider configuration</returns>
     Task<SCIMv2Response> GetServiceProviderConfigAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Get resource types (GET /ResourceTypes)
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 Response with list of resource types</returns>
+    Task<SCIMv2Response> GetResourceTypesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Process Bulk operations (POST /Bulk)
+    /// </summary>
+    /// <param name="json">JSON BulkRequest</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>SCIMv2 Response with BulkResponse</returns>
+    Task<SCIMv2Response> BulkAsync(string json, CancellationToken cancellationToken = default);
+
 }

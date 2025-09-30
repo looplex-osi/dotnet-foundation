@@ -19,20 +19,20 @@ public class SCIMv2ToSQLVisitor : ScimFilterBaseVisitor<(string Sql, Dictionary<
     var op = context.COMPAREOPERATOR().GetText().ToLower();
     var value = context.VALUE().GetText();
 
-    // Validar atributo
+    // Validate attribute
     if (!AllowedAttributes?.Contains(attr) ?? false)
       throw new InvalidOperationException($"Cannot filter by {attr}");
 
-    // Mapear atributo
+    // Map attribute
     if (AttributeMapper?.TryGetValue(attr, out var mapped) ?? false)
       attr = mapped;
 
-    // Gerar parâmetro
+    // Generate parameter
     var paramName = $"@param_{_parameterIndex++}";
     var sanitizedValue = SanitizeValue(value, op);
     _parameters[paramName] = sanitizedValue;
 
-    // Gerar SQL com parâmetro
+    // Generate SQL with parameter
     string sqlOp = op switch
     {
       "eq" => "=",
@@ -54,11 +54,11 @@ public class SCIMv2ToSQLVisitor : ScimFilterBaseVisitor<(string Sql, Dictionary<
   {
     var attr = context.attrPath().GetText();
     
-    // Validar atributo
+    // Validade abtrib
     if (!AllowedAttributes?.Contains(attr) ?? false)
       throw new InvalidOperationException($"Cannot filter by {attr}");
 
-    // Mapear atributo
+    // Mapp abtrib
     if (AttributeMapper?.TryGetValue(attr, out var mapped) ?? false)
       attr = mapped;
     

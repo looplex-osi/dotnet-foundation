@@ -8,7 +8,7 @@ namespace Looplex.Samples.Infra.CommandHandlers;
 /// <summary>
 /// Handler for DeletePadCommand
 /// </summary>
-public class DeletePadCommandHandler : IRequestHandler<DeletePadCommand, bool>
+public class DeletePadCommandHandler : IRequestHandler<DeletePadCommand, int>
 {
     private readonly IPadRepository _padRepository;
     private readonly ILogger<DeletePadCommandHandler> _logger;
@@ -19,7 +19,7 @@ public class DeletePadCommandHandler : IRequestHandler<DeletePadCommand, bool>
         _logger = logger;
     }
 
-    public async Task<bool> Handle(DeletePadCommand request, CancellationToken cancellationToken)
+    public async Task<int> Handle(DeletePadCommand request, CancellationToken cancellationToken)
     {
         try
         {
@@ -30,11 +30,11 @@ public class DeletePadCommandHandler : IRequestHandler<DeletePadCommand, bool>
             if (rowsAffected == 0)
             {
                 _logger.LogWarning("Pad with ID {PadId} not found or could not be deleted", request.Id);
-                return false;
+                return 0;
             }
 
             _logger.LogInformation("Pad deleted successfully: {PadId}", request.Id);
-            return true;
+            return rowsAffected;
         }
         catch (Exception ex)
         {

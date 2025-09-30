@@ -25,19 +25,19 @@ public class CreatePadCommandHandler : IRequestHandler<CreatePadCommand, Guid>
     {
         try
         {
-            _logger.LogInformation("Creating pad with name: {PadName}", request.Pad.Name);
+            _logger.LogInformation("Creating pad with name: {PadName}", request.Resource.Name);
 
             // Validate the pad
-            request.Pad.Validate();
+            request.Resource.Validate();
 
-            var padId = await _padRepository.CreatePadAsync(request.Pad, cancellationToken);
+            var padId = await _padRepository.CreatePadAsync(request.Resource, cancellationToken);
 
             _logger.LogInformation("Pad created successfully with ID: {PadId}", padId);
             return padId;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating pad with name: {PadName}", request.Pad.Name);
+            _logger.LogError(ex, "Error creating pad with name: {PadName}", request.Resource.Name);
             throw new InvalidOperationException($"Failed to create pad: {ex.Message}", ex);
         }
     }

@@ -9,7 +9,7 @@ namespace Looplex.Samples.Infra.CommandHandlers;
 /// <summary>
 /// Handler for UpdatePadCommand
 /// </summary>
-public class UpdatePadCommandHandler : IRequestHandler<UpdatePadCommand, Pad>
+public class UpdatePadCommandHandler : IRequestHandler<UpdatePadCommand, int>
 {
     private readonly IPadRepository _padRepository;
     private readonly ILogger<UpdatePadCommandHandler> _logger;
@@ -20,31 +20,24 @@ public class UpdatePadCommandHandler : IRequestHandler<UpdatePadCommand, Pad>
         _logger = logger;
     }
 
-    public async Task<Pad> Handle(UpdatePadCommand request, CancellationToken cancellationToken)
+    public async Task<int> Handle(UpdatePadCommand request, CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogInformation("Updating pad with ID: {PadId}", request.Id);
 
             // Validate the pad
-            request.Pad.Validate();
+            request.Resource.Validate();
 
-            var rowsAffected = await _padRepository.UpdatePadAsync(request.Id, request.Pad, cancellationToken);
+            var rowsAffected = await _padRepository.UpdatePadAsync(request.Id, request.Resource, cancellationToken);
 
             if (rowsAffected == 0)
             {
                 throw new InvalidOperationException($"Pad with ID {request.Id} not found or could not be updated");
             }
 
-            // Retrieve the updated pad (including inactive ones)
-            var updatedPad = await _padRepository.GetPadByIdForUpdateAsync(request.Id, cancellationToken);
-            if (updatedPad == null)
-            {
-                throw new InvalidOperationException($"Failed to retrieve updated pad with ID {request.Id}");
-            }
-
             _logger.LogInformation("Pad updated successfully: {PadId}", request.Id);
-            return updatedPad;
+            return rowsAffected;
         }
         catch (Exception ex)
         {

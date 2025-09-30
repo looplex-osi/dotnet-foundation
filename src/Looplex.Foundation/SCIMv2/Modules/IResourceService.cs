@@ -92,11 +92,9 @@ public interface IResourceService<T> : IResourceService where T : IResource
     Task<bool> ReplaceAsync(Guid id, IResource resource, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Updates a resource using JSON Patch operations for partial updates.
-    /// Implements RFC 7644 Section 3.4.4 - Update Resource (PATCH)
-    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
-    /// Uses RFC 6902 (JSON Patch) Section 4 - Operations
-    /// [RFC 6902 Section 4](https://datatracker.ietf.org/doc/html/rfc6902#section-4)
+    /// Updates a resource using SCIM PATCH operations for partial updates.
+    /// Implements RFC 7644 Section 3.5 - Update Resource (PATCH)
+    /// [RFC 7644 Section 3.5](https://datatracker.ietf.org/doc/html/rfc7644#section-3.5)
     /// </summary>
     /// <param name="id">Unique identifier of the resource to update</param>
     /// <param name="resource">Current resource instance</param>

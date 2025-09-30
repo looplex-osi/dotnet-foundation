@@ -15,13 +15,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infra", "Infra\Infra.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notejam.Tests", "Notejam.Tests\Notejam.Tests.csproj", "{9E67E572-9462-411F-A4A2-1685F6AE1358}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notejam.WebApp", "..\Notejam.WebApp\Notejam.WebApp.csproj", "{162A5031-2485-6AD4-EC4C-6BC56012A6CD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{E4ABC59C-B1E2-4E7C-99BA-F8DE691AC467}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -48,5 +47,15 @@ Global
 		{9E67E572-9462-411F-A4A2-1685F6AE1358}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9E67E572-9462-411F-A4A2-1685F6AE1358}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9E67E572-9462-411F-A4A2-1685F6AE1358}.Release|Any CPU.Build.0 = Release|Any CPU
+		{162A5031-2485-6AD4-EC4C-6BC56012A6CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{162A5031-2485-6AD4-EC4C-6BC56012A6CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{162A5031-2485-6AD4-EC4C-6BC56012A6CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{162A5031-2485-6AD4-EC4C-6BC56012A6CD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {63C88FDF-063C-410F-B305-4603360A4086}
 	EndGlobalSection
 EndGlobal

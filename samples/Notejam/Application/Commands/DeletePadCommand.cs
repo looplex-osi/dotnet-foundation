@@ -1,11 +1,14 @@
-using MediatR;
+using Looplex.Foundation.SCIMv2.Commands;
+using Looplex.Samples.Domain.Entities;
 
 namespace Looplex.Samples.Application.Commands;
 
 /// <summary>
-/// Command to delete a pad
+/// Command to delete a pad using Foundation SCIM commands
 /// </summary>
-public class DeletePadCommand : IRequest<bool>
+public class DeletePadCommand : DeleteResource<Pad>
 {
-    public Guid Id { get; set; }
+    public DeletePadCommand(Guid id) : base(id)
+    {
+    }
 }

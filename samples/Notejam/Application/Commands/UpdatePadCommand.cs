@@ -1,13 +1,14 @@
-using MediatR;
+using Looplex.Foundation.SCIMv2.Commands;
 using Looplex.Samples.Domain.Entities;
 
 namespace Looplex.Samples.Application.Commands;
 
 /// <summary>
-/// Command to update an existing pad
+/// Command to update an existing pad using Foundation SCIM commands
 /// </summary>
-public class UpdatePadCommand : IRequest<Pad>
+public class UpdatePadCommand : ReplaceResource<Pad>
 {
-    public Guid Id { get; set; }
-    public Pad Pad { get; set; } = null!;
+    public UpdatePadCommand(Guid id, Pad resource) : base(id, resource)
+    {
+    }
 }

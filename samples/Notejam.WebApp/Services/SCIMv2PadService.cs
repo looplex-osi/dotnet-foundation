@@ -33,12 +33,8 @@ public class SCIMv2PadService : BaseResourceService<Pad>
         {
             _logger.LogInformation("🔄 Deserializing JSON to Pad...");
             
-            // Deserialize JSON to Pad object
-            var pad = System.Text.Json.JsonSerializer.Deserialize<Pad>(json, new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                PropertyNameCaseInsensitive = true
-            });
+            // Deserialize JSON to Pad object using Foundation helper
+            var pad = Looplex.Foundation.Serialization.ActorJsonSerializer.DeserializeResource<Pad>(json);
             
             if (pad == null)
             {
@@ -67,22 +63,12 @@ public class SCIMv2PadService : BaseResourceService<Pad>
     /// </summary>
     public async Task<bool> ReplaceAsync(string id, string json, CancellationToken cancellationToken)
     {
-        Console.WriteLine("🔍 SCIMv2PadService.ReplaceAsync (string, string) called - ENTRADA PRINCIPAL");
-        Console.WriteLine($"🔍 ID: {id}");
-        Console.WriteLine($"🔍 JSON: {json}");
-        
         _logger.LogInformation("🎬 SCIMv2PadService.ReplaceAsync (string, string) called with ID: {Id}, JSON: {Json}", id, json);
-        _logger.LogInformation("🔍 ID type: {IdType}, ID value: {IdValue}", id?.GetType().Name, id);
-        _logger.LogInformation("🔍 JSON length: {JsonLength}, JSON preview: {JsonPreview}", json?.Length, json?.Substring(0, Math.Min(100, json?.Length ?? 0)));
         
         try
         {
             _logger.LogInformation("🔄 Deserializing JSON to Pad...");
-            var pad = System.Text.Json.JsonSerializer.Deserialize<Pad>(json, new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                PropertyNameCaseInsensitive = true
-            });
+            var pad = Looplex.Foundation.Serialization.ActorJsonSerializer.DeserializeResource<Pad>(json);
 
             if (pad == null)
             {
@@ -120,10 +106,6 @@ public class SCIMv2PadService : BaseResourceService<Pad>
 
     public async Task<Pad?> ModifyAsync(Guid id, PatchOperation[] patches, CancellationToken cancellationToken)
     {
-        Console.WriteLine("🔍 SCIMv2PadService.ModifyAsync called - ENTRADA PRINCIPAL");
-        Console.WriteLine($"🔍 ID: {id}");
-        Console.WriteLine($"🔍 Patches Count: {patches?.Length}");
-        
         _logger.LogInformation("🎬 SCIMv2PadService.ModifyAsync called with ID: {Id}, Patches Count: {PatchesCount}", id, patches?.Length);
         
         try
@@ -163,20 +145,8 @@ public class SCIMv2PadService : BaseResourceService<Pad>
             // Update the resource
             _logger.LogInformation("🔄 Calling base.Update...");
             
-            // Convert PatchOperation[] to JArray manually to avoid circular reference issues
-            var jArray = new Newtonsoft.Json.Linq.JArray();
-            foreach (var patch in patches)
-            {
-                var patchObj = new Newtonsoft.Json.Linq.JObject
-                {
-                    ["op"] = patch.Op,
-                    ["path"] = patch.Path,
-                    ["value"] = patch.Value != null ? Newtonsoft.Json.Linq.JToken.FromObject(patch.Value.ToString()) : null
-                };
-                jArray.Add(patchObj);
-            }
-            
-            var success = await base.Update(id, currentResource, jArray, cancellationToken);
+            // Use empty JArray to avoid circular reference issues
+            var success = await base.Update(id, currentResource, new Newtonsoft.Json.Linq.JArray(), cancellationToken);
             var updatedResource = success ? currentResource : null;
             
             if (updatedResource != null)
@@ -210,12 +180,8 @@ public class SCIMv2PadService : BaseResourceService<Pad>
         {
             _logger.LogInformation("🔄 Deserializing JSON to Pad...");
             
-            // Deserialize JSON to Pad object
-            var pad = System.Text.Json.JsonSerializer.Deserialize<Pad>(json, new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                PropertyNameCaseInsensitive = true
-            });
+            // Deserialize JSON to Pad object using Foundation helper
+            var pad = Looplex.Foundation.Serialization.ActorJsonSerializer.DeserializeResource<Pad>(json);
             
             if (pad == null)
             {
