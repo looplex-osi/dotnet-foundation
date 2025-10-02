@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -15,7 +15,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infra", "Infra\Infra.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notejam.Tests", "Notejam.Tests\Notejam.Tests.csproj", "{9E67E572-9462-411F-A4A2-1685F6AE1358}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notejam.WebAPI", "..\Notejam.WebApp\Notejam.WebAPI.csproj", "{162A5031-2485-6AD4-EC4C-6BC56012A6CD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notejam.WebAPI", "..\Notejam.WebAPI\Notejam.WebAPI.csproj", "{162A5031-2485-6AD4-EC4C-6BC56012A6CD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.Protocols.Http", "..\..\src\Looplex.Foundation.Protocols.Http\Looplex.Foundation.Protocols.Http.csproj", "{0E12B634-195C-236A-C3DC-5E7525969DB4}"
 EndProject

@@ -1,4 +1,4 @@
-using Looplex.Foundation.SCIMv2.Queries;
+using Looplex.Foundation.Core.SCIMv2.Queries;
 using Looplex.Samples.Application;
 using Looplex.Samples.Domain.Entities;
 using MediatR;

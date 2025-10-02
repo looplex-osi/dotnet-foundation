@@ -1,4 +1,4 @@
-﻿using Looplex.Foundation.SCIMv2.Entities;
+using Looplex.Foundation.Core.SCIMv2.Entities;
 
 using PropertyChanged;
 

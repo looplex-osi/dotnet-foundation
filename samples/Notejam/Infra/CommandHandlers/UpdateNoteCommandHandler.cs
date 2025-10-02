@@ -1,4 +1,4 @@
-using Looplex.Foundation.SCIMv2.Commands;
+using Looplex.Foundation.Core.SCIMv2.Commands;
 using Looplex.Samples.Application;
 using Looplex.Samples.Application.Commands;
 using Looplex.Samples.Domain.Entities;

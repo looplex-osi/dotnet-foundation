@@ -1,8 +1,8 @@
 using System.Data;
 using System.Data.Common;
 
-using Looplex.Foundation.Helpers;
-using Looplex.Foundation.SCIMv2.Commands;
+using Looplex.Foundation.Core.Helpers;
+using Looplex.Foundation.Core.SCIMv2.Commands;
 using Looplex.Samples.Application;
 using Looplex.Samples.Domain.Entities;
 

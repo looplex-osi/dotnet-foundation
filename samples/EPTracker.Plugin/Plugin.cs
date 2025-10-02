@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
@@ -59,7 +59,7 @@ public class Plugin : AbstractPlugin
   public override string Name => "ExtensionPoints Tracker";
 
   public override string Description =>
-    "Plugin básico para demonstrar chamadas em cada um dos extension points definidos pelo DefaultContext";
+    "Plugin b�sico para demonstrar chamadas em cada um dos extension points definidos pelo DefaultContext";
 
   public override IEnumerable<ICommand> Commands =>
   [

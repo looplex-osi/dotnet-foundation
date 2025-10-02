@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Looplex.Foundation\Looplex.Foundation.csproj"/>
+    <ProjectReference Include="..\..\..\src\Looplex.Foundation.Core\Looplex.Foundation.Core.csproj"/>
   </ItemGroup>
 
   <ItemGroup>

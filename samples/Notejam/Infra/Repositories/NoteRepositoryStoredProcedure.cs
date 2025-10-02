@@ -1,11 +1,11 @@
 using System.Data;
 using System.Data.Common;
 using Microsoft.Data.SqlClient;
-using Looplex.Foundation.Ports;
-using Looplex.Foundation.Helpers;
-using Looplex.Foundation.SCIMv2.Queries;
-using Looplex.Foundation.SCIMv2.Entities;
-using Looplex.Foundation.SCIMv2.Modules;
+using Looplex.Foundation.Core.Ports;
+using Looplex.Foundation.Core.Helpers;
+using Looplex.Foundation.Core.SCIMv2.Queries;
+using Looplex.Foundation.Core.SCIMv2.Entities;
+using Looplex.Foundation.Core.SCIMv2.Modules;
 using Looplex.Samples.Domain.Entities;
 using Looplex.Samples.Application;
 using Microsoft.Extensions.Logging;
@@ -373,7 +373,7 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
         try
         {
             // Use generic SCIM filter processor from Foundation
-            var (sqlWhere, parameters) = Looplex.Foundation.SCIMv2.SCIMv2.ScimFilterProcessor.ProcessFilter<Note>(filter);
+            var (sqlWhere, parameters) = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimFilterProcessor.ProcessFilter<Note>(filter);
 
             // Convert to stored procedure parameters using generic services
             var filterParams = new NoteFilterParameters();
@@ -385,11 +385,11 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
                 if (value != null)
                 {
                     if (sqlWhere.Contains("text"))
-                        filterParams.Text = Looplex.Foundation.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(value);
+                        filterParams.Text = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(value);
                     else if (sqlWhere.Contains("active"))
-                        filterParams.Active = Looplex.Foundation.SCIMv2.SCIMv2.ScimTypeConverter.ParseBoolean(value);
+                        filterParams.Active = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseBoolean(value);
                     else if (sqlWhere.Contains("status"))
-                        filterParams.Status = Looplex.Foundation.SCIMv2.SCIMv2.ScimTypeConverter.ParseInteger(value);
+                        filterParams.Status = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseInteger(value);
                 }
             }
 
@@ -470,15 +470,15 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
                 note.ExternalId = reader["external_id"].ToString();
             
             // Map Notejam-specific properties
-            note.Name = Looplex.Foundation.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["markdown"]);
-            note.Text = Looplex.Foundation.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["markdown"]);
-            note.Active = Looplex.Foundation.SCIMv2.SCIMv2.ScimTypeConverter.ParseBoolean(reader["active"]);
-            note.Status = Looplex.Foundation.SCIMv2.SCIMv2.ScimTypeConverter.ParseInteger(reader["status"]);
-            note.CustomFields = Looplex.Foundation.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["custom_fields"]);
+            note.Name = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["markdown"]);
+            note.Text = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["markdown"]);
+            note.Active = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseBoolean(reader["active"]);
+            note.Status = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseInteger(reader["status"]);
+            note.CustomFields = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["custom_fields"]);
             note.Schemas = new[] { "urn:looplex:params:scim:schemas:notejam:2.0:Note" };
             
             // Create Meta using Foundation method (agnostic)
-            note.Meta = Looplex.Foundation.SCIMv2.SCIMv2.CreateResourceMeta(reader, note.Id, "Note", _httpContextAccessor);
+            note.Meta = Looplex.Foundation.Core.SCIMv2.SCIMv2.CreateResourceMeta(reader, note.Id, "Note", _httpContextAccessor);
             
             return note;
         }

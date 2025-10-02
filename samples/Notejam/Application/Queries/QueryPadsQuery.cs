@@ -1,5 +1,5 @@
 using MediatR;
-using Looplex.Foundation.SCIMv2.Entities;
+using Looplex.Foundation.Core.SCIMv2.Entities;
 using Looplex.Samples.Domain.Entities;
 
 namespace Looplex.Samples.Application.Queries;
