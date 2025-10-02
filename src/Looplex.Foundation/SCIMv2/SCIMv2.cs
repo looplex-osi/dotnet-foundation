@@ -36,11 +36,39 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// </summary>
     /// <param name="serviceNameProvider">Service name provider for schema generation</param>
     /// <param name="httpContextAccessor">HTTP context accessor for dynamic URL generation</param>
-    public SCIMv2(IServiceNameProvider? serviceNameProvider = null, IHttpContextAccessor? httpContextAccessor = null)
+    public SCIMv2(IServiceNameProvider? serviceNameProvider = null, IHttpContextAccessor? httpContextAccessor = null, ISchemaAutoDiscovery? autoDiscovery = null)
     {
         _serviceNameProvider = serviceNameProvider;
         _httpContextAccessor = httpContextAccessor;
-        _schemas = new Dictionary<string, SchemaDefinition>();
+        
+        // Initialize schemas automatically
+        _schemas = InitializeSchemas();
+        
+        // Register all schemas automatically
+        foreach (var schema in _schemas.Values)
+        {
+            RegisterSchema(schema);
+        }
+        
+        // Auto-discover custom schemas if auto-discovery is available
+        if (autoDiscovery != null)
+        {
+            try
+            {
+                var callingAssembly = Assembly.GetCallingAssembly();
+                var customSchemas = autoDiscovery.DiscoverSchemasAsync(callingAssembly).GetAwaiter().GetResult();
+                
+                foreach (var schema in customSchemas)
+                {
+                    RegisterSchema(schema);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail initialization
+                System.Diagnostics.Debug.WriteLine($"Auto-discovery failed: {ex.Message}");
+            }
+        }
     }
     
     // Serialization is now centralized in Looplex.Foundation.Serialization
@@ -1043,15 +1071,16 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         {
             var schemas = _schemas.Values.ToList();
             
-            return new SCIMv2Response
-            {
-                StatusCode = 200,
-                Data = new { Resources = schemas },
-                Schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" },
-                TotalResults = schemas.Count,
-                StartIndex = 1,
-                ItemsPerPage = schemas.Count
-            };
+            var schemasWithoutMeta = schemas.Select(schema => new SchemaDefinition
+                    {
+                        Id = schema.Id,
+                        Schemas = [schema.Id],
+                        Name = schema.Name,
+                        Description = schema.Description,
+                        Attributes = schema.Attributes,
+                    }).ToList();
+            // Use the existing CreateListResponse method to ensure proper SCIM v2.0 format
+            return CreateListResponse(schemasWithoutMeta, schemasWithoutMeta.Count, 1, schemasWithoutMeta.Count);
         }
         catch (Exception ex)
         {
@@ -1316,12 +1345,14 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
 
     private Dictionary<string, SchemaDefinition> InitializeSchemas()
     {
+        var schemas = new Dictionary<string, SchemaDefinition>();
+        
+        // Add standard SCIMv2 schemas
         var userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
         var groupSchemaId = "urn:ietf:params:scim:schemas:core:2.0:Group";
         
-        return new Dictionary<string, SchemaDefinition>
-        {
-            [userSchemaId] = new SchemaDefinition
+        // Add User schema
+        schemas[userSchemaId] = new SchemaDefinition
             {
                 Id = userSchemaId,
                 Name = "User",
@@ -1337,7 +1368,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                         Mutability = "readWrite",
                         Returned = "default",
                         Uniqueness = "server",
-                        Description = "Unique identifier for the User, typically used by the user to directly authenticate to the service provider"
+                    Description = "Unique identifier for the User, typically used by the user to directly authenticate to the service provider"
                     },
                     new SchemaAttribute
                     {
@@ -1393,8 +1424,10 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                         Description = "A Boolean value indicating the User's administrative status"
                     }
                 }
-            },
-            [groupSchemaId] = new SchemaDefinition
+        };
+        
+        // Add Group schema
+        schemas[groupSchemaId] = new SchemaDefinition
             {
                 Id = groupSchemaId,
                 Name = "Group",
@@ -1428,11 +1461,43 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                             new SchemaAttribute { Name = "value", Type = "string", Description = "Identifier of the member of this Group" },
                             new SchemaAttribute { Name = "$ref", Type = "reference", Description = "The URI corresponding to a SCIM resource that is a member of this Group" },
                             new SchemaAttribute { Name = "type", Type = "string", Description = "A label indicating the type of resource" }
-                        }
                     }
                 }
             }
         };
+        
+        return schemas;
+    }
+    
+    /// <summary>
+    /// Auto-configures a resource type with attributes and mappings using reflection.
+    /// This method eliminates the need for manual configuration in Program.cs.
+    /// </summary>
+    /// <typeparam name="T">Resource type implementing IResource</typeparam>
+    public void AutoConfigureResourceType<T>() where T : IResource
+    {
+        var autoDiscovery = new SchemaAutoDiscovery(_serviceNameProvider);
+        autoDiscovery.AutoConfigureResourceType<T>();
+    }
+    
+    /// <summary>
+    /// Auto-configures multiple resource types at once.
+    /// </summary>
+    /// <param name="resourceTypes">Array of resource types to configure</param>
+    public void AutoConfigureResourceTypes(params Type[] resourceTypes)
+    {
+        var autoDiscovery = new SchemaAutoDiscovery(_serviceNameProvider);
+        
+        foreach (var resourceType in resourceTypes)
+        {
+            if (typeof(IResource).IsAssignableFrom(resourceType))
+            {
+                // Use reflection to call AutoConfigureResourceType<T> for each type
+                var method = typeof(SchemaAutoDiscovery).GetMethod(nameof(SchemaAutoDiscovery.AutoConfigureResourceType));
+                var genericMethod = method?.MakeGenericMethod(resourceType);
+                genericMethod?.Invoke(autoDiscovery, null);
+            }
+        }
     }
 
     #endregion
@@ -1522,10 +1587,9 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                     AttributeMapper = attributeMapper
                 };
 
-                var (sqlWhereClause, parameters) = visitor.Visit(tree);
+                var sqlWhereClause = visitor.Visit(tree);
 
-
-                return (sqlWhereClause, parameters);
+                return (sqlWhereClause, new Dictionary<string, object>());
             }
             catch (Exception ex)
             {
@@ -1963,7 +2027,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         };
     }
 
-/// <summary>
+    /// <summary>
     /// Centralized response formatting by HTTP method for SCIM v2.0 compliance.
     /// Contains all logic for SCIM v2.0 compliance per HTTP verb.
     /// Implements RFC 7644 Section 3 - SCIM Protocol
@@ -2710,7 +2774,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                 var parser = new Looplex.Foundation.SCIMv2.Antlr.ScimFilterParser(tokenStream);
                 
                 var tree = parser.filter();
-                return visitor.Visit(tree);
+                var sqlWhereClause = visitor.Visit(tree);
+                return (sqlWhereClause, new Dictionary<string, object>());
             }
             catch (Exception ex)
             {

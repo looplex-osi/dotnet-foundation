@@ -24,6 +24,12 @@ public class SchemaDefinition
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// The schema's human-readable Schemas
+    /// </summary>
+    [JsonPropertyName("schemas")]
+    public string[] Schemas { get; set; } = Array.Empty<string>();
+
+    /// <summary>
     /// The schema's human-readable description
     /// </summary>
     [JsonPropertyName("description")]

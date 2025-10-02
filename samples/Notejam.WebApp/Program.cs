@@ -1,4 +1,3 @@
-using System.Reflection;
 
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
@@ -24,9 +23,10 @@ using Looplex.Samples.WebApp.Services;
 using MediatR;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 
 
-using Newtonsoft.Json;
+using Looplex.Foundation.Serialization;
 
 using Polly;
 using Polly.Extensions.Http;
@@ -49,6 +49,14 @@ public static class Program
 
     // Add HttpContextAccessor for SCIMv2 Location header generation
     builder.Services.AddHttpContextAccessor();
+    
+    // Configure global JSON serialization options
+    builder.Services.Configure<System.Text.Json.JsonSerializerOptions>(options =>
+    {
+        options.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.PropertyNameCaseInsensitive = true;
+        options.WriteIndented = true;
+    });
 
     // Load environment variables from config.env file
     var envVars = Files.LoadEnv("config.env");
@@ -88,7 +96,7 @@ public static class Program
     
     // Configure Note attributes and mappings
     Looplex.Foundation.SCIMv2.SCIMv2.ConfigureAttributes("Note", new HashSet<string> { 
-        "id", "externalId", "text", "active", "status", 
+        "id", "externalId", "text", "active", "status", "customFields",
         "meta.created", "meta.lastModified" 
     });
     
@@ -96,7 +104,10 @@ public static class Program
         { "meta.created", "n.created_at" },
         { "meta.lastModified", "n.updated_at" },
         { "active", "n.active" },
-        { "text", "n.markdown" }
+        { "text", "n.markdown" },
+        { "customFields", "n.custom_fields" },
+        { "externalId", "n.external_id" },
+        { "status", "n.status" }
     });
     
     // Configure Pad attributes and mappings
@@ -109,17 +120,15 @@ public static class Program
         { "meta.created", "p.created_at" },
         { "meta.lastModified", "p.updated_at" },
         { "active", "p.active" },
-        { "name", "p.name" }
+        { "name", "p.name" },
+        { "externalId", "p.external_id" }
     });
     
     Console.WriteLine("✅ Foundation SCIMv2 configured for Notejam");
 
-    // Register SCIMv2 core services as SINGLETON to ensure same instance
-    builder.Services.AddSingleton<ISCIMv2, Looplex.Foundation.SCIMv2.SCIMv2>();
-    builder.Services.AddSingleton<ISCIMv2Validation, Looplex.Foundation.SCIMv2.SCIMv2>();
+    // Register SCIMv2 with automatic schema discovery - ZERO CONFIGURATION!
+    builder.Services.AddSCIMv2WithResources(typeof(Note), typeof(Pad));
 
-    // TODO: SearchContent was removed - implement basic filter processing
-    // builder.Services.AddScoped<Looplex.Foundation.SearchContent.ISearchContentService, Looplex.Foundation.SearchContent.SearchContentService>();
     
     // Register Repository Pattern as SINGLETON to match SCIMv2 services
     // Using stored procedure repositories directly for elegant Foundation approach
@@ -150,7 +159,10 @@ public static class Program
         ResponseWriter = async (context, report) =>
         {
           context.Response.ContentType = "application/json; charset=utf-8";
-          string result = JsonConvert.SerializeObject(new
+          
+          // Use global JSON configuration
+          var jsonOptions = context.RequestServices.GetRequiredService<IOptions<System.Text.Json.JsonSerializerOptions>>().Value;
+          string result = System.Text.Json.JsonSerializer.Serialize(new
           {
             status = report.Status.ToString(),
             results = report.Entries.Select(e => new
@@ -161,7 +173,7 @@ public static class Program
               data = e.Value.Data,
               exception = e.Value.Exception?.Message // Include exception details
             })
-          });
+          }, jsonOptions);
           await context.Response.WriteAsync(result);
         }
       })
@@ -170,17 +182,18 @@ public static class Program
     // Use official SCIMv2 discovery endpoints from Looplex.Foundation
     app.UseSCIMv2Discovery(authorize: false);
 
-    // Register SCIMv2 services directly
+    // Register SCIMv2 services - schemas are auto-discovered and registered!
     using (var scope = app.Services.CreateScope())
     {
         var scimService = scope.ServiceProvider.GetRequiredService<ISCIMv2>();
         var noteService = scope.ServiceProvider.GetRequiredService<Looplex.Foundation.SCIMv2.Modules.IResourceService<Note>>();
         var padService = scope.ServiceProvider.GetRequiredService<Looplex.Foundation.SCIMv2.Modules.IResourceService<Pad>>();
         
+        // Register services - schemas are already auto-discovered and registered!
         scimService.Register<Note>(noteService, "notes");
         scimService.Register<Pad>(padService, "pads");
         
-        // Foundation SCIMv2 already configured during service registration
+        Console.WriteLine("✅ SCIMv2 services registered with auto-discovered schemas");
     }
 
     // Add detailed logging middleware

@@ -37,8 +37,7 @@ public static class Strings
       var parser = new ScimFilterParser(tokens);
       var tree = parser.parse();
       var visitor = new SCIMv2ToSQLVisitor { AttributeMapper = attrMap, AllowedAttributes = allowedAttr};
-      var visitResult = visitor.Visit(tree);
-      result = visitResult.Sql;
+      result = visitor.Visit(tree);
     }
 
     return result;

@@ -508,12 +508,8 @@ public static class SCIMv2
             return Results.NoContent();
         }
         
-        // Format response as JSON
-        var jsonContent = System.Text.Json.JsonSerializer.Serialize(response, new System.Text.Json.JsonSerializerOptions
-        {
-            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-            WriteIndented = true
-        });
+        // Use centralized formatting logic from SCIMv2 class
+        var jsonContent = Looplex.Foundation.SCIMv2.SCIMv2.FormatResponseByHttpMethod(response);
         
         var result = Results.Content(jsonContent, "application/scim+json", statusCode: statusCode);
         
