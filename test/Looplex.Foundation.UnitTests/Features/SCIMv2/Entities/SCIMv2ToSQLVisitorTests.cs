@@ -18,21 +18,21 @@ public class SCIMv2ToSQLVisitorTests
     var tree = parser.parse();
     var visitor = new SCIMv2ToSQLVisitor() { AttributeMapper = attrMap, AllowedAttributes = allowedAttrs};
     var result = visitor.Visit(tree);
-    return result.Sql;
+    return result;
   }
 
   [TestMethod]
   public void TestEqOperator()
   {
     var sql = ConvertToSql("userName eq \"john\"");
-    Assert.AreEqual("userName = @param_0", sql);
+    Assert.AreEqual("userName = 'john'", sql);
   }
 
   [TestMethod]
   public void TestEqOperatorWithMap()
   {
     var sql = ConvertToSql("userName eq \"john\"", new Dictionary<string, string>() { { "userName", "dsNome" } });
-    Assert.AreEqual("dsNome = @param_0", sql);
+    Assert.AreEqual("dsNome = 'john'", sql);
   }
 
   [TestMethod]
@@ -40,7 +40,7 @@ public class SCIMv2ToSQLVisitorTests
   {
     var sql = ConvertToSql("userName eq \"john\"",
       new Dictionary<string, string>() { { "userNameInvalid", "dsNome" } });
-    Assert.AreEqual("userName = @param_0", sql);
+    Assert.AreEqual("userName = 'john'", sql);
   }
 
   [TestMethod]
@@ -56,56 +56,56 @@ public class SCIMv2ToSQLVisitorTests
   public void TestNeOperator()
   {
     var sql = ConvertToSql("userName ne \"john\"");
-    Assert.AreEqual("userName != @param_0", sql);
+    Assert.AreEqual("userName != 'john'", sql);
   }
 
   [TestMethod]
   public void TestCoOperator()
   {
     var sql = ConvertToSql("email co \"example\"");
-    Assert.AreEqual("email LIKE @param_0", sql);
+    Assert.AreEqual("email LIKE '%example%'", sql);
   }
 
   [TestMethod]
   public void TestSwOperator()
   {
     var sql = ConvertToSql("email sw \"admin\"");
-    Assert.AreEqual("email LIKE @param_0", sql);
+    Assert.AreEqual("email LIKE 'admin%'", sql);
   }
 
   [TestMethod]
   public void TestEwOperator()
   {
     var sql = ConvertToSql("email ew \"com\"");
-    Assert.AreEqual("email LIKE @param_0", sql);
+    Assert.AreEqual("email LIKE '%com'", sql);
   }
 
   [TestMethod]
   public void TestGtOperator()
   {
     var sql = ConvertToSql("age gt 30");
-    Assert.AreEqual("age > @param_0", sql);
+    Assert.AreEqual("age > 30", sql);
   }
 
   [TestMethod]
   public void TestGeOperator()
   {
     var sql = ConvertToSql("age ge 30");
-    Assert.AreEqual("age >= @param_0", sql);
+    Assert.AreEqual("age >= 30", sql);
   }
 
   [TestMethod]
   public void TestLtOperator()
   {
     var sql = ConvertToSql("age lt 30");
-    Assert.AreEqual("age < @param_0", sql);
+    Assert.AreEqual("age < 30", sql);
   }
 
   [TestMethod]
   public void TestLeOperator()
   {
     var sql = ConvertToSql("age le 30");
-    Assert.AreEqual("age <= @param_0", sql);
+    Assert.AreEqual("age <= 30", sql);
   }
 
   [TestMethod]
@@ -119,20 +119,20 @@ public class SCIMv2ToSQLVisitorTests
   public void TestNotExpression()
   {
     var sql = ConvertToSql("not (email eq \"admin@example.com\")");
-    Assert.AreEqual("NOT (email = @param_0)", sql);
+    Assert.AreEqual("NOT (email = 'admin@example.com')", sql);
   }
 
   [TestMethod]
   public void TestAndExpression()
   {
     var sql = ConvertToSql("userName eq \"john\" and age gt 18");
-    Assert.AreEqual("(userName = @param_0 AND age > @param_1)", sql);
+    Assert.AreEqual("(userName = 'john' AND age > 18)", sql);
   }
 
   [TestMethod]
   public void TestOrExpression()
   {
     var sql = ConvertToSql("userName eq \"john\" or userName eq \"jane\"");
-    Assert.AreEqual("(userName = @param_0 OR userName = @param_1)", sql);
+    Assert.AreEqual("(userName = 'john' OR userName = 'jane')", sql);
   }
 }

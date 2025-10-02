@@ -1080,7 +1080,9 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                         Attributes = schema.Attributes,
                     }).ToList();
             // Use the existing CreateListResponse method to ensure proper SCIM v2.0 format
-            return CreateListResponse(schemasWithoutMeta, schemasWithoutMeta.Count, 1, schemasWithoutMeta.Count);
+            var response = CreateListResponse(schemasWithoutMeta, schemasWithoutMeta.Count, 1, schemasWithoutMeta.Count);
+            response.StatusCode = 200; // Set proper status code for /Schemas endpoint
+            return response;
         }
         catch (Exception ex)
         {
