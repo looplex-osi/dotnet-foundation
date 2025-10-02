@@ -73,13 +73,13 @@ public class DbConnections(IConfiguration configuration) : IDbConnections
     using var createTableCommand = connection.CreateCommand();
     createTableCommand.CommandText = @"
       CREATE TABLE IF NOT EXISTS Notes (
-        Id NVARCHAR(450) PRIMARY KEY,
-        Name NVARCHAR(MAX),
-        Text NVARCHAR(MAX),
-        Created NVARCHAR(MAX),
-        Modified NVARCHAR(MAX),
-        IsActive BIT,
-        PadId NVARCHAR(450)
+        Id TEXT PRIMARY KEY,
+        Name TEXT,
+        Text TEXT,
+        Created TEXT,
+        Modified TEXT,
+        IsActive INTEGER,
+        PadId TEXT
       )";
     createTableCommand.ExecuteNonQuery();
   }

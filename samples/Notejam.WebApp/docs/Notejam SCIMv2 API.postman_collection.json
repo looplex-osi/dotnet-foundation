@@ -1,0 +1,1117 @@
+{
+	"info": {
+		"_postman_id": "8f53b41c-e49e-4273-b700-f19bcceb76bf",
+		"name": "Notejam SCIMv2 API",
+		"description": "Complete collection for testing the Notejam SCIMv2 API with all functional endpoints and filters",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "47263824",
+		"_collection_link": "https://jjff1983-8293941.postman.co/workspace/Jo%C3%A3o's-Workspace~eb8ac32b-db99-4431-8f1b-6612413eacfc/collection/47263824-8f53b41c-e49e-4273-b700-f19bcceb76bf?action=share&source=collection_link&creator=47263824"
+	},
+	"item": [
+		{
+			"name": "Discovery Endpoints",
+			"item": [
+				{
+					"name": "GET ServiceProviderConfig",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ServiceProviderConfig",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ServiceProviderConfig"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET ResourceTypes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/ResourceTypes",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ResourceTypes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Schemas",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/Schemas",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"Schemas"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notes - CRUD Operations",
+			"item": [
+				{
+					"name": "GET Notes (List)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Notes with Pagination",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?startIndex=1&count=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "startIndex",
+									"value": "1"
+								},
+								{
+									"key": "count",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Note",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/scim+json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n  \"name\": \"Test Note from Postman\",\n  \"text\": \"This is a test note created via Postman collection\",\n  \"active\": true,\n  \"status\": 1,\n  \"customFields\": {}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notes",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Note by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes/{{noteId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"{{noteId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Update Note",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/scim+json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n  \"name\": \"Updated Note from Postman\",\n  \"text\": \"This note was updated via Postman collection\",\n  \"active\": false,\n  \"status\": 2,\n  \"customFields\": {\"priority\": \"high\"}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notes/{{noteId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"{{noteId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH Update Note",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/scim+json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"schemas\": [\"urn:ietf:params:scim:api:messages:2.0:PatchOp\"],\n  \"Operations\": [\n    {\n      \"op\": \"replace\",\n      \"path\": \"active\",\n      \"value\": true\n    },\n    {\n      \"op\": \"replace\",\n      \"path\": \"text\",\n      \"value\": \"Updated via PATCH operation\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notes/{{noteId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"{{noteId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE Note",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes/{{noteId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"{{noteId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notes - Filtering (Working)",
+			"item": [
+				{
+					"name": "Filter: externalId pr",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=externalId pr",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "externalId pr"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: status eq 1",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=status eq 1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "status eq 1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: active eq \"true\"",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=active eq \"true\"",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "active eq \"true\""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: active eq \"false\"",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=active eq \"false\"",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "active eq \"false\""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: text co \"test\"",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=text co \"test\"",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "text co \"test\""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: text sw \"Test\"",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=text sw \"Test\"",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "text sw \"Test\""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: text ew \"Content\"",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=text ew \"Content\"",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "text ew \"Content\""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: status gt 0",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=status gt 0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "status gt 0"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: status lt 2",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=status lt 2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "status lt 2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: meta.created gt \"2025-01-01T00:00:00.000Z\"",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=meta.created gt \"2025-01-01T00:00:00.000Z\"",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "meta.created gt \"2025-01-01T00:00:00.000Z\""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: meta.created lt \"2025-12-31T23:59:59.999Z\"",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=meta.created lt \"2025-12-31T23:59:59.999Z\"",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "meta.created lt \"2025-12-31T23:59:59.999Z\""
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Notes - Complex Filtering",
+			"item": [
+				{
+					"name": "Filter: (active eq \"true\") and (status eq 1)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=(active eq \"true\") and (status eq 1)",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "(active eq \"true\") and (status eq 1)"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: (active eq \"false\") or (status gt 1)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=(active eq \"false\") or (status gt 1)",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "(active eq \"false\") or (status gt 1)"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: not (active eq \"false\")",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=not (active eq \"false\")",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "not (active eq \"false\")"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Pads - CRUD Operations",
+			"item": [
+				{
+					"name": "GET Pads (List)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/pads",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Create Pad",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/scim+json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Pad\"],\n  \"name\": \"Test Pad from Postman\",\n  \"active\": true,\n  \"customFields\": {}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/pads",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Pad by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/pads/{{padId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads",
+								"{{padId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Update Pad",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/scim+json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Pad\"],\n  \"name\": \"Updated Pad from Postman\",\n  \"active\": false,\n  \"customFields\": {\"priority\": \"high\"}\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/pads/{{padId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads",
+								"{{padId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH Update Pad",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/scim+json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"schemas\": [\"urn:ietf:params:scim:api:messages:2.0:PatchOp\"],\n  \"Operations\": [\n    {\n      \"op\": \"replace\",\n      \"path\": \"active\",\n      \"value\": true\n    },\n    {\n      \"op\": \"replace\",\n      \"path\": \"name\",\n      \"value\": \"Updated via PATCH operation\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/pads/{{padId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads",
+								"{{padId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE Pad",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/pads/{{padId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads",
+								"{{padId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Pads - Filtering",
+			"item": [
+				{
+					"name": "Filter: active eq \"true\"",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/pads?filter=active eq \"true\"",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "active eq \"true\""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Filter: name co \"Test\"",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/pads?filter=name co \"Test\"",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "name co \"Test\""
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Bulk Operations",
+			"item": [
+				{
+					"name": "POST Bulk Operations",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/scim+json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"schemas\": [\"urn:ietf:params:scim:api:messages:2.0:BulkRequest\"],\n  \"Operations\": [\n    {\n      \"method\": \"POST\",\n      \"path\": \"/notes\",\n      \"bulkId\": \"bulk-1\",\n      \"data\": {\n        \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n        \"name\": \"Bulk Note 1\",\n        \"text\": \"Created via Bulk operation\",\n        \"active\": true,\n        \"status\": 1,\n        \"customFields\": {}\n      }\n    },\n    {\n      \"method\": \"POST\",\n      \"path\": \"/pads\",\n      \"bulkId\": \"bulk-2\",\n      \"data\": {\n        \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Pad\"],\n        \"name\": \"Bulk Pad 1\",\n        \"active\": true,\n        \"customFields\": {}\n      }\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/Bulk",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"Bulk"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Delete Operations Testing",
+			"item": [
+				{
+					"name": "Test Soft Delete (Notes) - Step 1: Create Note",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/scim+json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n  \"text\": \"Test Note for Soft Delete\",\n  \"active\": true,\n  \"status\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notes",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Soft Delete (Notes) - Step 2: Delete Note",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes/{{noteId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"{{noteId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Soft Delete (Notes) - Step 3: Verify Still Accessible",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes/{{noteId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"{{noteId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Hard Delete (Pads) - Step 1: Create Pad",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/scim+json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Pad\"],\n  \"name\": \"Test Pad for Hard Delete\",\n  \"active\": true,\n  \"status\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/pads",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Hard Delete (Pads) - Step 2: Delete Pad",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/pads/{{padId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads",
+								"{{padId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Hard Delete (Pads) - Step 3: Verify Not Accessible",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/pads/{{padId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"pads",
+								"{{padId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:7065",
+			"type": "string"
+		},
+		{
+			"key": "noteId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "padId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

@@ -49,7 +49,7 @@ public static class Program
 
     // Add HttpContextAccessor for SCIMv2 Location header generation
     builder.Services.AddHttpContextAccessor();
-    
+    /*
     // Configure global JSON serialization options
     builder.Services.Configure<System.Text.Json.JsonSerializerOptions>(options =>
     {
@@ -57,13 +57,16 @@ public static class Program
         options.PropertyNameCaseInsensitive = true;
         options.WriteIndented = true;
     });
-
+    */
     // Load environment variables from config.env file
     var envVars = Files.LoadEnv("config.env");
     foreach (var item in envVars)
     {
       Environment.SetEnvironmentVariable(item.Key, item.Value);
     }
+
+
+    // TODO EXCLUIR!!!
 
     // Configuration is now loaded from config.env file
     // All sensitive data has been moved to the environment file

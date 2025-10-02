@@ -11,7 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{790545C2-E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.UnitTests", "test\Looplex.Foundation.UnitTests\Looplex.Foundation.UnitTests.csproj", "{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.WebApp", "src\Looplex.Foundation.WebApp\Looplex.Foundation.WebApp.csproj", "{10CCE025-B4B9-49A4-9C9C-A21A4906E120}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.Protocols.Http", "src\Looplex.Foundation.Protocols.Http\Looplex.Foundation.Protocols.Http.csproj", "{79353698-6C88-740C-7061-75714EAF755A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,10 +27,10 @@ Global
 		{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{10CCE025-B4B9-49A4-9C9C-A21A4906E120}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{10CCE025-B4B9-49A4-9C9C-A21A4906E120}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{10CCE025-B4B9-49A4-9C9C-A21A4906E120}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{10CCE025-B4B9-49A4-9C9C-A21A4906E120}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -38,7 +38,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{FE2F018E-B7D6-42AB-A27A-79B090D98272} = {46910C4E-E213-47AF-960A-12080DA743E3}
 		{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7} = {790545C2-EA0E-438D-B8A7-DAB859342435}
-		{10CCE025-B4B9-49A4-9C9C-A21A4906E120} = {46910C4E-E213-47AF-960A-12080DA743E3}
+		{79353698-6C88-740C-7061-75714EAF755A} = {46910C4E-E213-47AF-960A-12080DA743E3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0EB92CF0-DFE0-42F5-8E9E-8BCF5A0A5F46}

@@ -36,39 +36,11 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// </summary>
     /// <param name="serviceNameProvider">Service name provider for schema generation</param>
     /// <param name="httpContextAccessor">HTTP context accessor for dynamic URL generation</param>
-    public SCIMv2(IServiceNameProvider? serviceNameProvider = null, IHttpContextAccessor? httpContextAccessor = null, ISchemaAutoDiscovery? autoDiscovery = null)
+    public SCIMv2(IServiceNameProvider? serviceNameProvider = null, IHttpContextAccessor? httpContextAccessor = null)
     {
         _serviceNameProvider = serviceNameProvider;
         _httpContextAccessor = httpContextAccessor;
-        
-        // Initialize schemas automatically
-        _schemas = InitializeSchemas();
-        
-        // Register all schemas automatically
-        foreach (var schema in _schemas.Values)
-        {
-            RegisterSchema(schema);
-        }
-        
-        // Auto-discover custom schemas if auto-discovery is available
-        if (autoDiscovery != null)
-        {
-            try
-            {
-                var callingAssembly = Assembly.GetCallingAssembly();
-                var customSchemas = autoDiscovery.DiscoverSchemasAsync(callingAssembly).GetAwaiter().GetResult();
-                
-                foreach (var schema in customSchemas)
-                {
-                    RegisterSchema(schema);
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't fail initialization
-                System.Diagnostics.Debug.WriteLine($"Auto-discovery failed: {ex.Message}");
-            }
-        }
+        _schemas = new Dictionary<string, SchemaDefinition>();
     }
     
     // Serialization is now centralized in Looplex.Foundation.Serialization
@@ -1071,18 +1043,15 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         {
             var schemas = _schemas.Values.ToList();
             
-            var schemasWithoutMeta = schemas.Select(schema => new SchemaDefinition
-                    {
-                        Id = schema.Id,
-                        Schemas = [schema.Id],
-                        Name = schema.Name,
-                        Description = schema.Description,
-                        Attributes = schema.Attributes,
-                    }).ToList();
-            // Use the existing CreateListResponse method to ensure proper SCIM v2.0 format
-            var response = CreateListResponse(schemasWithoutMeta, schemasWithoutMeta.Count, 1, schemasWithoutMeta.Count);
-            response.StatusCode = 200; // Set proper status code for /Schemas endpoint
-            return response;
+            return new SCIMv2Response
+            {
+                StatusCode = 200,
+                Data = new { Resources = schemas },
+                Schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" },
+                TotalResults = schemas.Count,
+                StartIndex = 1,
+                ItemsPerPage = schemas.Count
+            };
         }
         catch (Exception ex)
         {
@@ -1347,14 +1316,12 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
 
     private Dictionary<string, SchemaDefinition> InitializeSchemas()
     {
-        var schemas = new Dictionary<string, SchemaDefinition>();
-        
-        // Add standard SCIMv2 schemas
         var userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
         var groupSchemaId = "urn:ietf:params:scim:schemas:core:2.0:Group";
         
-        // Add User schema
-        schemas[userSchemaId] = new SchemaDefinition
+        return new Dictionary<string, SchemaDefinition>
+        {
+            [userSchemaId] = new SchemaDefinition
             {
                 Id = userSchemaId,
                 Name = "User",
@@ -1370,7 +1337,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                         Mutability = "readWrite",
                         Returned = "default",
                         Uniqueness = "server",
-                    Description = "Unique identifier for the User, typically used by the user to directly authenticate to the service provider"
+                        Description = "Unique identifier for the User, typically used by the user to directly authenticate to the service provider"
                     },
                     new SchemaAttribute
                     {
@@ -1426,10 +1393,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                         Description = "A Boolean value indicating the User's administrative status"
                     }
                 }
-        };
-        
-        // Add Group schema
-        schemas[groupSchemaId] = new SchemaDefinition
+            },
+            [groupSchemaId] = new SchemaDefinition
             {
                 Id = groupSchemaId,
                 Name = "Group",
@@ -1463,43 +1428,11 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                             new SchemaAttribute { Name = "value", Type = "string", Description = "Identifier of the member of this Group" },
                             new SchemaAttribute { Name = "$ref", Type = "reference", Description = "The URI corresponding to a SCIM resource that is a member of this Group" },
                             new SchemaAttribute { Name = "type", Type = "string", Description = "A label indicating the type of resource" }
+                        }
                     }
                 }
             }
         };
-        
-        return schemas;
-    }
-    
-    /// <summary>
-    /// Auto-configures a resource type with attributes and mappings using reflection.
-    /// This method eliminates the need for manual configuration in Program.cs.
-    /// </summary>
-    /// <typeparam name="T">Resource type implementing IResource</typeparam>
-    public void AutoConfigureResourceType<T>() where T : IResource
-    {
-        var autoDiscovery = new SchemaAutoDiscovery(_serviceNameProvider);
-        autoDiscovery.AutoConfigureResourceType<T>();
-    }
-    
-    /// <summary>
-    /// Auto-configures multiple resource types at once.
-    /// </summary>
-    /// <param name="resourceTypes">Array of resource types to configure</param>
-    public void AutoConfigureResourceTypes(params Type[] resourceTypes)
-    {
-        var autoDiscovery = new SchemaAutoDiscovery(_serviceNameProvider);
-        
-        foreach (var resourceType in resourceTypes)
-        {
-            if (typeof(IResource).IsAssignableFrom(resourceType))
-            {
-                // Use reflection to call AutoConfigureResourceType<T> for each type
-                var method = typeof(SchemaAutoDiscovery).GetMethod(nameof(SchemaAutoDiscovery.AutoConfigureResourceType));
-                var genericMethod = method?.MakeGenericMethod(resourceType);
-                genericMethod?.Invoke(autoDiscovery, null);
-            }
-        }
     }
 
     #endregion
@@ -1590,8 +1523,9 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                 };
 
                 var sqlWhereClause = visitor.Visit(tree);
+                var parameters = new Dictionary<string, object>();
 
-                return (sqlWhereClause, new Dictionary<string, object>());
+                return (sqlWhereClause, parameters);
             }
             catch (Exception ex)
             {
@@ -1934,17 +1868,18 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// <returns>ETag value based on resource content</returns>
     private static string GenerateContentETag(IResource resource)
     {
-        if (resource == null) return "W/\"1\"";
+        
         
         // Create a content hash based on resource data
-        var content = $"{resource.Id}|{resource.Meta?.Created}|{resource.Meta?.LastModified}|{resource.Meta?.ResourceType}";
+        var content = $"{resource}";
         
         // Generate hash
         using var sha256 = System.Security.Cryptography.SHA256.Create();
         var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
-        var hash = Convert.ToBase64String(hashBytes)[..8]; // Use first 8 characters
-        
-        return $"W/\"{hash}\"";
+        var hexHash = string.Concat(hashBytes.Select(b => b.ToString("x2")));
+        var hash = hexHash;
+
+    return $"{hash}";
     }
 
     /// <summary>
@@ -1957,10 +1892,9 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// <returns>Cryptographic hash-based version string</returns>
     private static string GenerateResourceVersion(IResource resource)
     {
-        if (resource == null) return "W/\"1\"";
-        
+       
         // Create comprehensive content hash including all resource data
-        var content = $"{resource.Id}|{resource.Meta?.Created}|{resource.Meta?.LastModified}|{resource.Meta?.ResourceType}|{resource.Meta?.Location}";
+        var content = $"{resource}";
         
         // Include resource-specific data for more unique hashing
         if (resource.Schemas != null && resource.Schemas.Length > 0)
@@ -1971,9 +1905,12 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         // Generate SHA-256 hash
         using var sha256 = System.Security.Cryptography.SHA256.Create();
         var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
-        var hash = Convert.ToBase64String(hashBytes)[..12]; // Use first 12 characters for more uniqueness
+        var hexHash = string.Concat(hashBytes.Select(b => b.ToString("x2")));
+        var hash = hexHash;
         
-        return $"W/\"{hash}\"";
+
+        
+        return $"{hash}";
     }
 
     /// <summary>
@@ -2029,65 +1966,6 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         };
     }
 
-    /// <summary>
-    /// Centralized response formatting by HTTP method for SCIM v2.0 compliance.
-    /// Contains all logic for SCIM v2.0 compliance per HTTP verb.
-    /// Implements RFC 7644 Section 3 - SCIM Protocol
-    /// [RFC 7644 Section 3](https://datatracker.ietf.org/doc/html/rfc7644#section-3)
-    /// </summary>
-    /// <param name="response">SCIMv2Response to format</param>
-    /// <returns>Formatted JSON string according to SCIM v2.0 specification</returns>
-    public static string FormatResponseByHttpMethod(SCIMv2Response response)
-    {
-        if (response == null)
-            throw new ArgumentNullException(nameof(response));
-
-        // PRIORITY: If there's an error, use specific error formatting method
-        if (response.Error != null)
-        {
-            return FormatErrorResponse(response);
-        }
-
-        // SPECIFIC BLOCKS FOR EACH HTTP VERB (only for non-error responses)
-        if (response.HttpMethod == "QUERY")
-        {
-            // QUERY (Collections): Remove statusCode, keep Resources wrapper
-            return FormatQueryResponse(response);
-        }
-        else if (response.HttpMethod == "GET")
-        {
-            // GET (Single Resource): Keep statusCode, remove Resources wrapper
-            return FormatSingleResourceResponse(response);
-        }
-        else if (response.HttpMethod == "POST")
-        {
-            // POST (Create): Keep statusCode, remove Resources wrapper
-            return FormatSingleResourceResponse(response);
-        }
-        else if (response.HttpMethod == "PUT")
-        {
-            // PUT (Replace): Keep statusCode, remove Resources wrapper
-            return FormatSingleResourceResponse(response);
-        }
-        else if (response.HttpMethod == "PATCH")
-        {
-            // PATCH (Modify): Keep statusCode, remove Resources wrapper
-            return FormatSingleResourceResponse(response);
-        }
-        else if (response.HttpMethod == "DELETE")
-        {
-            // DELETE: Keep statusCode, no body (204)
-            return FormatDeleteResponse(response);
-        }
-        else
-        {
-            // Default: serialize envelope (non-error path)
-            return System.Text.Json.JsonSerializer.Serialize(response, new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
-            });
-        }
-    }
 
 
 
@@ -2580,6 +2458,22 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             return GetDefaultAttributeMappings(resourceType);
         }
 
+        /// <summary>
+        /// Get table prefix for resource type based on standard database naming conventions.
+        /// </summary>
+        /// <param name="resourceType">Type of the resource</param>
+        /// <returns>Single character prefix for database table aliases</returns>
+        private static string GetTablePrefix(string resourceType)
+        {
+            return resourceType.ToLower() switch
+            {
+                "user" => "u",
+                "group" => "g", 
+                "note" => "n",
+                "pad" => "p",
+                _ => resourceType.ToLower().Substring(0, 1) // First letter as prefix
+            };
+        }
     }
 
     /// <summary>
@@ -2777,7 +2671,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                 
                 var tree = parser.filter();
                 var sqlWhereClause = visitor.Visit(tree);
-                return (sqlWhereClause, new Dictionary<string, object>());
+                var parameters = new Dictionary<string, object>();
+                return (sqlWhereClause, parameters);
             }
             catch (Exception ex)
             {
@@ -3079,6 +2974,40 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         public static string ParseString(object value)
         {
             return value?.ToString() ?? string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Public method to format SCIMv2 responses by HTTP method
+    /// </summary>
+    /// <param name="response">SCIMv2Response to format</param>
+    /// <returns>Formatted JSON string</returns>
+    public static string FormatResponseByHttpMethod(SCIMv2Response response)
+    {
+        if (response == null)
+            throw new ArgumentNullException(nameof(response));
+
+        // Handle error responses
+        if (response.Error != null)
+        {
+            return FormatErrorResponse(response);
+        }
+
+        // Handle different HTTP methods
+        switch (response.HttpMethod?.ToUpper())
+        {
+            case "QUERY":
+                return FormatQueryResponse(response);
+            case "GET":
+            case "POST":
+            case "PUT":
+            case "PATCH":
+                return FormatSingleResourceResponse(response);
+            case "DELETE":
+                return FormatDeleteResponse(response);
+            default:
+                // Default to single resource format
+                return FormatSingleResourceResponse(response);
         }
     }
 

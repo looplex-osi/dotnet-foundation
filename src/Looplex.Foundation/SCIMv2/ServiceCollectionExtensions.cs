@@ -88,7 +88,9 @@ namespace Looplex.Foundation.SCIMv2
         {
             if (_scimService is SCIMv2 scimv2)
             {
-                scimv2.AutoConfigureResourceType<T>();
+                // Auto-configure using SchemaAutoDiscovery
+                var autoDiscovery = new SchemaAutoDiscovery();
+                autoDiscovery.AutoConfigureResourceType<T>();
                 Console.WriteLine($"✅ Auto-configured SCIMv2 for {typeof(T).Name}");
             }
             
@@ -136,7 +138,17 @@ namespace Looplex.Foundation.SCIMv2
                     }
                 }
                 
-                scimv2.AutoConfigureResourceTypes(_resourceTypes);
+                // Auto-configure using SchemaAutoDiscovery
+                foreach (var resourceType in _resourceTypes)
+                {
+                    if (typeof(IResource).IsAssignableFrom(resourceType))
+                    {
+                        // Use reflection to call AutoConfigureResourceType<T>
+                        var method = typeof(SchemaAutoDiscovery).GetMethod(nameof(SchemaAutoDiscovery.AutoConfigureResourceType));
+                        var genericMethod = method?.MakeGenericMethod(resourceType);
+                        genericMethod?.Invoke(autoDiscovery, null);
+                    }
+                }
                 Console.WriteLine($"✅ Auto-configured SCIMv2 for {_resourceTypes.Length} resource types");
             }
             
