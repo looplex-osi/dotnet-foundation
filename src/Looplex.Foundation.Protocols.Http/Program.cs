@@ -1,6 +1,6 @@
 using Looplex.Foundation.Core.SCIMv2;
 using Looplex.Foundation.Core.SCIMv2.Extensions;
-using Looplex.Foundation.Core.Protocols.Http.Middlewares;
+using Looplex.Foundation.Protocols.Http.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 

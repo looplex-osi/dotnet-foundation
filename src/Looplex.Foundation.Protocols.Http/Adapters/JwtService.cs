@@ -6,7 +6,7 @@ using Looplex.Foundation.Core.Ports;
 
 using Microsoft.IdentityModel.Tokens;
 
-namespace Looplex.Foundation.Core.Protocols.Http.Adapters;
+namespace Looplex.Foundation.Protocols.Http.Adapters;
 
 public sealed class JwtService : IJwtService
 {

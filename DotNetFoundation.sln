@@ -11,7 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{790545C2-E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.Core.UnitTests", "test\Looplex.Foundation.Core.UnitTests\Looplex.Foundation.Core.UnitTests.csproj", "{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.Core.Protocols.Http", "src\Looplex.Foundation.Core.Protocols.Http\Looplex.Foundation.Core.Protocols.Http.csproj", "{79353698-6C88-740C-7061-75714EAF755A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.Protocols.Http", "src\Looplex.Foundation.Protocols.Http\Looplex.Foundation.Protocols.Http.csproj", "{79353698-6C88-740C-7061-75714EAF755A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

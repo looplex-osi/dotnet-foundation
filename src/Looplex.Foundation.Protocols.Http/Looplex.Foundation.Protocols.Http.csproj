@@ -7,8 +7,8 @@
     <LangVersion>latest</LangVersion>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
-    <AssemblyName>Looplex.Foundation.Core.Protocols.Http</AssemblyName>
-    <RootNamespace>Looplex.Foundation.Core.Protocols.Http</RootNamespace>
+    <AssemblyName>Looplex.Foundation.Protocols.Http</AssemblyName>
+    <RootNamespace>Looplex.Foundation.Protocols.Http</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

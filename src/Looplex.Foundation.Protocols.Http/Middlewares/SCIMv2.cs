@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
-namespace Looplex.Foundation.Core.Protocols.Http.Middlewares;
+namespace Looplex.Foundation.Protocols.Http.Middlewares;
 
 /// <summary>
 /// Simplified SCIMv2 Middleware - HTTP Adapter Only

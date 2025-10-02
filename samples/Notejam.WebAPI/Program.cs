@@ -11,7 +11,7 @@ using Looplex.Foundation.Core.Ports;
 using Looplex.Foundation.Core.SCIMv2;
 using Looplex.Foundation.Core.SCIMv2.Modules;
 using Looplex.Foundation.Core.SCIMv2.Extensions;
-using Looplex.Foundation.Core.Protocols.Http.Middlewares;
+using Looplex.Foundation.Protocols.Http.Middlewares;
 using Looplex.Samples.Application;
 using Looplex.Samples.Application.Services;
 using Looplex.Samples.Domain.Entities;

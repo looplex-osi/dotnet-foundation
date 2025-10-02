@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using Looplex.Foundation.Core.Helpers;
 using Looplex.Foundation.Core.OAuth2.Entities;
 using Looplex.Foundation.Core.Ports;
-using Looplex.Foundation.Core.Protocols.Http.Adapters;
+using Looplex.Foundation.Protocols.Http.Adapters;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using Looplex.OpenForExtension.Loader;
 
@@ -19,7 +19,7 @@ using Microsoft.IdentityModel.Tokens;
 
 using Newtonsoft.Json;
 
-namespace Looplex.Foundation.Core.Protocols.Http.Middlewares;
+namespace Looplex.Foundation.Protocols.Http.Middlewares;
 
 public static class OAuth2
 {
