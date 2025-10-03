@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Looplex.Foundation.Core.SCIMv2;
-using Looplex.Foundation.Core.SCIMv2.Entities;
+using Looplex.SCIMv2;
+using Looplex.SCIMv2.Entities;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
 {
     /// <summary>
-    /// Testes para funcionalidades de ServiceNameProvider no SCIMv2
+    /// Tests to verify the functionality of ServiceNameProvider in SCIMv2
     /// </summary>
     [TestClass]
     public class ServiceNameProviderTests
@@ -17,7 +17,7 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
         public void TestSCIMv2WithoutServiceNameProvider()
         {
             // Arrange & Act
-            var scimService = new Looplex.Foundation.Core.SCIMv2.SCIMv2();
+            var scimService = new Looplex.SCIMv2.SCIMv2();
 
             // Assert
             Assert.IsNull(scimService.GetServiceName(), "Service name should be null when no provider is configured");
@@ -30,7 +30,7 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
         {
             // Arrange
             var serviceNameProvider = new ServiceNameProvider("notejam");
-            var scimService = new Looplex.Foundation.Core.SCIMv2.SCIMv2(serviceNameProvider);
+            var scimService = new Looplex.SCIMv2.SCIMv2(serviceNameProvider);
 
             // Assert
             Assert.AreEqual("notejam", scimService.GetServiceName(), "Service name should match provider");
@@ -43,7 +43,7 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
         {
             // Arrange
             var serviceNameProvider = new ServiceNameProvider("case-management");
-            var scimService = new Looplex.Foundation.Core.SCIMv2.SCIMv2(serviceNameProvider);
+            var scimService = new Looplex.SCIMv2.SCIMv2(serviceNameProvider);
 
             // Assert
             Assert.AreEqual("case-management", scimService.GetServiceName(), "Service name should match provider");
@@ -69,7 +69,7 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
         {
             // Arrange
             var serviceNameProvider = new ServiceNameProvider("notejam");
-            var scimService = new Looplex.Foundation.Core.SCIMv2.SCIMv2(serviceNameProvider);
+            var scimService = new Looplex.SCIMv2.SCIMv2(serviceNameProvider);
 
             // Act
             var schemasResponse = await scimService.GetSchemasAsync();
@@ -87,7 +87,7 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
         public async Task TestSchemaGenerationWithoutServiceNameProvider()
         {
             // Arrange
-            var scimService = new Looplex.Foundation.Core.SCIMv2.SCIMv2();
+            var scimService = new Looplex.SCIMv2.SCIMv2();
 
             // Act
             var schemasResponse = await scimService.GetSchemasAsync();
@@ -120,9 +120,9 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
             var customProvider = new ServiceNameProvider("custom-app");
 
             // Act
-            var notejamService = new Looplex.Foundation.Core.SCIMv2.SCIMv2(notejamProvider);
-            var caseManagementService = new Looplex.Foundation.Core.SCIMv2.SCIMv2(caseManagementProvider);
-            var customService = new Looplex.Foundation.Core.SCIMv2.SCIMv2(customProvider);
+            var notejamService = new Looplex.SCIMv2.SCIMv2(notejamProvider);
+            var caseManagementService = new Looplex.SCIMv2.SCIMv2(caseManagementProvider);
+            var customService = new Looplex.SCIMv2.SCIMv2(customProvider);
 
             // Assert
             Assert.AreEqual("notejam", notejamService.GetServiceName(), "Notejam service should have correct name");

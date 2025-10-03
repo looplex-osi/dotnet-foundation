@@ -2,8 +2,8 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 
-using Looplex.Foundation.Core.OAuth2.Entities;
-using Looplex.Foundation.Core.Ports;
+using Looplex.OAuth2.Entities;
+using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
@@ -79,8 +79,8 @@ public class TokenExchangeAuthenticationsTests
     // Arrange
     _mockConfiguration["Audience"].Returns("audience");
     _mockConfiguration["Issuer"].Returns("issuer");
-    _mockConfiguration["PublicKey"].Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes(RsaKeys.PublicKey)));
-    _mockConfiguration["PrivateKey"].Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes(RsaKeys.PrivateKey)));
+    _mockConfiguration["PublicKey"].Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes("-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----")));
+    _mockConfiguration["PrivateKey"].Returns(Convert.ToBase64String(Encoding.UTF8.GetBytes("-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----")));
     _mockConfiguration["OicdUserInfoEndpoint"].Returns("https://graph.microsoft.com/oidc/userinfo");
 
     string clientServices = JsonConvert.SerializeObject(new

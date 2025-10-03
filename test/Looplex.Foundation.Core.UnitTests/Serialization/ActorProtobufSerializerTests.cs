@@ -1,5 +1,5 @@
-using Looplex.Foundation.Core.Entities;
-using Looplex.Foundation.Core.Serialization.Protobuf;
+using Looplex.Foundation.Entities;
+using Looplex.SCIMv2.Serialization;
 
 using ProtoBuf;
 

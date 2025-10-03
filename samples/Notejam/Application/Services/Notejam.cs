@@ -1,8 +1,8 @@
 using System.Security.Claims;
 
-using Looplex.Foundation.Core.Entities;
-using Looplex.Foundation.Core.Helpers;
-using Looplex.Foundation.Core.Ports;
+using Looplex.Foundation.Entities;
+using Looplex.Foundation.Helpers;
+using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;

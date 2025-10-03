@@ -1,9 +1,9 @@
 using System.Security.Claims;
 
-using Looplex.Foundation.Core.OAuth2.Entities;
-using Looplex.Foundation.Core.Ports;
-using Looplex.Foundation.Core.SCIMv2.Commands;
-using Looplex.Foundation.Core.SCIMv2.Queries;
+using Looplex.OAuth2.Entities;
+using Looplex.Foundation.Ports;
+using Looplex.SCIMv2.Commands;
+using Looplex.SCIMv2.Queries;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using MediatR;

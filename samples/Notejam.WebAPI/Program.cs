@@ -5,16 +5,16 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 
 
-using Looplex.Foundation.Core.Adapters;
-using Looplex.Foundation.Core.Helpers;
-using Looplex.Foundation.Core.Ports;
-using Looplex.Foundation.Core.SCIMv2;
-using Looplex.Foundation.Core.SCIMv2.Modules;
-using Looplex.Foundation.Core.SCIMv2.Extensions;
-using Looplex.Foundation.Core.SCIMv2.Entities;
-using Looplex.Foundation.Core.Serialization;
+using Looplex.Foundation.Adapters;
+using Looplex.Foundation.Helpers;
+using Looplex.Foundation.Ports;
+using Looplex.SCIMv2;
+using Looplex.SCIMv2.Modules;
+using Looplex.SCIMv2.Extensions;
+using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Serialization;
 
-using Looplex.Foundation.Protocols.Http.Middlewares;
+using Looplex.Protocols.HTTP.Middlewares;
 
 using Looplex.Samples.Application;
 using Looplex.Samples.Application.Services;
@@ -83,12 +83,12 @@ public static class Program
     Console.WriteLine("🔧 Configuring Foundation SCIMv2 for Notejam");
     
     // Configure Note attributes and mappings
-    Looplex.Foundation.Core.SCIMv2.SCIMv2.ConfigureAttributes("Note", new HashSet<string> { 
+    Looplex.SCIMv2.SCIMv2.ConfigureAttributes("Note", new HashSet<string> { 
         "id", "externalId", "text", "active", "status", "customFields",
         "meta.created", "meta.lastModified" 
     });
     
-    Looplex.Foundation.Core.SCIMv2.SCIMv2.ConfigureMapping("Note", new Dictionary<string, string> {
+    Looplex.SCIMv2.SCIMv2.ConfigureMapping("Note", new Dictionary<string, string> {
         { "meta.created", "n.created_at" },
         { "meta.lastModified", "n.updated_at" },
         { "active", "n.active" },
@@ -99,12 +99,12 @@ public static class Program
     });
     
     // Configure Pad attributes and mappings
-    Looplex.Foundation.Core.SCIMv2.SCIMv2.ConfigureAttributes("Pad", new HashSet<string> { 
+    Looplex.SCIMv2.SCIMv2.ConfigureAttributes("Pad", new HashSet<string> { 
         "id", "externalId", "name", "active", 
         "meta.created", "meta.lastModified" 
     });
     
-    Looplex.Foundation.Core.SCIMv2.SCIMv2.ConfigureMapping("Pad", new Dictionary<string, string> {
+    Looplex.SCIMv2.SCIMv2.ConfigureMapping("Pad", new Dictionary<string, string> {
         { "meta.created", "p.created_at" },
         { "meta.lastModified", "p.updated_at" },
         { "active", "p.active" },

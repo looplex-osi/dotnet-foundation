@@ -1,8 +1,7 @@
 using System.ComponentModel;
 
-using Looplex.Foundation.Core.SCIMv2.Entities;
-using Looplex.Foundation.Core.Serialization;
-using Looplex.Foundation.Core.Serialization.Protobuf;
+using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Serialization;
 
 namespace Looplex.Foundation.Core.UnitTests.SCIMv2.Entities;
 

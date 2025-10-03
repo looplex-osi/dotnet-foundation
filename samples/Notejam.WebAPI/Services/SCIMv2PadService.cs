@@ -1,6 +1,6 @@
-using Looplex.Foundation.Core.SCIMv2.Entities;
-using Looplex.Foundation.Core.SCIMv2.Modules;
-using Looplex.Foundation.Core.Serialization;
+using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Modules;
+using Looplex.SCIMv2.Serialization;
 using Looplex.Samples.Domain.Entities;
 using Looplex.Samples.Application;
 
@@ -34,7 +34,7 @@ public class SCIMv2PadService : BaseResourceService<Pad>
             _logger.LogInformation("🔄 Deserializing JSON to Pad...");
             
             // Deserialize JSON to Pad object using Foundation helper
-            var pad = Looplex.Foundation.Core.Serialization.ActorJsonSerializer.DeserializeResource<Pad>(json);
+            var pad = ActorJsonSerializer.DeserializeResource<Pad>(json);
             
             if (pad == null)
             {
@@ -68,7 +68,7 @@ public class SCIMv2PadService : BaseResourceService<Pad>
         try
         {
             _logger.LogInformation("🔄 Deserializing JSON to Pad...");
-            var pad = Looplex.Foundation.Core.Serialization.ActorJsonSerializer.DeserializeResource<Pad>(json);
+            var pad = ActorJsonSerializer.DeserializeResource<Pad>(json);
 
             if (pad == null)
             {
@@ -181,7 +181,7 @@ public class SCIMv2PadService : BaseResourceService<Pad>
             _logger.LogInformation("🔄 Deserializing JSON to Pad...");
             
             // Deserialize JSON to Pad object using Foundation helper
-            var pad = Looplex.Foundation.Core.Serialization.ActorJsonSerializer.DeserializeResource<Pad>(json);
+            var pad = ActorJsonSerializer.DeserializeResource<Pad>(json);
             
             if (pad == null)
             {

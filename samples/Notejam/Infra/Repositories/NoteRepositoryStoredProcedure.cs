@@ -1,11 +1,12 @@
 using System.Data;
 using System.Data.Common;
 using Microsoft.Data.SqlClient;
-using Looplex.Foundation.Core.Ports;
-using Looplex.Foundation.Core.Helpers;
-using Looplex.Foundation.Core.SCIMv2.Queries;
-using Looplex.Foundation.Core.SCIMv2.Entities;
-using Looplex.Foundation.Core.SCIMv2.Modules;
+using Looplex.Foundation.Ports;
+using Looplex.Foundation.Helpers;
+using Looplex.SCIMv2.Queries;
+using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Modules;
+using Looplex.SCIMv2.Helpers;
 using Looplex.Samples.Domain.Entities;
 using Looplex.Samples.Application;
 using Microsoft.Extensions.Logging;
@@ -381,15 +382,15 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
                 note.ExternalId = reader["external_id"].ToString();
             
             // Map Notejam-specific properties
-            note.Name = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["markdown"]);
-            note.Text = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["markdown"]);
-            note.Active = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseBoolean(reader["active"]);
-            note.Status = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseInteger(reader["status"]);
-            note.CustomFields = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["custom_fields"]);
+            note.Name = Looplex.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["markdown"]);
+            note.Text = Looplex.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["markdown"]);
+            note.Active = Looplex.SCIMv2.SCIMv2.ScimTypeConverter.ParseBoolean(reader["active"]);
+            note.Status = Looplex.SCIMv2.SCIMv2.ScimTypeConverter.ParseInteger(reader["status"]);
+            note.CustomFields = Looplex.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(reader["custom_fields"]);
             note.Schemas = new[] { "urn:looplex:params:scim:schemas:notejam:2.0:Note" };
             
             // Create Meta using Foundation method (agnostic)
-            note.Meta = Looplex.Foundation.Core.SCIMv2.SCIMv2.CreateResourceMeta(reader, note.Id, "Note", _httpContextAccessor);
+            note.Meta = Looplex.SCIMv2.SCIMv2.CreateResourceMeta(reader, note.Id, "Note", _httpContextAccessor);
             
             return note;
         }

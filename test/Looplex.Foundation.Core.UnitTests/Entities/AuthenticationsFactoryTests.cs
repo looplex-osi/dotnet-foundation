@@ -1,5 +1,5 @@
-using Looplex.Foundation.Core.OAuth2.Entities;
-using Looplex.Foundation.Core.Ports;
+using Looplex.OAuth2.Entities;
+using Looplex.Foundation.Ports;
 
 using NSubstitute;
 

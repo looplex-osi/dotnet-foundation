@@ -10,7 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Looplex.Foundation.Core\Looplex.Foundation.Core.csproj"/>
+    <ProjectReference Include="..\..\..\src\Looplex.Foundation\Looplex.Foundation.csproj"/>
+    <ProjectReference Include="..\..\..\src\Looplex.SCIMv2\Looplex.SCIMv2.csproj"/>
   </ItemGroup>
 
   <ItemGroup>

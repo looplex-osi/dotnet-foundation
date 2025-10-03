@@ -3,7 +3,7 @@ using System.Security.Claims;
 
 using Casbin;
 
-using Looplex.Foundation.Core.Adapters.AuthZ.Casbin;
+using Looplex.Foundation.Adapters.AuthZ.Casbin;
 
 using Microsoft.Extensions.Logging;
 

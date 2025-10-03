@@ -1,4 +1,4 @@
-using Looplex.Foundation.Core.Entities;
+using Looplex.Foundation.Entities;
 
 using NSubstitute;
 

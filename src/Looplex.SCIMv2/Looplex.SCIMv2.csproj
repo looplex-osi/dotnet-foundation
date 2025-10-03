@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
+    <PackageId>Looplex.SCIMv2</PackageId>
+    <PackageLicenseUrl>https://github.com/looplex-osi/dotnet-foundation/blob/master/LICENSE.md</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/looplex-osi/dotnet-foundation</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <Authors>Guilherme Câmara</Authors>
+    <Company>Looplex</Company>
+    <PackageTags>Looplex;SCIMv2;Identity;Provisioning;</PackageTags>
+    <Description>
+      Looplex SCIMv2 implementation for System for Cross-domain Identity Management (SCIM) version 2.0.
+    </Description>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.3.0"/>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
+    <PackageReference Include="MediatR" Version="12.5.0" />
+    <PackageReference Include="MediatR.Contracts" Version="2.0.1"/>
+    <PackageReference Include="PropertyChanged.Fody" Version="4.1.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="protobuf-net" Version="3.2.46"/>
+    <PackageReference Include="Looplex.OpenForExtension" Version="1.1.8"/>
+    <PackageReference Include="Antlr4.CodeGenerator" Version="4.6.6">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Antlr4.Runtime" Version="4.6.6"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Antlr\ScimFilter.g4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Looplex.Foundation\Looplex.Foundation.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.13.35825.156
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.Core", "src\Looplex.Foundation.Core\Looplex.Foundation.Core.csproj", "{FE2F018E-B7D6-42AB-A27A-79B090D98272}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation", "src\Looplex.Foundation\Looplex.Foundation.csproj", "{FE2F018E-B7D6-42AB-A27A-79B090D98272}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{46910C4E-E213-47AF-960A-12080DA743E3}"
 EndProject
@@ -11,7 +11,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{790545C2-E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.Core.UnitTests", "test\Looplex.Foundation.Core.UnitTests\Looplex.Foundation.Core.UnitTests.csproj", "{9B4DE791-1225-4DCF-8DCB-44052CDBDFA7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Foundation.Protocols.Http", "src\Looplex.Foundation.Protocols.Http\Looplex.Foundation.Protocols.Http.csproj", "{79353698-6C88-740C-7061-75714EAF755A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.SCIMv2", "src\Looplex.SCIMv2\Looplex.SCIMv2.csproj", "{79353698-6C88-740C-7061-75714EAF755A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.OAuth2", "src\Looplex.OAuth2\Looplex.OAuth2.csproj", "{79353698-6C88-740C-7061-75714EAF755B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Looplex.Protocols.HTTP", "src\Looplex.Protocols.HTTP\Looplex.Protocols.HTTP.csproj", "{79353698-6C88-740C-7061-75714EAF755C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,6 +35,14 @@ Global
 		{79353698-6C88-740C-7061-75714EAF755A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{79353698-6C88-740C-7061-75714EAF755A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{79353698-6C88-740C-7061-75714EAF755A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79353698-6C88-740C-7061-75714EAF755C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,7 +1,7 @@
 using Antlr4.Runtime;
 
-using Looplex.Foundation.Core.SCIMv2.Antlr;
-using Looplex.Foundation.Core.SCIMv2.Entities;
+using Looplex.SCIMv2.Antlr;
+using Looplex.SCIMv2.Entities;
 
 namespace Looplex.Foundation.Core.UnitTests.SCIMv2.Entities;
 

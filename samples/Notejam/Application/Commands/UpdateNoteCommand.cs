@@ -1,4 +1,4 @@
-using Looplex.Foundation.Core.SCIMv2.Commands;
+using Looplex.SCIMv2.Commands;
 using Looplex.Samples.Domain.Entities;
 using Newtonsoft.Json.Linq;
 

@@ -1,10 +1,10 @@
 using System.Security.Claims;
 
-using Looplex.Foundation.Core.Ports;
-using Looplex.Foundation.Core.SCIMv2.Commands;
-using Looplex.Foundation.Core.SCIMv2.Entities;
-using Looplex.Foundation.Core.SCIMv2.Modules;
-using Looplex.Foundation.Core.SCIMv2.Queries;
+using Looplex.Foundation.Ports;
+using Looplex.SCIMv2.Commands;
+using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Modules;
+using Looplex.SCIMv2.Queries;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using MediatR;

@@ -1,5 +1,5 @@
-using Looplex.Foundation.Core.SCIMv2.Entities;
-using Looplex.Foundation.Core.SCIMv2.Modules;
+using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Modules;
 
 namespace Looplex.Samples.WebAPI.Repositories;
 

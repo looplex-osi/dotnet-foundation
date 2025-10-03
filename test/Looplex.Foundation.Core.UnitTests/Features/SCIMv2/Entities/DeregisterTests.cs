@@ -1,7 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Looplex.Foundation.Core.SCIMv2;
-using Looplex.Foundation.Core.SCIMv2.Entities;
-using Looplex.Foundation.Core.SCIMv2.Modules;
+using Looplex.SCIMv2;
+using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Modules;
 using Looplex.Foundation.Core.UnitTests.Features.SCIMv2.TestHelpers;
 using System;
 using System.Linq;
@@ -21,15 +21,15 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
         /// Creates a configured SCIMv2 service with registered repositories
         /// </summary>
         /// <returns>Configured SCIMv2 service</returns>
-        private static Looplex.Foundation.Core.SCIMv2.SCIMv2 CreateConfiguredSCIMv2()
+        private static Looplex.SCIMv2.SCIMv2 CreateConfiguredSCIMv2()
         {
-            var scimService = new Looplex.Foundation.Core.SCIMv2.SCIMv2();
+            var scimService = new Looplex.SCIMv2.SCIMv2();
             
             // Register services manually (since auto-registration was removed)
             var userRepository = new Looplex.Foundation.Core.UnitTests.Features.SCIMv2.TestHelpers.InMemoryResourceRepository<User>();
             var groupRepository = new Looplex.Foundation.Core.UnitTests.Features.SCIMv2.TestHelpers.InMemoryResourceRepository<Group>();
-            var userService = new Looplex.Foundation.Core.SCIMv2.Modules.UserService(userRepository);
-            var groupService = new Looplex.Foundation.Core.SCIMv2.Modules.GroupService(groupRepository);
+            var userService = new Looplex.SCIMv2.Modules.UserService(userRepository);
+            var groupService = new Looplex.SCIMv2.Modules.GroupService(groupRepository);
             
             scimService.Register(userService, "Users");
             scimService.Register(groupService, "Groups");

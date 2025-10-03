@@ -1,11 +1,12 @@
 using System.Data;
 using System.Data.Common;
 using Microsoft.Data.SqlClient;
-using Looplex.Foundation.Core.Ports;
-using Looplex.Foundation.Core.Helpers;
-using Looplex.Foundation.Core.SCIMv2.Queries;
-using Looplex.Foundation.Core.SCIMv2.Entities;
-using Looplex.Foundation.Core.SCIMv2.Modules;
+using Looplex.Foundation.Ports;
+using Looplex.Foundation.Helpers;
+using Looplex.SCIMv2.Queries;
+using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Modules;
+using Looplex.SCIMv2.Helpers;
 using Looplex.Samples.Domain.Entities;
 using Looplex.Samples.Application;
 using Microsoft.Extensions.Logging;
@@ -168,7 +169,7 @@ public class PadRepositoryStoredProcedure : IPadRepository, IResourceRepository<
             Active = reader.GetBoolean(reader.GetOrdinal("active")),
             Status = reader.GetByte(reader.GetOrdinal("status")),
             CustomFields = reader.IsDBNull(reader.GetOrdinal("custom_fields")) ? null : reader.GetString(reader.GetOrdinal("custom_fields")),
-            Meta = new Looplex.Foundation.Core.SCIMv2.Entities.ResourceMeta
+            Meta = new Looplex.SCIMv2.Entities.ResourceMeta
             {
                 ResourceType = "Pad",
                 Location = $"/Pads/{reader.GetGuid(reader.GetOrdinal("uuid"))}",
