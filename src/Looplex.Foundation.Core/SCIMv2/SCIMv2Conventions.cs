@@ -93,7 +93,7 @@ namespace Looplex.Foundation.Core.SCIMv2
         public static string GenerateSchemaUri(string resourceType, string? serviceName = null)
         {
             var service = string.IsNullOrEmpty(serviceName) ? "looplex" : serviceName;
-            return $"urn:ietf:params:scim:schemas:extension:{service}:2.0:{resourceType}";
+            return $"urn:{service}:params:scim:schemas:notejam:2.0:{resourceType}";
         }
         
         /// <summary>

@@ -4,81 +4,55 @@
 
 ### Prerequisites
 - .NET 8 SDK
-- SQL Server (LocalDB or full instance)
 - Visual Studio 2022 or VS Code
+- Git (optional, for cloning)
 
 ### Step 1: Clone and Setup
 ```bash
 git clone <repository-url>
-cd dotnet-foundation-checker/samples/Notejam.WebApp
+cd dotnet-foundation-checker/samples/Notejam.WebAPI
 dotnet restore
 ```
 
-### Step 2: Configure Database
-```sql
--- Run this in SQL Server Management Studio
-CREATE DATABASE NotejamDB;
-USE NotejamDB;
+### Step 2: Database Configuration
+**Notejam uses SQLite database by default** - no setup required!
 
--- Create tables
-CREATE TABLE notes (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    uuid UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    external_id INT NULL,
-    markdown NVARCHAR(MAX) NOT NULL,
-    active BIT NOT NULL DEFAULT 1,
-    status TINYINT NOT NULL DEFAULT 1,
-    created_at DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    updated_at DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    created_by NVARCHAR(100) NOT NULL DEFAULT 'system',
-    custom_fields NVARCHAR(MAX) NULL
-);
+The application automatically:
+- Creates SQLite database file
+- Sets up tables and indexes
+- Seeds with sample data
+- Handles all database operations
 
-CREATE TABLE pads (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    uuid UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    external_id INT NULL,
-    name NVARCHAR(255) NOT NULL,
-    active BIT NOT NULL DEFAULT 1,
-    status TINYINT NOT NULL DEFAULT 1,
-    created_at DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    updated_at DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    created_by NVARCHAR(100) NOT NULL DEFAULT 'system',
-    custom_fields NVARCHAR(MAX) NULL
-);
-
--- Create indexes
-CREATE UNIQUE INDEX IX_notes_uuid ON notes(uuid);
-CREATE UNIQUE INDEX IX_pads_uuid ON pads(uuid);
-```
-
-### Step 3: Update Connection String
-```json
-// In appsettings.json or config.env
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=NotejamDB;Trusted_Connection=true;"
-  }
-}
-```
-
-### Step 4: Run Application
+### Step 3: Run Application
 ```bash
-dotnet run --urls "http://localhost:7065"
+dotnet run --project samples/Notejam.WebAPI/Notejam.WebAPI.csproj
 ```
 
-### Step 5: Test SCIMv2 Endpoints
+The application will start on `http://localhost:7065` with:
+- ✅ Auto-configured SCIMv2 services
+- ✅ SQLite database
+- ✅ Sample data loaded
+- ✅ All endpoints ready
+
+### Step 4: Test SCIMv2 Endpoints
+
+#### Option A: Using HTTP Files (Recommended)
+Open `WebApp.http` in VS Code and click "Send Request" on any endpoint.
+
+#### Option B: Using Postman
+Import `docs/Notejam.postman_collection` into Postman.
+
+#### Option C: Using curl
 ```bash
 # Test basic endpoints
 curl http://localhost:7065/notes
 curl http://localhost:7065/ServiceProviderConfig
-curl http://localhost:7065/ResourceTypes
+curl http://localhost:7065/Schemas
 
 # Create a note
 curl -X POST http://localhost:7065/notes \
   -H "Content-Type: application/scim+json" \
   -d '{
-    "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
     "text": "Hello SCIMv2!",
     "active": true,
     "status": 1
@@ -123,18 +97,18 @@ curl "http://localhost:7065/notes?sortBy=meta.lastModified&sortOrder=descending"
 
 **Application won't start:**
 - Check if port 7065 is available
-- Verify database connection string
-- Ensure SQL Server is running
+- Ensure .NET 8 SDK is installed
+- Run `dotnet restore` if needed
 
 **Database errors:**
-- Run the SQL setup scripts
-- Check connection string
-- Verify database permissions
+- SQLite database, no setup required
+- Data resets on each restart
+- Check application logs for details
 
 **SCIMv2 errors:**
-- Check if all stored procedures exist
-- Verify SCIMv2 configuration
-- Enable detailed logging
+- Auto-configuration handles most setup
+- Check application logs for details
+- Verify all services are registered
 
 ### Enable Debug Logging
 ```csharp
@@ -145,10 +119,11 @@ builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
 ## 📚 Next Steps
 
-1. **Study the code** in `samples/Notejam.WebApp`
+1. **Study the code** in `samples/Notejam.WebAPI`
 2. **Read the full guide** in `docs/SCIMv2_DEVELOPMENT_GUIDE.md`
-3. **Run the test suite** in `reference/comprehensive_scimv2_tests.ps1`
-4. **Create your own resource** following the pattern
+3. **Test with Postman** using `docs/Notejam.postman_collection`
+4. **Use HTTP files** with `WebApp.http` for quick testing
+5. **Create your own resource** following the pattern
 
 ## 🎉 Success!
 
@@ -156,8 +131,9 @@ You now have a fully functional SCIMv2 application!
 
 - **Base URL:** http://localhost:7065
 - **Documentation:** See `docs/` folder
-- **Examples:** See `reference/` folder
-- **Testing:** Run `reference/comprehensive_scimv2_tests.ps1`
+- **Postman Collection:** `docs/Notejam.postman_collection`
+- **HTTP Test Files:** `WebApp.http`
+- **Testing:** Use Postman or HTTP files for testing
 
 **Happy SCIMv2 Development! 🚀**
 

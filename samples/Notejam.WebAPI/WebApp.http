@@ -1,6 +1,110 @@
-@WebApp_HostAddress = http://localhost:5209
+@Notejam_HostAddress = http://localhost:7065
 
-GET {{WebApp_HostAddress}}/weatherforecast/
-Accept: application/json
+### GET Notes
+GET {{Notejam_HostAddress}}/notes
+Accept: application/scim+json
+
+### GET Notes with Pagination
+GET {{Notejam_HostAddress}}/notes?startIndex=1&count=10
+Accept: application/scim+json
+
+### GET Notes with Filter
+GET {{Notejam_HostAddress}}/notes?filter=active%20eq%20true
+Accept: application/scim+json
+
+### GET Specific Note
+GET {{Notejam_HostAddress}}/notes/58b6463e-f36b-1410-85cc-0046c3744233
+Accept: application/scim+json
+
+### GET Pads
+GET {{Notejam_HostAddress}}/pads
+Accept: application/scim+json
+
+### GET Specific Pad
+GET {{Notejam_HostAddress}}/pads/eeb2463e-f36b-1410-85cc-0046c3744233
+Accept: application/scim+json
+
+### GET Schemas
+GET {{Notejam_HostAddress}}/Schemas
+Accept: application/scim+json
+
+### POST Create Note
+POST {{Notejam_HostAddress}}/notes
+Content-Type: application/scim+json
+
+{
+  "text": "# Test Note\n\nThis is a test note created via HTTP file",
+  "active": true,
+  "status": 1,
+  "customFields": "{\"priority\": \"high\", \"source\": \"http-file\"}"
+}
+
+### PUT Update Note
+PUT {{Notejam_HostAddress}}/notes/58b6463e-f36b-1410-85cc-0046c3744233
+Content-Type: application/scim+json
+
+{
+  "text": "# Updated Test Note\n\nThis note has been updated via HTTP file",
+  "active": false,
+  "status": 2,
+  "customFields": "{\"priority\": \"low\", \"source\": \"http-file\", \"updated\": true}"
+}
+
+### PATCH Update Note
+PATCH {{Notejam_HostAddress}}/notes/58b6463e-f36b-1410-85cc-0046c3744233
+Content-Type: application/scim+json
+
+{
+  "schemas": [
+    "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+  ],
+  "Operations": [
+    {
+      "path": "text",
+      "op": "replace",
+      "value": "PATCH Updated Note Content - Working!"
+    },
+    {
+      "path": "active",
+      "op": "replace",
+      "value": true
+    }
+  ]
+}
+
+### DELETE Note
+DELETE {{Notejam_HostAddress}}/notes/58b6463e-f36b-1410-85cc-0046c3744233
+
+### BULK Operations
+POST {{Notejam_HostAddress}}/Bulk
+Content-Type: application/scim+json
+
+{
+  "schemas": [
+    "urn:ietf:params:scim:api:messages:2.0:BulkRequest"
+  ],
+  "Operations": [
+    {
+      "bulkId": "bulk-1",
+      "method": "POST",
+      "path": "/notes",
+      "data": {
+        "text": "Bulk Note 1",
+        "active": true,
+        "status": 1
+      }
+    },
+    {
+      "bulkId": "bulk-2", 
+      "method": "POST",
+      "path": "/notes",
+      "data": {
+        "text": "Bulk Note 2",
+        "active": true,
+        "status": 1
+      }
+    }
+  ]
+}
 
 ###

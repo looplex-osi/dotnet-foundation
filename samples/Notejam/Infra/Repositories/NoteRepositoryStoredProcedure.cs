@@ -16,20 +16,6 @@ namespace Looplex.Samples.Infra.Repositories;
     /// <summary>
     /// Filter parameters for Note stored procedures
     /// </summary>
-    public class NoteFilterParameters
-    {
-        public string? Ids { get; set; }
-        public string? Uuids { get; set; }
-        public string? Text { get; set; }
-        public string? PadGuids { get; set; }
-        public bool? Active { get; set; }
-        public int? Status { get; set; }
-        public DateTime? CreatedBegin { get; set; }
-        public DateTime? CreatedEnd { get; set; }
-        public DateTime? UpdatedBegin { get; set; }
-        public DateTime? UpdatedEnd { get; set; }
-    }
-
 /// <summary>
 /// Repository implementation for Note entities using stored procedures.
 /// 
@@ -56,15 +42,6 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
         _httpContextAccessor = httpContextAccessor;
     }
 
-    /// <summary>
-    /// Query notes with SCIM v2.0 filtering using ELEGANT Foundation approach
-    /// </summary>
-    public async Task<(IList<Note> Resources, int TotalCount)> QueryAsync(
-        int startIndex, int count, string? filter, CancellationToken cancellationToken = default)
-    {
-        // Use the elegant implementation by default
-        return await QueryAsyncElegant(startIndex, count, filter, cancellationToken);
-    }
 
     /// <summary>
     /// Get notes with optional filtering and pagination
@@ -80,10 +57,9 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
     }
 
     /// <summary>
-    /// ELEGANT APPROACH - Using Foundation like Case Management
-    /// Simple, clean, 1-line filter processing
+    /// Query notes with SCIM v2.0 filtering using Foundation approach
     /// </summary>
-    public async Task<(IList<Note> Notes, int TotalCount)> QueryAsyncElegant(
+    public async Task<(IList<Note> Resources, int TotalCount)> QueryAsync(
         int startIndex, 
         int count, 
         string? filter = null, 
@@ -91,20 +67,20 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
     {
         try
         {
-            _logger.LogInformation("✨ ELEGANT: Getting notes with Foundation approach: startIndex={StartIndex}, count={Count}, filter={Filter}", 
+            _logger.LogInformation("🔍 Getting notes with Foundation approach: startIndex={StartIndex}, count={Count}, filter={Filter}", 
                 startIndex, count, filter);
 
-            // Convert SCIM to Case-Management parameters
-            var (page, pageSize) = ConvertScimToPageParameters(startIndex, count);
+            var page = CalculatePage(startIndex, count);
+            var pageSize = count;
             
-        // ELEGANT: Use Foundation's approach like Case Management
+        // Use Foundation's approach like Case Management
         // Pass allowed attributes to enable filtering
         var allowedAttributes = new HashSet<string> { 
             "id", "externalId", "text", "active", "status", 
             "meta.created", "meta.lastModified" 
         };
         
-        // ELEGANT: Pass attribute mapping for meta.created -> n.created_at
+        // Pass attribute mapping for meta.created -> n.created_at
         var attributeMapper = new Dictionary<string, string> {
             { "meta.created", "n.created_at" },
             { "meta.lastModified", "n.updated_at" },
@@ -129,55 +105,22 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
             command.Parameters.Add(Dbs.CreateParameter(command, "@do_count", true, DbType.Boolean));
             command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", "updated_at DESC", DbType.String));
             
-            // ELEGANT: Add filter using Foundation's approach (like Case Management)
+            // Add filter using Foundation's approach (like Case Management)
             if (filters != null)
                 command.Parameters.Add(Dbs.CreateParameter(command, "@__dangerouslySetPredicate", filters, DbType.String));
 
             var (notes, totalCount) = await ExecuteStoredProcedureWithCount((SqlCommand)command, cancellationToken);
 
-            _logger.LogInformation("✨ ELEGANT: Retrieved {Count} notes, total: {TotalCount}", notes.Count, totalCount);
+            _logger.LogInformation("✅ Retrieved {Count} notes, total: {TotalCount}", notes.Count, totalCount);
             return (notes, totalCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting notes with ELEGANT Foundation approach");
+            _logger.LogError(ex, "Error getting notes with Foundation approach");
             throw new InvalidOperationException($"Failed to get notes: {ex.Message}", ex);
         }
     }
 
-    public async Task<Note?> GetNoteByIdAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogInformation("Getting note by ID: {NoteId}", id);
-
-            await using var dbCommand = await _connections.CommandConnection();
-            await using var command = dbCommand.CreateCommand();
-
-            command.CommandType = CommandType.StoredProcedure;
-            command.CommandText = "USP_notes_retrieve";
-            command.Parameters.Add(Dbs.CreateParameter(command, "@filter_uuid", id, DbType.Guid));
-
-            Note? note = null;
-            using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            if (await reader.ReadAsync(cancellationToken))
-            {
-                note = MapReaderToNote(reader);
-                _logger.LogInformation("Note retrieved successfully: {NoteId}", id);
-            }
-            else
-            {
-                _logger.LogWarning("Note not found with ID: {NoteId}", id);
-            }
-
-            return note;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting note by ID: {NoteId}", id);
-            throw new InvalidOperationException($"Failed to get note: {ex.Message}", ex);
-        }
-    }
 
     public async Task<Guid> CreateNoteAsync(Note note, CancellationToken cancellationToken = default)
     {
@@ -300,20 +243,41 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
         }
     }
 
-    /// <summary>
-    /// Converts SCIM startIndex/count to page/pageSize parameters
-    /// </summary>
-    private (int page, int pageSize) ConvertScimToPageParameters(int startIndex, int count)
-    {
-        // SCIM startIndex is 1-based, convert to page-based
-        var page = (startIndex - 1) / count + 1;
-        return (page, count);
-    }
+
 
     // IResourceRepository<Note> implementation
     public async Task<Note?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {
-        return await GetNoteByIdAsync(Guid.Parse(id), cancellationToken);
+        try
+        {
+            _logger.LogInformation("Getting note by ID: {NoteId}", id);
+
+            await using var dbCommand = await _connections.CommandConnection();
+            await using var command = dbCommand.CreateCommand();
+
+            command.CommandType = CommandType.StoredProcedure;
+            command.CommandText = "USP_notes_retrieve";
+            command.Parameters.Add(Dbs.CreateParameter(command, "@filter_uuid", Guid.Parse(id), DbType.Guid));
+
+            Note? note = null;
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                note = MapReaderToNote(reader);
+                _logger.LogInformation("Note retrieved successfully: {NoteId}", id);
+            }
+            else
+            {
+                _logger.LogWarning("Note not found with ID: {NoteId}", id);
+            }
+
+            return note;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting note by ID: {NoteId}", id);
+            throw new InvalidOperationException($"Failed to get note: {ex.Message}", ex);
+        }
     }
 
     public async Task<Note> CreateAsync(Note resource, CancellationToken cancellationToken = default)
@@ -361,64 +325,11 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
 
 
     /// <summary>
-    /// Parse SCIM filter using Foundation generic services and convert to stored procedure parameters.
-    /// Implements RFC 7644 Section 3.4.2.2 - Filtering using generic SCIM services.
-    /// [RFC 7644 Section 3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
+    /// Calculate page number from SCIM startIndex and count parameters
     /// </summary>
-    private static NoteFilterParameters ParseFilterToStoredProcedureParams(string? filter)
+    private static int CalculatePage(int startIndex, int count)
     {
-        if (string.IsNullOrWhiteSpace(filter))
-            return new NoteFilterParameters();
-
-        try
-        {
-            // Use generic SCIM filter processor from Foundation
-            var (sqlWhere, parameters) = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimFilterProcessor.ProcessFilter<Note>(filter);
-
-            // Convert to stored procedure parameters using generic services
-            var filterParams = new NoteFilterParameters();
-            
-            // Map parameters to stored procedure format using generic type converter
-            if (parameters.ContainsKey("@param_0"))
-            {
-                var value = parameters["@param_0"]?.ToString();
-                if (value != null)
-                {
-                    if (sqlWhere.Contains("text"))
-                        filterParams.Text = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseString(value);
-                    else if (sqlWhere.Contains("active"))
-                        filterParams.Active = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseBoolean(value);
-                    else if (sqlWhere.Contains("status"))
-                        filterParams.Status = Looplex.Foundation.Core.SCIMv2.SCIMv2.ScimTypeConverter.ParseInteger(value);
-                }
-            }
-
-            return filterParams;
-        }
-        catch (Exception ex)
-        {
-            // Log warning and return empty parameters if parsing fails
-            Console.WriteLine($"Warning: Failed to parse SCIM filter '{filter}': {ex.Message}");
-            return new NoteFilterParameters();
-        }
-    }
-
-    /// <summary>
-    /// Adds filter parameters to the command
-    /// </summary>
-    private void AddFilterParameters(IDbCommand command, NoteFilterParameters filterParams)
-    {
-        command.Parameters.Add(Dbs.CreateParameter(command, "@filter_ids", (object?)filterParams.Ids ?? DBNull.Value, DbType.String));
-        command.Parameters.Add(Dbs.CreateParameter(command, "@filter_uuids", (object?)filterParams.Uuids ?? DBNull.Value, DbType.String));
-        command.Parameters.Add(Dbs.CreateParameter(command, "@filter_text", (object?)filterParams.Text ?? DBNull.Value, DbType.String));
-        command.Parameters.Add(Dbs.CreateParameter(command, "@filter_pad_guids", (object?)filterParams.PadGuids ?? DBNull.Value, DbType.String));
-        command.Parameters.Add(Dbs.CreateParameter(command, "@filter_active", (object?)filterParams.Active ?? DBNull.Value, DbType.Boolean));
-        command.Parameters.Add(Dbs.CreateParameter(command, "@filter_status", (object?)filterParams.Status ?? DBNull.Value, DbType.Int32));
-        command.Parameters.Add(Dbs.CreateParameter(command, "@filter_created_begin", (object?)filterParams.CreatedBegin ?? DBNull.Value, DbType.DateTime));
-        command.Parameters.Add(Dbs.CreateParameter(command, "@filter_created_end", (object?)filterParams.CreatedEnd ?? DBNull.Value, DbType.DateTime));
-        command.Parameters.Add(Dbs.CreateParameter(command, "@filter_updated_begin", (object?)filterParams.UpdatedBegin ?? DBNull.Value, DbType.DateTime));
-        command.Parameters.Add(Dbs.CreateParameter(command, "@filter_updated_end", (object?)filterParams.UpdatedEnd ?? DBNull.Value, DbType.DateTime));
-        command.Parameters.Add(Dbs.CreateParameter(command, "@__dangerouslySetPredicate", DBNull.Value, DbType.String));
+        return (int)Math.Ceiling((double)startIndex / count);
     }
 
     /// <summary>

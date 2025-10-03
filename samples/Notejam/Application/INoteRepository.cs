@@ -19,7 +19,7 @@ public interface INoteRepository
     /// <summary>
     /// Get a single note by ID
     /// </summary>
-    Task<Note?> GetNoteByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Note?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Create a new note

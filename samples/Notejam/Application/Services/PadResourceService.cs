@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Looplex.Foundation.Core.SCIMv2.Entities;
 using Looplex.Foundation.Core.SCIMv2.Modules;
 using Looplex.Samples.Application.Commands;
-using Looplex.Samples.Application.Queries;
 using Looplex.Samples.Domain.Entities;
 using MediatR;
 using Newtonsoft.Json.Linq;

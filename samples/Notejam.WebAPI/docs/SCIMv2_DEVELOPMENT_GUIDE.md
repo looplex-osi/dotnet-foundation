@@ -32,21 +32,16 @@ This guide demonstrates how to build SCIMv2-compliant applications using **Loopl
 ### Required Knowledge
 - **.NET 8** and ASP.NET Core
 - **C#** (Intermediate level)
-- **SQL Server** and stored procedures
+- **SQLite** and stored procedures
 - **HTTP/REST** concepts
 - **JSON** data format
 - **SCIMv2** basics (RFC 7644)
 
 ### Required Tools
 - Visual Studio 2022 or VS Code
-- SQL Server (LocalDB or full instance)
 - .NET 8 SDK
-- Git
+- Git (optional)
 
-### Required Experience Level
-- **Pleno (3-5 years)** - Ideal
-- **Sênior (5+ years)** - Excellent
-- **Júnior (1-2 years)** - Challenging but possible with mentorship
 
 ---
 
@@ -84,10 +79,10 @@ This guide demonstrates how to build SCIMv2-compliant applications using **Loopl
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
-│                SQL Server Database                         │
+│                SQLite Database                             │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-│  │   Stored        │  │   Tables        │  │   Indexes    │ │
-│  │   Procedures    │  │   (notes, pads) │  │   & Views    │ │
+│  │   Auto-Created  │  │   Tables        │  │   Indexes    │ │
+│  │   Tables        │  │   (notes, pads) │  │   & Views    │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -97,8 +92,8 @@ This guide demonstrates how to build SCIMv2-compliant applications using **Loopl
 1. **SCIMv2 Middleware** - Handles HTTP requests/responses
 2. **Resource Services** - Business logic layer
 3. **Repositories** - Data access layer
-4. **Stored Procedures** - Database operations
-5. **Foundation Core** - SCIMv2 protocol implementation
+4. **SQLite Database** - Database with auto-created tables
+5. **Foundation Core** - SCIMv2 protocol implementation with auto-discovery
 
 ---
 
@@ -114,13 +109,13 @@ cd MySCIMv2App
 
 #### 1.2 Add Looplex.Foundation Packages
 ```xml
-<PackageReference Include="Looplex.Foundation" Version="1.0.0" />
+<PackageReference Include="Looplex.Foundation.Core" Version="1.0.0" />
 <PackageReference Include="Looplex.Foundation.Protocols.Http" Version="1.0.0" />
 ```
 
 #### 1.3 Configure Program.cs
 ```csharp
-using Looplex.Foundation.SCIMv2;
+using Looplex.Foundation.Core.SCIMv2;
 using Looplex.Foundation.Protocols.Http.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -129,12 +124,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IDbConnections, DbConnections>();
 
-// Configure SCIMv2 BEFORE creating instances
-ConfigureSCIMv2();
-
-// Register SCIMv2 services
-builder.Services.AddSingleton<ISCIMv2, Looplex.Foundation.SCIMv2.SCIMv2>();
-builder.Services.AddSingleton<ISCIMv2Validation, Looplex.Foundation.SCIMv2.SCIMv2>();
+// Register SCIMv2 services with auto-discovery
+builder.Services.AddSCIMv2WithResources(typeof(MyResource));
 
 var app = builder.Build();
 
@@ -161,28 +152,14 @@ public class MyResource
 }
 ```
 
-#### 2.2 Configure SCIMv2 Attributes and Mappings
-```csharp
-private static void ConfigureSCIMv2()
-{
-    // Configure attributes for your resource
-    Looplex.Foundation.SCIMv2.SCIMv2.ConfigureAttributes("MyResource", new HashSet<string> { 
-        "id", "externalId", "name", "active", "status", 
-        "meta.created", "meta.lastModified" 
-    });
-    
-    // Configure attribute mappings (SCIM → Database)
-    Looplex.Foundation.SCIMv2.SCIMv2.ConfigureMapping("MyResource", new Dictionary<string, string> {
-        { "meta.created", "mr.created_at" },
-        { "meta.lastModified", "mr.updated_at" },
-        { "active", "mr.active" },
-        { "name", "mr.name" },
-        { "status", "mr.status" },
-        { "id", "mr.id" },
-        { "externalId", "mr.external_id" }
-    });
-}
-```
+#### 2.2 Auto-Configuration (No Manual Setup Required!)
+The new auto-discovery system automatically:
+- ✅ Configures SCIMv2 attributes based on your resource properties
+- ✅ Maps SCIM attributes to database columns
+- ✅ Registers schemas and resource types
+- ✅ Sets up filtering and validation
+
+**No manual configuration needed!** The system uses conventions to automatically detect and configure everything.
 
 ### Step 3: Implement Repository Pattern
 
@@ -223,24 +200,8 @@ public class MyResourceRepositoryStoredProcedure : IMyResourceRepository, IResou
             var page = (startIndex - 1) / count + 1;
             var pageSize = count;
 
-            // Configure allowed attributes and mappings
-            var allowedAttributes = new HashSet<string> { 
-                "id", "externalId", "name", "active", "status", 
-                "meta.created", "meta.lastModified" 
-            };
-            
-            var attributeMapper = new Dictionary<string, string> {
-                { "meta.created", "mr.created_at" },
-                { "meta.lastModified", "mr.updated_at" },
-                { "active", "mr.active" },
-                { "name", "mr.name" },
-                { "status", "mr.status" },
-                { "id", "mr.id" },
-                { "externalId", "mr.external_id" }
-            };
-            
-            // Convert SCIM filter to SQL predicate
-            string? filters = filter?.ToSqlPredicate(attributeMapper, allowedAttributes);
+            // Convert SCIM filter to SQL predicate - auto-discovery handles attribute mapping
+            string? filters = filter?.ToSqlPredicate();
 
             await using var dbCommand = await _connections.CommandConnection();
             await using var command = dbCommand.CreateCommand();
@@ -541,25 +502,147 @@ var attributeMapper = new Dictionary<string, string> {
 
 ### Database Schema
 
-#### Required Table Structure
+#### Notejam Production Schema (SQL Server)
 ```sql
-CREATE TABLE myresources (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    uuid UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    external_id NVARCHAR(255) NULL,
-    name NVARCHAR(255) NOT NULL,
-    active BIT NOT NULL DEFAULT 1,
-    status INT NOT NULL DEFAULT 1,
-    created_at DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    updated_at DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    created_by NVARCHAR(100) NOT NULL DEFAULT 'system'
+-- Notes table
+CREATE TABLE notejam.dbo.notes (
+    id int IDENTITY(1,1) NOT NULL,
+    uuid uniqueidentifier DEFAULT newsequentialid() NOT NULL,
+    pad_id int NOT NULL,
+    user_id int NOT NULL,
+    markdown varchar(MAX) COLLATE Latin1_General_100_CI_AI_SC NOT NULL,
+    active bit DEFAULT 1 NOT NULL,
+    status tinyint DEFAULT 1 NOT NULL,
+    custom_fields varchar(2000) COLLATE Latin1_General_100_CI_AI_SC DEFAULT '{}' NOT NULL,
+    created_by varchar(32) COLLATE Latin1_General_100_CI_AI_SC NOT NULL,
+    updated_by varchar(32) COLLATE Latin1_General_100_CI_AI_SC NOT NULL,
+    created_at datetime2 DEFAULT sysutcdatetime() NOT NULL,
+    updated_at datetime2 NOT NULL,
+    external_id int NULL,
+    CONSTRAINT PK_notes_id PRIMARY KEY (id)
 );
 
-CREATE UNIQUE INDEX IX_myresources_uuid ON myresources(uuid);
-CREATE INDEX IX_myresources_external_id ON myresources(external_id);
-CREATE INDEX IX_myresources_active ON myresources(active);
-CREATE INDEX IX_myresources_status ON myresources(status);
+-- Pads table
+CREATE TABLE notejam.dbo.pads (
+    id int IDENTITY(1,1) NOT NULL,
+    uuid uniqueidentifier DEFAULT newsequentialid() NOT NULL,
+    user_id int NOT NULL,
+    name varchar(128) COLLATE Latin1_General_100_CI_AI_SC NOT NULL,
+    active bit DEFAULT 1 NOT NULL,
+    status tinyint DEFAULT 1 NOT NULL,
+    custom_fields varchar(2000) COLLATE Latin1_General_100_CI_AI_SC DEFAULT '{}' NOT NULL,
+    created_by varchar(32) COLLATE Latin1_General_100_CI_AI_SC NOT NULL,
+    updated_by varchar(32) COLLATE Latin1_General_100_CI_AI_SC NOT NULL,
+    created_at datetime2 DEFAULT sysutcdatetime() NOT NULL,
+    updated_at datetime2 NOT NULL,
+    external_id int NULL,
+    CONSTRAINT PK_pads_id PRIMARY KEY (id)
+);
+
+-- Indexes for performance
+CREATE NONCLUSTERED INDEX IN_notes_active ON notejam.dbo.notes (active ASC);
+CREATE NONCLUSTERED INDEX IN_notes_uuid ON notejam.dbo.notes (uuid ASC);
+CREATE NONCLUSTERED INDEX IN_pads_active ON notejam.dbo.pads (active ASC);
+CREATE NONCLUSTERED INDEX IN_pads_uuid ON notejam.dbo.pads (uuid ASC);
+
+-- Foreign key constraints
+ALTER TABLE notejam.dbo.notes ADD CONSTRAINT FK_notes_pad_id 
+    FOREIGN KEY (pad_id) REFERENCES notejam.dbo.pads(id) ON DELETE CASCADE;
+ALTER TABLE notejam.dbo.notes ADD CONSTRAINT FK_notes_user_id 
+    FOREIGN KEY (user_id) REFERENCES notejam.dbo.users(id);
+ALTER TABLE notejam.dbo.pads ADD CONSTRAINT FK_pads_PK_users_id 
+    FOREIGN KEY (user_id) REFERENCES notejam.dbo.users(id) ON DELETE CASCADE;
 ```
+
+#### Development Schema (SQLite)
+```sql
+-- Simplified SQLite version for development
+CREATE TABLE notes (
+    id TEXT PRIMARY KEY,
+    uuid TEXT NOT NULL,
+    pad_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    markdown TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    status INTEGER NOT NULL DEFAULT 1,
+    custom_fields TEXT DEFAULT '{}' NOT NULL,
+    created_by TEXT NOT NULL,
+    updated_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL,
+    external_id TEXT NULL
+);
+
+CREATE TABLE pads (
+    id TEXT PRIMARY KEY,
+    uuid TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    status INTEGER NOT NULL DEFAULT 1,
+    custom_fields TEXT DEFAULT '{}' NOT NULL,
+    created_by TEXT NOT NULL,
+    updated_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL,
+    external_id TEXT NULL
+);
+
+-- Indexes for performance
+CREATE INDEX IX_notes_uuid ON notes(uuid);
+CREATE INDEX IX_notes_active ON notes(active);
+CREATE INDEX IX_notes_status ON notes(status);
+CREATE INDEX IX_pads_uuid ON pads(uuid);
+CREATE INDEX IX_pads_active ON pads(active);
+CREATE INDEX IX_pads_status ON pads(status);
+```
+
+#### Schema Differences
+
+**Production (SQL Server):**
+- Uses `IDENTITY` columns for auto-incrementing IDs
+- `uniqueidentifier` for UUIDs with `newsequentialid()`
+- `varchar(MAX)` for large text fields
+- `datetime2` with `sysutcdatetime()` for timestamps
+- `bit` for boolean values
+- `tinyint` for status fields
+- Full foreign key constraints
+- Non-clustered indexes for performance
+
+**Development (SQLite):**
+- Uses `TEXT` for all string fields
+- `INTEGER` for numeric fields
+- `datetime('now')` for timestamps
+- Simplified data types for cross-platform compatibility
+- No foreign key constraints (handled in application layer)
+- Basic indexes for performance
+```
+
+#### Stored Procedures
+
+The Notejam application uses stored procedures for all database operations:
+
+**Notes Operations:**
+- `USP_notes_query` - Query notes with filtering and pagination
+- `USP_notes_retrieve` - Get single note by UUID
+- `USP_notes_create` - Create new note
+- `USP_notes_update` - Update existing note
+- `USP_notes_delete` - Soft delete note (set active = 0)
+
+**Pads Operations:**
+- `USP_pads_query` - Query pads with filtering and pagination
+- `USP_pads_retrieve` - Get single pad by UUID
+- `USP_pads_create` - Create new pad
+- `USP_pads_update` - Update existing pad
+- `USP_pads_delete` - Hard delete pad (remove from database)
+
+**Key Features:**
+- **Filtering**: SCIMv2 filters converted to SQL WHERE clauses
+- **Pagination**: Page-based results with total count
+- **Soft Delete**: Notes use soft delete (active = 0)
+- **Hard Delete**: Pads use hard delete (removed from database)
+- **Audit Trail**: Created/updated by and timestamps
+- **Custom Fields**: JSON storage for extensibility
 
 ---
 
@@ -736,29 +819,29 @@ builder.Services.AddSingleton<IDbConnections, DbConnections>();
 
 **Soft Delete Implementation (Notes):**
 ```sql
--- Soft delete - mark as inactive
+-- Soft delete - mark as inactive (SQLite compatible)
 CREATE PROCEDURE USP_notes_delete
-    @note_guid UNIQUEIDENTIFIER
+    @note_guid TEXT
 AS
 BEGIN
     UPDATE notes 
-    SET active = 0, updated_at = GETUTCDATE()
+    SET active = 0, updated_at = datetime('now')
     WHERE uuid = @note_guid;
     
-    SELECT @@ROWCOUNT as rows_affected;
+    SELECT changes() as rows_affected;
 END
 ```
 
 **Hard Delete Implementation (Pads):**
 ```sql
--- Hard delete - remove from database
+-- Hard delete - remove from database (SQLite compatible)
 CREATE PROCEDURE USP_pads_delete
-    @pad_guid UNIQUEIDENTIFIER
+    @pad_guid TEXT
 AS
 BEGIN
     DELETE FROM pads WHERE uuid = @pad_guid;
     
-    SELECT @@ROWCOUNT as rows_affected;
+    SELECT changes() as rows_affected;
 END
 ```
 
@@ -774,9 +857,8 @@ public async Task<bool> DeleteAsync(string id, CancellationToken cancellationTok
         command.CommandType = CommandType.StoredProcedure;
         command.CommandText = "USP_myresources_delete";
         
-        // Convert string ID to GUID for stored procedure
-        var resourceGuid = Guid.Parse(id);
-        command.Parameters.Add(Dbs.CreateParameter(command, "@resource_guid", resourceGuid, DbType.Guid));
+        // Use string ID directly for SQLite compatibility
+        command.Parameters.Add(Dbs.CreateParameter(command, "@resource_guid", id, DbType.String));
 
         var result = await command.ExecuteNonQueryAsync(cancellationToken);
         return result > 0;

@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
+using Microsoft.AspNetCore.Http;
 using Looplex.Foundation.Core.SCIMv2.Entities;
 
 namespace Looplex.Foundation.Core.SCIMv2
@@ -14,10 +15,12 @@ namespace Looplex.Foundation.Core.SCIMv2
     public class SchemaAutoDiscovery : ISchemaAutoDiscovery
     {
         private readonly IServiceNameProvider? _serviceNameProvider;
+        private readonly IHttpContextAccessor? _httpContextAccessor;
         
-        public SchemaAutoDiscovery(IServiceNameProvider? serviceNameProvider = null)
+        public SchemaAutoDiscovery(IServiceNameProvider? serviceNameProvider = null, IHttpContextAccessor? httpContextAccessor = null)
         {
             _serviceNameProvider = serviceNameProvider;
+            _httpContextAccessor = httpContextAccessor;
         }
         
         /// <summary>
@@ -75,8 +78,31 @@ namespace Looplex.Foundation.Core.SCIMv2
                 Id = schemaId,
                 Name = resourceType.Name,
                 Description = $"{resourceType.Name} resource for {serviceName}",
-                Attributes = attributes.ToArray()
+                Schemas = new[] { schemaId }, // Preencher com o próprio ID do schema
+                Attributes = attributes.ToArray(),
+                Meta = new SchemaMeta
+                {
+                    ResourceType = "Schema",
+                    Location = $"{GetBaseUrl()}/Schemas/{schemaId}"
+                }
             };
+        }
+        
+        /// <summary>
+        /// Constructs the base URL for SCIM resource locations.
+        /// </summary>
+        /// <returns>Base URL for SCIM resources</returns>
+        private string GetBaseUrl()
+        {
+            if (_httpContextAccessor?.HttpContext?.Request != null)
+            {
+                var request = _httpContextAccessor.HttpContext.Request;
+                var scheme = request.Scheme;
+                var host = request.Host;
+                var pathBase = request.PathBase;
+                return $"{scheme}://{host}{pathBase}";
+            }
+            return "https://api.exemplo.com/";
         }
         
         /// <summary>

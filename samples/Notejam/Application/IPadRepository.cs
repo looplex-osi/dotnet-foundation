@@ -30,12 +30,8 @@ public interface IPadRepository
     /// <summary>
     /// Gets a pad by ID
     /// </summary>
-    Task<Pad?> GetPadByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Pad?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets a pad by ID for update operations (includes inactive pads)
-    /// </summary>
-    Task<Pad?> GetPadByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new pad

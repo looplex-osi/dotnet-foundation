@@ -58,9 +58,9 @@ public class PadRepositoryStoredProcedure : IPadRepository, IResourceRepository<
     }
 
     /// <summary>
-    /// ELEGANT: Query pads using Foundation approach with stored procedures
+    /// Query pads with SCIM v2.0 filtering using Foundation approach
     /// </summary>
-    public async Task<(IList<Pad> Pads, int TotalCount)> QueryAsyncElegant(
+    public async Task<(IList<Pad> Resources, int TotalCount)> QueryAsync(
         int startIndex,
         int count,
         string? filter = null,
@@ -68,19 +68,19 @@ public class PadRepositoryStoredProcedure : IPadRepository, IResourceRepository<
     {
         try
         {
-            _logger.LogInformation("✨ ELEGANT: Getting pads with Foundation approach: startIndex={StartIndex}, count={Count}, filter={Filter}",
+            _logger.LogInformation("🔍 Getting pads with Foundation approach: startIndex={StartIndex}, count={Count}, filter={Filter}",
                 startIndex, count, filter);
 
-            var (page, pageSize) = ConvertScimToPageParameters(startIndex, count);
-
-            // ELEGANT: Use Foundation's approach like Case Management
+            var page = CalculatePage(startIndex, count);
+            var pageSize = count;
+            // Use Foundation's approach like Case Management
             // Pass allowed attributes to enable filtering
             var allowedAttributes = new HashSet<string> {
                 "id", "externalId", "name", "active", "status",
                 "meta.created", "meta.lastModified"
             };
 
-            // ELEGANT: Pass attribute mapping for meta.created -> p.created_at
+            // Pass attribute mapping for meta.created -> p.created_at
             var attributeMapper = new Dictionary<string, string> {
                 { "meta.created", "p.created_at" },
                 { "meta.lastModified", "p.updated_at" },
@@ -104,29 +104,20 @@ public class PadRepositoryStoredProcedure : IPadRepository, IResourceRepository<
             command.Parameters.Add(Dbs.CreateParameter(command, "@do_count", true, DbType.Boolean));
             command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", "updated_at DESC", DbType.String));
 
+            // Add filter using Foundation's approach (like Case Management)
             if (filters != null)
                 command.Parameters.Add(Dbs.CreateParameter(command, "@__dangerouslySetPredicate", filters, DbType.String));
 
             var (pads, totalCount) = await ExecuteStoredProcedureWithCount((SqlCommand)command, cancellationToken);
 
-            _logger.LogInformation("✨ ELEGANT: Retrieved {Count} pads, total: {TotalCount}", pads.Count, totalCount);
+            _logger.LogInformation("✅ Retrieved {Count} pads, total: {TotalCount}", pads.Count, totalCount);
             return (pads, totalCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting pads with ELEGANT Foundation approach");
+            _logger.LogError(ex, "Error getting pads with Foundation approach");
             throw new InvalidOperationException($"Failed to get pads: {ex.Message}", ex);
         }
-    }
-
-    /// <summary>
-    /// Convert SCIM pagination parameters to database pagination
-    /// </summary>
-    private static (int Page, int PageSize) ConvertScimToPageParameters(int startIndex, int count)
-    {
-        var page = Math.Max(1, (int)Math.Ceiling((double)startIndex / count));
-        var pageSize = Math.Max(1, count);
-        return (page, pageSize);
     }
 
     /// <summary>
@@ -154,6 +145,14 @@ public class PadRepositoryStoredProcedure : IPadRepository, IResourceRepository<
         }
 
         return (pads, totalCount);
+    }
+
+    /// <summary>
+    /// Calculate page number from SCIM startIndex and count parameters
+    /// </summary>
+    private static int CalculatePage(int startIndex, int count)
+    {
+        return (int)Math.Ceiling((double)startIndex / count);
     }
 
     /// <summary>
@@ -301,39 +300,30 @@ public class PadRepositoryStoredProcedure : IPadRepository, IResourceRepository<
 
     public async Task<List<Pad>> GetPadsAsync(CancellationToken cancellationToken = default)
     {
-        var (pads, _) = await QueryAsyncElegant(1, int.MaxValue, null, cancellationToken);
+        var (pads, _) = await QueryAsync(1, int.MaxValue, null, cancellationToken);
         return pads.ToList();
     }
 
     public async Task<List<Pad>> GetPadsAsync(string? filter, CancellationToken cancellationToken = default)
     {
-        var (pads, _) = await QueryAsyncElegant(1, int.MaxValue, filter, cancellationToken);
+        var (pads, _) = await QueryAsync(1, int.MaxValue, filter, cancellationToken);
         return pads.ToList();
     }
 
     public async Task<List<Pad>> GetPadsAsync(int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var startIndex = (page - 1) * pageSize + 1;
-        var (pads, _) = await QueryAsyncElegant(startIndex, pageSize, null, cancellationToken);
+        var (pads, _) = await QueryAsync(startIndex, pageSize, null, cancellationToken);
         return pads.ToList();
     }
 
     public async Task<List<Pad>> GetPadsAsync(string? filter, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var startIndex = (page - 1) * pageSize + 1;
-        var (pads, _) = await QueryAsyncElegant(startIndex, pageSize, filter, cancellationToken);
+        var (pads, _) = await QueryAsync(startIndex, pageSize, filter, cancellationToken);
         return pads.ToList();
     }
 
-    public async Task<Pad?> GetPadByIdAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await GetByIdAsync(id.ToString(), cancellationToken);
-    }
-
-    public async Task<Pad?> GetPadByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await GetByIdAsync(id.ToString(), cancellationToken);
-    }
 
     public async Task<Guid> CreatePadAsync(Pad pad, CancellationToken cancellationToken = default)
     {
@@ -364,10 +354,6 @@ public class PadRepositoryStoredProcedure : IPadRepository, IResourceRepository<
         return await UpdateAsync(resource, cancellationToken);
     }
 
-    public async Task<(IList<Pad> Resources, int TotalCount)> QueryAsync(int startIndex, int count, string? filter = null, CancellationToken cancellationToken = default)
-    {
-        return await QueryAsyncElegant(startIndex, count, filter, cancellationToken);
-    }
 
     #endregion
 }

@@ -26,7 +26,7 @@ public class DbConnections(IConfiguration configuration) : IDbConnections
     var useRealDatabase = false;
     try
     {
-      var value = configuration["UseRealDatabase"];
+      var value = configuration["Database:UseProductionDatabase"];
       useRealDatabase = bool.TryParse(value, out var result) && result;
     }
     catch
@@ -47,7 +47,7 @@ public class DbConnections(IConfiguration configuration) : IDbConnections
   
   private async Task<DbConnection> CreateRealDatabaseConnection()
   {
-    var connectionString = configuration.GetConnectionString("RoutingDatabaseConnectionString");
+    var connectionString = configuration["Database:ProductionConnectionString"];
     var connection = new SqlConnection(connectionString);
     await connection.OpenAsync();
     return connection;

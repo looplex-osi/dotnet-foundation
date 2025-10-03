@@ -1046,11 +1046,16 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             return new SCIMv2Response
             {
                 StatusCode = 200,
-                Data = new { Resources = schemas },
-                Schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" },
-                TotalResults = schemas.Count,
-                StartIndex = 1,
-                ItemsPerPage = schemas.Count
+                HttpMethod = "SCHEMAS",
+                Data = new
+                {
+                    totalResults = schemas.Count,
+                    itemsPerPage = schemas.Count,
+                    startIndex = 1,
+                    schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" },
+                    Resources = schemas
+                },
+                Schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" }
             };
         }
         catch (Exception ex)
@@ -1079,6 +1084,12 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             if (!_schemas.TryGetValue(schemaId, out var schema))
             {
                 return CreateErrorResponse(404, "Not found", $"Schema '{schemaId}' not found");
+            }
+
+            // Update schema location with current request host
+            if (schema.Meta != null)
+            {
+                schema.Meta.Location = $"{GetBaseUrl()}/Schemas/{schemaId}";
             }
 
             return new SCIMv2Response
@@ -1305,6 +1316,9 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// <returns>SCIMv2 compliant schema URI</returns>
     private string GenerateSchemaUri(string resourceType)
     {
+        if(resourceType.ToLower() == "user" || resourceType.ToLower() == "group"){
+            return $"urn:ietf:params:scim:schemas:core:2.0:{resourceType}";
+        }
         var serviceName = GetServiceNameOrDefault("looplex");
         return $"urn:looplex:params:scim:schemas:{serviceName}:2.0:{resourceType}";
     }
@@ -1323,8 +1337,9 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         {
             [userSchemaId] = new SchemaDefinition
             {
-                Id = userSchemaId,
+                Id = "User",
                 Name = "User",
+                Schemas = new[] { userSchemaId },
                 Description = "User Account",
                 Attributes = new[]
                 {
@@ -1396,8 +1411,9 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             },
             [groupSchemaId] = new SchemaDefinition
             {
-                Id = groupSchemaId,
+                Id = "Group",
                 Name = "Group",
+                Schemas = new[] { groupSchemaId },
                 Description = "Group",
                 Attributes = new[]
                 {
@@ -2039,6 +2055,49 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
 
     /// <summary>
+    /// Formats ResourceTypes responses according to SCIM v2.0.
+    /// Preserves Resources field with capital R for SCIM compliance.
+    /// Implements RFC 7644 Section 3.2 - Resource Types Discovery
+    /// [RFC 7644 Section 3.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.2)
+    /// </summary>
+    /// <param name="response">SCIMv2Response to format</param>
+    /// <returns>Formatted JSON string for ResourceTypes responses</returns>
+    private static string FormatResourceTypesResponse(SCIMv2Response response)
+    {
+        // For ResourceTypes, preserve the original field names (Resources with capital R)
+        var result = System.Text.Json.JsonSerializer.Serialize(response.Data, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = null, // Preserve original field names for SCIM v2.0 compliance
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true
+        });
+        
+        return result;
+    }
+
+    /// <summary>
+    /// Formats Schemas responses according to SCIM v2.0.
+    /// Preserves Resources field with capital R for SCIM compliance.
+    /// Implements RFC 7644 Section 3.4.6 - Schema Discovery
+    /// [RFC 7644 Section 3.4.6](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.6)
+    /// </summary>
+    /// <param name="response">SCIMv2Response to format</param>
+    /// <returns>Formatted JSON string for Schemas responses</returns>
+    private static string FormatSchemasResponse(SCIMv2Response response)
+    {
+        // For Schemas, preserve the original field names (Resources with capital R)
+        // Use Foundation's centralized serialization for consistency
+        var result = System.Text.Json.JsonSerializer.Serialize(response.Data, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = null, // Preserve original field names for SCIM v2.0 compliance
+            WriteIndented = true,
+            PropertyNameCaseInsensitive = true
+        });
+        
+        return result;
+    }
+
+    /// <summary>
     /// Formats single resource responses according to SCIM v2.0.
     /// Removes Resources wrapper, keeps statusCode for single resource operations.
     /// Implements RFC 7644 Section 3.4.1, 3.4.3, 3.4.4 - Single Resource Operations
@@ -2367,13 +2426,24 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             
             foreach (var collection in registeredCollections)
             {
+                string schemaUrl = String.Empty;
+                string serviceName = GetServiceNameOrDefault("core"); // Get actual service name
+                string schemaUri;
+                if(collection == "Groups" || collection == "Users")
+                {
+                    schemaUri = $"urn:ietf:params:scim:schemas:core:2.0:{collection}"; // Standard SCIMv2 schema
+                }
+                else{
+                    schemaUri = $"urn:looplex:params:scim:schemas:{serviceName}:2.0:{collection}"; 
+                }
+
                 var resourceType = new
                 {
                     id = collection,
                     name = collection,
                     endpoint = $"/{collection}",
                     description = $"SCIMv2 resource type for {collection}",
-                    schema = $"urn:ietf:params:scim:schemas:core:2.0:{collection}",
+                    schema = schemaUri,
                     schemaExtensions = new object[0],
                     meta = new
                     {
@@ -2388,6 +2458,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             return new SCIMv2Response
             {
                 StatusCode = 200,
+                HttpMethod = "RESOURCETYPES",
                 Data = new
                 {
                     totalResults = resourceTypes.Count,
@@ -3015,6 +3086,10 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         {
             case "QUERY":
                 return FormatQueryResponse(response);
+            case "RESOURCETYPES":
+                return FormatResourceTypesResponse(response);
+            case "SCHEMAS":
+                return FormatSchemasResponse(response);
             case "GET":
             case "POST":
             case "PUT":

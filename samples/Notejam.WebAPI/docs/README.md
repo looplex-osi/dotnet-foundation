@@ -11,9 +11,9 @@ This documentation provides a complete guide for developers who want to build SC
 ### 🚀 [Quick Start Guide](QUICK_START.md)
 **5-minute setup** to get Notejam running locally
 - Prerequisites and setup
-- Database configuration
+- Database configuration (SQLite database)
 - Running the application
-- Basic testing
+- Basic testing with HTTP files
 
 ### 📖 [SCIMv2 Development Guide](SCIMv2_DEVELOPMENT_GUIDE.md)
 **Complete implementation guide** for building SCIMv2 applications
@@ -42,7 +42,7 @@ This documentation provides a complete guide for developers who want to build SC
 ### Required Knowledge
 - **.NET 8** and ASP.NET Core
 - **C#** (Intermediate level)
-- **SQL Server** and stored procedures
+- **SQLite** database and stored procedures
 - **HTTP/REST** concepts
 - **JSON** data format
 - **SCIMv2** basics (RFC 7644)
@@ -62,7 +62,7 @@ This documentation provides a complete guide for developers who want to build SC
 ### Technical Skills
 - ✅ **Looplex.Foundation** - Framework usage
 - ✅ **ASP.NET Core** - Web API development
-- ✅ **SQL Server** - Database design
+- ✅ **SQLite** - Database design
 - ✅ **SCIMv2 Middleware** - Protocol implementation
 - ✅ **Repository Pattern** - Data access layer
 - ✅ **Dependency Injection** - Service registration
@@ -74,7 +74,7 @@ This documentation provides a complete guide for developers who want to build SC
 ```bash
 # Clone repository
 git clone <repository-url>
-cd dotnet-foundation-checker/samples/Notejam.WebApp
+cd dotnet-foundation-checker/samples/Notejam.WebAPI
 
 # Follow Quick Start Guide
 # See: docs/QUICK_START.md
@@ -197,7 +197,7 @@ GET /notes?sortBy=meta.lastModified&sortOrder=descending
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
-│                SQL Server Database                         │
+│                SQLite Database                             │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
 │  │   Stored        │  │   Tables        │  │   Indexes    │ │
 │  │   Procedures    │  │   (notes, pads) │  │   & Views    │ │
@@ -260,8 +260,10 @@ GET /notes?sortBy=meta.lastModified&sortOrder=descending
 - **API Reference** - `docs/API_REFERENCE.md`
 
 ### Examples
-- **Notejam Sample** - `samples/Notejam.WebApp/`
-- **Test Suite** - `reference/comprehensive_scimv2_tests.ps1`
+- **Notejam Sample** - `samples/Notejam.WebAPI/`
+- **Postman Collection** - `docs/Notejam.postman_collection`
+- **HTTP Test Files** - `WebApp.http`
+- **Database Schema** - Production SQL Server schema included
 - **Code Examples** - Throughout documentation
 
 ### Troubleshooting

@@ -60,7 +60,7 @@ public static class NoteConfiguration
     {
         public static readonly Dictionary<string, string> AttributeToColumn = new()
         {
-            // Atributos da entidade Note (usando aliases da query)
+            // Attrs from Note entity (using aliases from query)
             { "id", $"n.{Database.IdColumn}" },
             { "text", $"n.{Database.TextColumn}" },
             { "name", $"p.{Database.PadNameColumn}" },
@@ -75,11 +75,11 @@ public static class NoteConfiguration
             { "created", $"n.{Database.CreatedColumn}" },
             { "modified", $"n.{Database.UpdatedColumn}" },
             
-            // Atributos do Pad (relacionamento)
+            // Attrs from Pad entity (relationship)
             { "pad.name", $"p.{Database.PadNameColumn}" },
             { "pad.id", $"p.{Database.PadIdReferenceColumn}" },
             
-            // Atributos adicionais para evitar conflitos
+            // Attrs additional to avoid conflicts
             { "uuid", $"n.{Database.IdColumn}" },
             { "markdown", $"n.{Database.TextColumn}" }
         };

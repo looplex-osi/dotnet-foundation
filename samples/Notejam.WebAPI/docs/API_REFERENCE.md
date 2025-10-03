@@ -35,36 +35,47 @@ List notes with optional filtering and pagination.
 
 **Query Parameters:**
 - `filter` (string, optional) - SCIMv2 filter expression
-- `startIndex` (int, optional) - Starting index (1-based)
-- `count` (int, optional) - Number of results per page
-- `sortBy` (string, optional) - Field to sort by
-- `sortOrder` (string, optional) - Sort order (ascending/descending)
+- `startIndex` (int, optional) - Starting index (1-based, default: 1)
+- `count` (int, optional) - Number of results per page (default: 100)
+
+**Supported Filter Operators:**
+- `eq` - Equals: `active eq "true"`
+- `ne` - Not equals: `status ne 0`
+- `co` - Contains: `text co "test"`
+- `sw` - Starts with: `text sw "Hello"`
+- `ew` - Ends with: `text ew "world"`
+- `pr` - Present (not null): `externalId pr`
+- `gt` - Greater than: `status gt 0`
+- `ge` - Greater than or equal: `status ge 1`
+- `lt` - Less than: `status lt 10`
+- `le` - Less than or equal: `status le 5`
 
 **Example:**
 ```bash
-curl "http://localhost:7065/notes?filter=active eq true&startIndex=1&count=10"
+curl "http://localhost:7065/notes?filter=active eq \"true\"&startIndex=1&count=10"
 ```
 
 **Response:**
 ```json
 {
-  "totalResults": 245,
+  "totalResults": 258,
   "itemsPerPage": 10,
   "startIndex": 1,
   "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
   "Resources": [
     {
-      "id": "123e4567-e89b-12d3-a456-426614174000",
-      "externalId": "12345",
-      "text": "Sample note content",
+      "id": "58b6463e-f36b-1410-85cc-0046c3744233",
+      "text": "# Título da Nota\n\nConteúdo em **markdownv2 30092500**",
       "active": true,
       "status": 1,
+      "customFields": "{\"priority\": \"high\"}",
       "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
       "meta": {
         "resourceType": "Note",
-        "created": "2023-01-01T00:00:00Z",
-        "lastModified": "2023-01-01T00:00:00Z",
-        "location": "/notes/123e4567-e89b-12d3-a456-426614174000"
+        "created": "2025-01-30T18:58:17.792Z",
+        "lastModified": "2025-01-30T18:58:17.792Z",
+        "location": "/notes/58b6463e-f36b-1410-85cc-0046c3744233",
+        "version": "87ef17e90a31355bd54bc8ee28b69cccbf769496b7ab6852599e4fd74d2c1e0b"
       }
     }
   ]
@@ -103,10 +114,10 @@ Create a new note.
 **Request Body:**
 ```json
 {
-  "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
   "text": "New note content",
   "active": true,
-  "status": 1
+  "status": 1,
+  "customFields": "{\"priority\": \"high\"}"
 }
 ```
 
@@ -115,10 +126,10 @@ Create a new note.
 curl -X POST "http://localhost:7065/notes" \
   -H "Content-Type: application/scim+json" \
   -d '{
-    "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
     "text": "New note content",
     "active": true,
-    "status": 1
+    "status": 1,
+    "customFields": "{\"priority\": \"high\"}"
   }'
 ```
 
@@ -146,24 +157,22 @@ Replace an existing note.
 **Request Body:**
 ```json
 {
-  "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
-  "id": "123e4567-e89b-12d3-a456-426614174000",
   "text": "Updated note content",
   "active": true,
-  "status": 2
+  "status": 2,
+  "customFields": "{\"priority\": \"low\", \"updated\": true}"
 }
 ```
 
 **Example:**
 ```bash
-curl -X PUT "http://localhost:7065/notes/123e4567-e89b-12d3-a456-426614174000" \
+curl -X PUT "http://localhost:7065/notes/58b6463e-f36b-1410-85cc-0046c3744233" \
   -H "Content-Type: application/scim+json" \
   -d '{
-    "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
-    "id": "123e4567-e89b-12d3-a456-426614174000",
     "text": "Updated note content",
     "active": true,
-    "status": 2
+    "status": 2,
+    "customFields": "{\"priority\": \"low\", \"updated\": true}"
   }'
 ```
 
@@ -178,7 +187,12 @@ Partially update a note.
     {
       "op": "replace",
       "path": "text",
-      "value": "Updated text content"
+      "value": "PATCH Updated Note Content - Working!"
+    },
+    {
+      "op": "replace",
+      "path": "active",
+      "value": true
     }
   ]
 }
@@ -186,7 +200,7 @@ Partially update a note.
 
 **Example:**
 ```bash
-curl -X PATCH "http://localhost:7065/notes/123e4567-e89b-12d3-a456-426614174000" \
+curl -X PATCH "http://localhost:7065/notes/58b6463e-f36b-1410-85cc-0046c3744233" \
   -H "Content-Type: application/scim+json" \
   -d '{
     "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
@@ -194,7 +208,12 @@ curl -X PATCH "http://localhost:7065/notes/123e4567-e89b-12d3-a456-426614174000"
       {
         "op": "replace",
         "path": "text",
-        "value": "Updated text content"
+        "value": "PATCH Updated Note Content - Working!"
+      },
+      {
+        "op": "replace",
+        "path": "active",
+        "value": true
       }
     ]
   }'
@@ -205,7 +224,7 @@ Delete a note (soft delete - resource remains accessible but marked as inactive)
 
 **Example:**
 ```bash
-curl -X DELETE "http://localhost:7065/notes/123e4567-e89b-12d3-a456-426614174000"
+curl -X DELETE "http://localhost:7065/notes/58b6463e-f36b-1410-85cc-0046c3744233"
 ```
 
 **Response:** `204 No Content`
@@ -240,10 +259,9 @@ Create a new pad.
 **Request Body:**
 ```json
 {
-  "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Pad"],
   "name": "New pad name",
   "active": true,
-  "status": 1
+  "customFields": "{\"priority\": \"high\"}"
 }
 ```
 
@@ -258,7 +276,7 @@ Delete a pad (hard delete - resource is permanently removed).
 
 **Example:**
 ```bash
-curl -X DELETE "http://localhost:7065/pads/123e4567-e89b-12d3-a456-426614174000"
+curl -X DELETE "http://localhost:7065/pads/eeb2463e-f36b-1410-85cc-0046c3744233"
 ```
 
 **Response:** `204 No Content`
@@ -290,20 +308,20 @@ The application implements two different delete strategies:
 **Soft Delete (Notes):**
 ```bash
 # Delete a note (soft delete)
-curl -X DELETE "http://localhost:7065/notes/123e4567-e89b-12d3-a456-426614174000"
+curl -X DELETE "http://localhost:7065/notes/58b6463e-f36b-1410-85cc-0046c3744233"
 
 # Note is still accessible but marked inactive
-curl "http://localhost:7065/notes/123e4567-e89b-12d3-a456-426614174000"
+curl "http://localhost:7065/notes/58b6463e-f36b-1410-85cc-0046c3744233"
 # Returns: {"active": false, ...}
 ```
 
 **Hard Delete (Pads):**
 ```bash
 # Delete a pad (hard delete)
-curl -X DELETE "http://localhost:7065/pads/123e4567-e89b-12d3-a456-426614174000"
+curl -X DELETE "http://localhost:7065/pads/eeb2463e-f36b-1410-85cc-0046c3744233"
 
 # Pad is no longer accessible
-curl "http://localhost:7065/pads/123e4567-e89b-12d3-a456-426614174000"
+curl "http://localhost:7065/pads/eeb2463e-f36b-1410-85cc-0046c3744233"
 # Returns: 404 Not Found
 ```
 
@@ -330,25 +348,25 @@ curl "http://localhost:7065/pads/123e4567-e89b-12d3-a456-426614174000"
 
 **AND Operations:**
 ```bash
-curl "http://localhost:7065/notes?filter=(active eq true) and (status gt 0)"
+curl "http://localhost:7065/notes?filter=(active eq \"true\") and (status gt 0)"
 ```
 
 **OR Operations:**
 ```bash
-curl "http://localhost:7065/notes?filter=(text co 'hello') or (status eq 1)"
+curl "http://localhost:7065/notes?filter=(text co \"hello\") or (status eq 1)"
 ```
 
 **Nested Operations:**
 ```bash
-curl "http://localhost:7065/notes?filter=((active eq true) and (status gt 0)) or (text co 'urgent')"
+curl "http://localhost:7065/notes?filter=((active eq \"true\") and (status gt 0)) or (text co \"urgent\")"
 ```
 
 ### Date Filtering
 
 **Date Comparisons:**
 ```bash
-curl "http://localhost:7065/notes?filter=meta.lastModified ge '2023-01-01T00:00:00Z'"
-curl "http://localhost:7065/notes?filter=meta.created lt '2023-12-31T23:59:59Z'"
+curl "http://localhost:7065/notes?filter=meta.lastModified ge \"2025-01-01T00:00:00Z\""
+curl "http://localhost:7065/notes?filter=meta.created lt \"2025-12-31T23:59:59Z\""
 ```
 
 ---
@@ -425,7 +443,7 @@ curl "http://localhost:7065/ResourceTypes"
       "name": "notes",
       "endpoint": "/notes",
       "description": "SCIMv2 resource type for notes",
-      "schema": "urn:ietf:params:scim:schemas:core:2.0:notes",
+      "schema": "urn:looplex:params:scim:schemas:notejam:2.0:Note",
       "schemaExtensions": [],
       "meta": {
         "resourceType": "ResourceType",
@@ -437,7 +455,7 @@ curl "http://localhost:7065/ResourceTypes"
       "name": "pads",
       "endpoint": "/pads",
       "description": "SCIMv2 resource type for pads",
-      "schema": "urn:ietf:params:scim:schemas:core:2.0:pads",
+      "schema": "urn:looplex:params:scim:schemas:notejam:2.0:Pad",
       "schemaExtensions": [],
       "meta": {
         "resourceType": "ResourceType",
@@ -454,6 +472,42 @@ Get available schemas.
 **Example:**
 ```bash
 curl "http://localhost:7065/Schemas"
+```
+
+**Response:**
+```json
+{
+  "totalResults": 4,
+  "itemsPerPage": 4,
+  "startIndex": 1,
+  "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+  "Resources": [
+    {
+      "id": "urn:ietf:params:scim:schemas:core:2.0:User",
+      "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+      "name": "User",
+      "description": "User Account"
+    },
+    {
+      "id": "urn:ietf:params:scim:schemas:core:2.0:Group",
+      "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+      "name": "Group",
+      "description": "Group"
+    },
+    {
+      "id": "urn:looplex:params:scim:schemas:notejam:2.0:Note",
+      "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
+      "name": "Note",
+      "description": "Note resource"
+    },
+    {
+      "id": "urn:looplex:params:scim:schemas:notejam:2.0:Pad",
+      "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Pad"],
+      "name": "Pad",
+      "description": "Pad resource"
+    }
+  ]
+}
 ```
 
 ---
@@ -473,7 +527,6 @@ Perform bulk operations.
       "path": "/notes",
       "bulkId": "bulk-1",
       "data": {
-        "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
         "text": "Bulk Note 1",
         "active": true,
         "status": 1
@@ -484,10 +537,8 @@ Perform bulk operations.
       "path": "/pads",
       "bulkId": "bulk-2",
       "data": {
-        "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Pad"],
         "name": "Bulk Pad 1",
-        "active": true,
-        "status": 1
+        "active": true
       }
     }
   ]
@@ -506,7 +557,6 @@ curl -X POST "http://localhost:7065/Bulk" \
         "path": "/notes",
         "bulkId": "bulk-1",
         "data": {
-          "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
           "text": "Bulk Note 1",
           "active": true,
           "status": 1
@@ -565,7 +615,6 @@ curl -X POST "http://localhost:7065/Bulk" \
 curl -X POST "http://localhost:7065/notes" \
   -H "Content-Type: application/scim+json" \
   -d '{
-    "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
     "text": "Hello SCIMv2!",
     "active": true,
     "status": 1
@@ -575,33 +624,31 @@ curl -X POST "http://localhost:7065/notes" \
 curl "http://localhost:7065/notes"
 
 # 3. Get specific note
-curl "http://localhost:7065/notes/{id}"
+curl "http://localhost:7065/notes/58b6463e-f36b-1410-85cc-0046c3744233"
 
 # 4. Update note
-curl -X PUT "http://localhost:7065/notes/{id}" \
+curl -X PUT "http://localhost:7065/notes/58b6463e-f36b-1410-85cc-0046c3744233" \
   -H "Content-Type: application/scim+json" \
   -d '{
-    "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
-    "id": "{id}",
     "text": "Updated content",
     "active": true,
     "status": 2
   }'
 
 # 5. Delete note
-curl -X DELETE "http://localhost:7065/notes/{id}"
+curl -X DELETE "http://localhost:7065/notes/58b6463e-f36b-1410-85cc-0046c3744233"
 ```
 
 ### Filtering Examples
 ```bash
 # Simple filters
-curl "http://localhost:7065/notes?filter=active eq true"
+curl "http://localhost:7065/notes?filter=active eq \"true\""
 curl "http://localhost:7065/notes?filter=status gt 0"
-curl "http://localhost:7065/notes?filter=text co 'test'"
+curl "http://localhost:7065/notes?filter=text co \"test\""
 
 # Complex filters
-curl "http://localhost:7065/notes?filter=(active eq true) and (status gt 0)"
-curl "http://localhost:7065/notes?filter=(text co 'hello') or (status eq 1)"
+curl "http://localhost:7065/notes?filter=(active eq \"true\") and (status gt 0)"
+curl "http://localhost:7065/notes?filter=(text co \"hello\") or (status eq 1)"
 
 # Pagination
 curl "http://localhost:7065/notes?startIndex=1&count=5"
@@ -615,13 +662,14 @@ curl "http://localhost:7065/notes?sortBy=meta.lastModified&sortOrder=descending"
 ## 🎯 Testing
 
 ### Manual Testing
-Use the provided test suite:
-```bash
-# Run comprehensive tests
-.\reference\comprehensive_scimv2_tests.ps1
-```
 
-### Automated Testing
+#### Option 1: HTTP Files (Recommended)
+Open `WebApp.http` in VS Code and click "Send Request" on any endpoint.
+
+#### Option 2: Postman Collection
+Import `docs/Notejam.postman_collection` into Postman.
+
+#### Option 3: PowerShell Testing
 ```powershell
 # Test specific endpoints
 $baseUrl = "http://localhost:7065"
@@ -630,7 +678,7 @@ $headers = @{"Accept"="application/scim+json"}
 # Test basic operations
 Invoke-WebRequest -Uri "$baseUrl/notes" -Headers $headers
 Invoke-WebRequest -Uri "$baseUrl/ServiceProviderConfig" -Headers $headers
-Invoke-WebRequest -Uri "$baseUrl/ResourceTypes" -Headers $headers
+Invoke-WebRequest -Uri "$baseUrl/Schemas" -Headers $headers
 ```
 
 ---

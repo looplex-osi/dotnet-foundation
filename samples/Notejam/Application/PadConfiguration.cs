@@ -55,7 +55,7 @@ public static class PadConfiguration
     {
         public static readonly Dictionary<string, string> AttributeToColumn = new()
         {
-            // Pad entity attributes
+            // Attrs from Pad entity attributes
             { "id", $"p.{Database.IdColumn}" },
             { "name", $"p.{Database.NameColumn}" },
             { "active", $"p.{Database.ActiveColumn}" },
