@@ -1,24 +1,99 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
-using Looplex.Foundation.Helpers;
-
 using Microsoft.AspNetCore.Http;
-
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 
 namespace Looplex.SCIMv2.Entities;
 
 public static class AttributesProcessor
 {
-  public static IEnumerable<JObject> ProcessAttributes(this IEnumerable<JObject> records, HttpContext context)
+  // Helper to navigate JSON paths
+  private static JsonNode? GetJsonValue(JsonObject obj, string path)
+  {
+    var parts = path.Split('.');
+    JsonNode? current = obj;
+    
+    foreach (var part in parts)
+    {
+      if (current is JsonObject jsonObj && jsonObj.TryGetPropertyValue(part, out var value))
+      {
+        current = value;
+      }
+      else if (current is JsonArray jsonArray && int.TryParse(part, out var index) && index < jsonArray.Count)
+      {
+        current = jsonArray[index];
+      }
+      else
+      {
+        return null;
+      }
+    }
+    
+    return current;
+  }
+  
+  // Helper to set values in JSON paths
+  private static void SetJsonValue(JsonObject obj, string path, JsonNode? value)
+  {
+    var parts = path.Split('.');
+    JsonNode? current = obj;
+    
+    for (int i = 0; i < parts.Length - 1; i++)
+    {
+      var part = parts[i];
+      
+      if (current is JsonObject jsonObj)
+      {
+        if (!jsonObj.TryGetPropertyValue(part, out var next))
+        {
+          next = new JsonObject();
+          jsonObj[part] = next;
+        }
+        current = next;
+      }
+    }
+    
+    if (current is JsonObject finalObj)
+    {
+      finalObj[parts[^1]] = value;
+    }
+  }
+  
+  // Helper to delete values in JSON paths
+  private static void DeleteJsonValue(JsonObject obj, string path)
+  {
+    var parts = path.Split('.');
+    JsonNode? current = obj;
+    
+    for (int i = 0; i < parts.Length - 1; i++)
+    {
+      var part = parts[i];
+      
+      if (current is JsonObject jsonObj && jsonObj.TryGetPropertyValue(part, out var next))
+      {
+        current = next;
+      }
+      else
+      {
+        return; // Path does not exist
+      }
+    }
+    
+    if (current is JsonObject finalObj)
+    {
+      finalObj.Remove(parts[^1]);
+    }
+  }
+
+  public static IEnumerable<JsonObject> ProcessAttributes(this IEnumerable<JsonObject> records, HttpContext context)
   {
     var query = context.Request.Query;
-
-    var attrs = query.ContainsKey("attributes")
-      ? query["attributes"].ToString().Split([','], StringSplitOptions.RemoveEmptyEntries)
-      : [];
+    var attrs = new string[0];
+    if(context.Request.Query.ContainsKey("attributes"))
+    {
+      attrs = context.Request.Query["attributes"].ToString().Split([','], StringSplitOptions.RemoveEmptyEntries);
+    }
 
     var xattrs = query.ContainsKey("excludedAttributes")
       ? query["excludedAttributes"].ToString().Split([','], StringSplitOptions.RemoveEmptyEntries)
@@ -29,13 +104,13 @@ public static class AttributesProcessor
       records = records
         .Select(record =>
         {
-          var newObj = new JObject();
+          var newObj = new JsonObject();
           foreach (var attr in attrs)
           {
-            var value = JsonHelper._get(record, attr);
+            var value = GetJsonValue(record, attr);
             if (value != null)
             {
-              JsonHelper._set(newObj, attr, value.DeepClone());
+              SetJsonValue(newObj, attr, value.DeepClone());
             }
           }
 
@@ -50,7 +125,7 @@ public static class AttributesProcessor
       {
         foreach (var xattr in xattrs)
         {
-          JsonHelper._delete(record, xattr);
+          DeleteJsonValue(record, xattr);
         }
       }
     }

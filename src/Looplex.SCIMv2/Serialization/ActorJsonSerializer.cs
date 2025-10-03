@@ -9,8 +9,8 @@ namespace Looplex.SCIMv2.Serialization
 {
   public static class ActorJsonSerializer
   {
-    // Configuração centralizada para toda a Foundation
-    private static readonly JsonSerializerOptions DefaultOptions = new()
+    // Centralized configuration for the Foundation
+    public static readonly JsonSerializerOptions DefaultOptions = new()
     {
       PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
       WriteIndented = true,

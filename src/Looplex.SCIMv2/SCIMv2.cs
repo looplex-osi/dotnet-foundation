@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
@@ -1856,8 +1858,24 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// <param name="startIndex">Starting index for pagination (1-based)</param>
     /// <param name="count">Number of items per page</param>
     /// <returns>SCIMv2 response with list data and pagination metadata</returns>
-    private static SCIMv2Response CreateListResponse(object resources, int totalCount, int startIndex, int count)
+    private SCIMv2Response CreateListResponse(object resources, int totalCount, int startIndex, int count)
     {
+        // Apply attribute processing if HttpContext is available
+        if (_httpContextAccessor?.HttpContext != null && resources is IEnumerable<IResource> resourceList)
+        {
+            // Convert resources to JsonObject for processing using ActorJsonSerializer options
+            var jsonResources = resourceList.Select(resource => 
+            {
+                var json = JsonSerializer.SerializeToNode(resource, ActorJsonSerializer.DefaultOptions);
+                return json as JsonObject ?? new JsonObject();
+            }).ToList();
+
+            // Apply attribute processing
+            var processedResources = jsonResources.ProcessAttributes(_httpContextAccessor.HttpContext);
+            
+            // Keep as JsonObject list for serialization
+            resources = processedResources.ToList();
+        }
         
         var response = new SCIMv2Response
         {
@@ -1967,8 +1985,32 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// </summary>
     /// <param name="resource">Retrieved resource to include in response</param>
     /// <returns>SCIMv2 response with retrieved resource</returns>
-    private static SCIMv2Response CreateRetrieveResponse(IResource resource)
+    private SCIMv2Response CreateRetrieveResponse(IResource resource)
     {
+        // Apply attribute processing if HttpContext is available
+        if (_httpContextAccessor?.HttpContext != null)
+        {
+            // Convert resource to JsonObject for processing using ActorJsonSerializer options
+            var jsonResource = JsonSerializer.SerializeToNode(resource, ActorJsonSerializer.DefaultOptions) as JsonObject ?? new JsonObject();
+            
+            // Apply attribute processing
+            var processedResource = new[] { jsonResource }.ProcessAttributes(_httpContextAccessor.HttpContext).FirstOrDefault();
+            
+            if (processedResource != null)
+            {
+                // Return processed JsonObject for serialization
+                return new SCIMv2Response
+                {
+                    StatusCode = 200,
+                    Data = processedResource, // JsonObject with processed attributes
+                    Schemas = resource.Schemas,
+                    Location = resource.Meta.Location,
+                    ETag = resource.Meta.Version,
+                    HttpMethod = "GET"
+                };
+            }
+        }
+        
         // GET (Single Resource): Return resource directly, no Resources wrapper
         return new SCIMv2Response
         {

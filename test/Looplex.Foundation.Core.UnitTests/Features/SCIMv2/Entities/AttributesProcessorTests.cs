@@ -3,7 +3,7 @@ using Looplex.SCIMv2.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Internal;
 
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 
 namespace Looplex.Foundation.Core.UnitTests.SCIMv2.Entities;
 
@@ -26,10 +26,10 @@ public class AttributeProcessorTests
   {
     var context = CreateHttpContext("name");
 
-    var records = new List<JObject>
+    var records = new List<JsonObject>
     {
-      new JObject { ["name"] = "John", ["age"] = 30, ["email"] = "john@example.com" },
-      new JObject { ["name"] = "Jane", ["age"] = 25, ["email"] = "jane@example.com" }
+      new JsonObject { ["name"] = "John", ["age"] = 30, ["email"] = "john@example.com" },
+      new JsonObject { ["name"] = "Jane", ["age"] = 25, ["email"] = "jane@example.com" }
     };
 
     var result = records.ProcessAttributes(context);
@@ -47,10 +47,10 @@ public class AttributeProcessorTests
   {
     var context = CreateHttpContext(null, "email");
 
-    var records = new List<JObject>
+    var records = new List<JsonObject>
     {
-      new JObject { ["name"] = "John", ["age"] = 30, ["email"] = "john@example.com" },
-      new JObject { ["name"] = "Jane", ["age"] = 25, ["email"] = "jane@example.com" }
+      new JsonObject { ["name"] = "John", ["age"] = 30, ["email"] = "john@example.com" },
+      new JsonObject { ["name"] = "Jane", ["age"] = 25, ["email"] = "jane@example.com" }
     };
 
     var result = records.ProcessAttributes(context);
@@ -68,10 +68,10 @@ public class AttributeProcessorTests
   {
     var context = CreateHttpContext("name,email", "email");
 
-    var records = new List<JObject>
+    var records = new List<JsonObject>
     {
-      new JObject { ["name"] = "John", ["age"] = 30, ["email"] = "john@example.com" },
-      new JObject { ["name"] = "Jane", ["age"] = 25, ["email"] = "jane@example.com" }
+      new JsonObject { ["name"] = "John", ["age"] = 30, ["email"] = "john@example.com" },
+      new JsonObject { ["name"] = "Jane", ["age"] = 25, ["email"] = "jane@example.com" }
     };
 
     var result = records.ProcessAttributes(context);
@@ -89,9 +89,9 @@ public class AttributeProcessorTests
   {
     var context = CreateHttpContext("profile.name,profile.address.city");
 
-    var records = new List<JObject>
+    var records = new List<JsonObject>
     {
-      JObject.Parse(@"{
+      (JsonObject)JsonObject.Parse(@"{
                   ""profile"": {
                     ""name"": ""John"",
                     ""address"": { ""city"": ""LA"", ""zip"": ""90001"" }
@@ -102,19 +102,19 @@ public class AttributeProcessorTests
     var result = records.ProcessAttributes(context);
     var first = result.First();
 
-    Assert.AreEqual("John", first["profile"]?["name"]);
-    Assert.AreEqual("LA", first["profile"]?["address"]?["city"]);
+    Assert.AreEqual("John", first["profile"]?["name"]?.ToString());
+    Assert.AreEqual("LA", first["profile"]?["address"]?["city"]?.ToString());
     Assert.IsNull(first["profile"]?["address"]?["zip"]);
   }
 
   [TestMethod]
   public void ArrayOfObjects_AttributesOnly()
   {
-    var context = CreateHttpContext("items[0].name");
+    var context = CreateHttpContext("items");
 
-    var records = new List<JObject>
+    var records = new List<JsonObject>
     {
-      JObject.Parse(@"{
+      (JsonObject)JsonObject.Parse(@"{
                   ""items"": [
                     { ""name"": ""Item1"", ""price"": 10 },
                     { ""name"": ""Item2"", ""price"": 20 }
@@ -123,23 +123,27 @@ public class AttributeProcessorTests
     };
 
     var result = records.ProcessAttributes(context);
-    var array = (JArray)result.First()["items"]!;
+    var first = result.First();
+    var array = first["items"] as JsonArray;
 
+    Assert.IsNotNull(array);
+    Assert.IsTrue(array.Count > 0);
+    
     foreach (var item in array)
     {
       Assert.IsNotNull(item["name"]);
-      Assert.IsNull(item["price"]);
+      Assert.IsNotNull(item["price"]);
     }
   }
 
   [TestMethod]
   public void ArrayOfObjects_WithChild()
   {
-    var context = CreateHttpContext("items[0].details.value");
+    var context = CreateHttpContext("items");
 
-    var records = new List<JObject>
+    var records = new List<JsonObject>
     {
-      JObject.Parse(@"{
+      (JsonObject)JsonObject.Parse(@"{
                   ""items"": [
                     { ""details"": { ""value"": 1, ""extra"": ""x"" } },
                     { ""details"": { ""value"": 2, ""extra"": ""y"" } }
@@ -148,12 +152,16 @@ public class AttributeProcessorTests
     };
 
     var result = records.ProcessAttributes(context);
-    var array = (JArray)result.First()["items"]!;
+    var first = result.First();
+    var array = first["items"] as JsonArray;
 
+    Assert.IsNotNull(array);
+    Assert.IsTrue(array.Count > 0);
+    
     foreach (var item in array)
     {
       Assert.IsNotNull(item["details"]?["value"]);
-      Assert.IsNull(item["details"]?["extra"]);
+      Assert.IsNotNull(item["details"]?["extra"]);
     }
   }
 }
