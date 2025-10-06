@@ -1,6 +1,6 @@
 using System;
 
-using Looplex.Foundation.Ports;
+using Looplex.OAuth2.Entities;
 
 using Microsoft.Extensions.DependencyInjection;
 

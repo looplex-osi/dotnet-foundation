@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Looplex.Foundation.Entities;
 using Looplex.SCIMv2.Helpers;
 using Looplex.OAuth2.Dtos;
+using Looplex.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;

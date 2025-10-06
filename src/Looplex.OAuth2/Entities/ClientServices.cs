@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Helpers;
+using Looplex.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.SCIMv2.Commands;
 using Looplex.SCIMv2.Entities;

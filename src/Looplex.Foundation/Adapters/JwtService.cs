@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -6,8 +7,11 @@ using System.Security.Cryptography;
 using Looplex.Foundation.Ports;
 
 using Microsoft.IdentityModel.Tokens;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.OpenSsl;
+using Org.BouncyCastle.Security;
 
-namespace Looplex.Protocols.HTTP.Adapters;
+namespace Looplex.Foundation.Adapters;
 
 public sealed class JwtService : IJwtService
 {
@@ -18,8 +22,13 @@ public sealed class JwtService : IJwtService
     ClaimsIdentity claimsIdentity,
     TimeSpan expiration)
   {
+    using var stringReader = new StringReader(privateKey);
+    using var pemReader = new PemReader(stringReader);
+    var keyPair = (RsaPrivateCrtKeyParameters)pemReader.ReadObject();
+    var rsaParams = DotNetUtilities.ToRSAParameters(keyPair);
+    
     using RSA privateKeyRsa = RSA.Create();
-    privateKeyRsa.ImportFromPem(privateKey);
+    privateKeyRsa.ImportParameters(rsaParams);
 
     JwtSecurityTokenHandler tokenHandler = new();
 

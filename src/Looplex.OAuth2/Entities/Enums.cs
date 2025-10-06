@@ -1,4 +1,4 @@
-namespace Looplex.Foundation.Ports;
+namespace Looplex.OAuth2.Entities;
 
 /// <summary>
 ///   A label indicating the type of resource, e.g., 'User' or 'Group'.
