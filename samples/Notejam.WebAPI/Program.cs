@@ -1,4 +1,3 @@
-
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using System.Text.Json;
@@ -11,6 +10,7 @@ using Looplex.Foundation.Ports;
 using Looplex.SCIMv2;
 using Looplex.SCIMv2.Modules;
 using Looplex.SCIMv2.Extensions;
+using Looplex.Protocols.HTTP.Extensions;
 using Looplex.SCIMv2.Entities;
 using Looplex.SCIMv2.Serialization;
 
@@ -82,36 +82,6 @@ public static class Program
     // Configure Foundation SCIMv2 BEFORE creating instances
     Console.WriteLine("🔧 Configuring Foundation SCIMv2 for Notejam");
     
-    // Configure Note attributes and mappings
-    Looplex.SCIMv2.SCIMv2.ConfigureAttributes("Note", new HashSet<string> { 
-        "id", "externalId", "text", "active", "status", "customFields",
-        "meta.created", "meta.lastModified" 
-    });
-    
-    Looplex.SCIMv2.SCIMv2.ConfigureMapping("Note", new Dictionary<string, string> {
-        { "meta.created", "n.created_at" },
-        { "meta.lastModified", "n.updated_at" },
-        { "active", "n.active" },
-        { "text", "n.markdown" },
-        { "customFields", "n.custom_fields" },
-        { "externalId", "n.external_id" },
-        { "status", "n.status" }
-    });
-    
-    // Configure Pad attributes and mappings
-    Looplex.SCIMv2.SCIMv2.ConfigureAttributes("Pad", new HashSet<string> { 
-        "id", "externalId", "name", "active", 
-        "meta.created", "meta.lastModified" 
-    });
-    
-    Looplex.SCIMv2.SCIMv2.ConfigureMapping("Pad", new Dictionary<string, string> {
-        { "meta.created", "p.created_at" },
-        { "meta.lastModified", "p.updated_at" },
-        { "active", "p.active" },
-        { "name", "p.name" },
-        { "externalId", "p.external_id" }
-    });
-    
     Console.WriteLine("✅ Foundation SCIMv2 configured for Notejam");
 
     // Configure in-memory settings for SQL Server database
@@ -141,7 +111,7 @@ public static class Program
     builder.Services.AddSingleton<IResourceRepository<User>, MockUserRepository>();
     builder.Services.AddSingleton<IResourceRepository<Group>, MockGroupRepository>();
 
-    // Register new SCIMv2 Resource Services as SINGLETON (NEW ARCHITECTURE)
+    // Register new SCIMv2 Resource Services as SINGLETON 
     // Using independent services that don't depend on MediatR
     builder.Services.AddSingleton<IResourceService<Note>, SCIMv2NoteService>();
     builder.Services.AddSingleton<IResourceService<Pad>, SCIMv2PadService>();
@@ -178,9 +148,6 @@ public static class Program
       })
       .AllowAnonymous();
 
-    // Use official SCIMv2 discovery endpoints from Looplex.Foundation
-    app.UseSCIMv2Discovery(authorize: false);
-
     // Register SCIMv2 services - schemas are auto-discovered and registered!
     using (var scope = app.Services.CreateScope())
     {
@@ -199,6 +166,10 @@ public static class Program
         Console.WriteLine("✅ SCIMv2 services registered with auto-discovered schemas");
     }
 
+    // Note: Using auto-discovery of attributes from entity properties
+    // No manual configuration needed - SCIMv2 will auto-discover all properties
+    Console.WriteLine("✅ SCIMv2 using auto-discovery of attributes");
+
     // Add detailed logging middleware
     app.Use(async (context, next) =>
     {
@@ -216,18 +187,41 @@ public static class Program
         Console.WriteLine($"🔍 Response Headers: {string.Join(", ", context.Response.Headers.Select(h => $"{h.Key}={h.Value}"))}");
     });
 
-    // Use SCIMv2 middleware for proper compliance
-    Console.WriteLine("🚀 Registering SCIMv2 middleware for 'notes'");
-    app.UseSCIMv2("notes", authorize: false);
-    
-    Console.WriteLine("🚀 Registering SCIMv2 middleware for 'pads'");
-    app.UseSCIMv2("pads", authorize: false);
-    
-    Console.WriteLine("🚀 Registering SCIMv2 middleware for 'Users'");
-    app.UseSCIMv2("Users", authorize: false);
-    
-    Console.WriteLine("🚀 Registering SCIMv2 middleware for 'Groups'");
-    app.UseSCIMv2("Groups", authorize: false);
+    // Map SCIMv2 discovery endpoints using generic extension methods
+    app.MapSCIMv2DiscoveryEndpoints("/scim/v2");
+    // Map discovery endpoints without /scim/v2/ prefix for Postman compatibility with unique names
+    app.MapGet("/ServiceProviderConfig", async (HttpContext context) =>
+    {
+        var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
+        var result = await scimService.GetServiceProviderConfigAsync();
+        return Results.Ok(result);
+    })
+    .WithName("SCIMv2ServiceProviderConfigDirect")
+    .WithTags("SCIMv2");
+
+    app.MapGet("/ResourceTypes", async (HttpContext context) =>
+    {
+        var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
+        var result = await scimService.GetResourceTypesAsync();
+        return Results.Ok(result);
+    })
+    .WithName("SCIMv2ResourceTypesDirect")
+    .WithTags("SCIMv2");
+
+    app.MapGet("/Schemas", async (HttpContext context) =>
+    {
+        var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
+        var result = await scimService.GetSchemasAsync();
+        return Results.Ok(result);
+    })
+    .WithName("SCIMv2SchemasDirect")
+    .WithTags("SCIMv2");
+
+    // Map SCIMv2 resource endpoints using generic extension methods from Looplex.SCIMv2
+    MapSCIMv2ResourceEndpoints(app, "notes");
+    MapSCIMv2ResourceEndpoints(app, "pads");
+
+    Console.WriteLine("🚀 SCIMv2 endpoints mapped successfully");
 
     app.Run();
   }

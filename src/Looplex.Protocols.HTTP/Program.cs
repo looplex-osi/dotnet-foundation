@@ -1,6 +1,6 @@
-using Looplex.SCIMv2;
-using Looplex.SCIMv2.Extensions;
 using Looplex.Protocols.HTTP.Middlewares;
+using Looplex.Protocols.HTTP.Adapters;
+using Looplex.Protocols.HTTP.Ports;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,19 +9,12 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add SCIMv2 services
-builder.Services.AddSCIMv2Service();
+// Register OAuth2 services
+builder.Services.AddSingleton<IJwtService, JwtServiceAdapter>();
+builder.Services.AddSingleton<IGrantTypeService, GrantTypeServiceAdapter>();
 
-// Add CORS for testing
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
+// Register SCIMv2 services
+builder.Services.AddSingleton<ISCIMv2Service, SCIMv2ServiceAdapter>();
 
 var app = builder.Build();
 
@@ -33,35 +26,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors();
+app.UseAuthorization();
 
-// Add SCIMv2 endpoints
-app.UseSCIMv2("Users", authorize: false);
-app.UseSCIMv2("Groups", authorize: false);
-app.UseSCIMv2("Api-Keys", authorize: false);
+// Map OAuth2 endpoints
+app.MapOAuth2TokenEndpoint();
+app.MapOAuth2UserInfoEndpoint();
 
-// Add SCIMv2 discovery endpoints
-app.UseSCIMv2Discovery(authorize: false);
+// Map SCIMv2 endpoints
+app.MapSCIMv2UsersEndpoint();
+app.MapSCIMv2GroupsEndpoint();
+app.MapSCIMv2ServiceProviderConfigEndpoint();
 
-// Add health check endpoint
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
-
-// Add root endpoint with API information
-app.MapGet("/", () => Results.Ok(new 
-{ 
-    name = "Looplex Foundation SCIMv2 API",
-    version = "1.0.0",
-    description = "SCIMv2 Protocol Implementation",
-    endpoints = new
-    {
-        schemas = "/Schemas",
-        serviceProviderConfig = "/ServiceProviderConfig",
-        users = "/Users",
-        groups = "/Groups",
-        apiKeys = "/Api-Keys",
-        health = "/health"
-    }
-}));
+app.MapControllers();
 
 app.Run();
-

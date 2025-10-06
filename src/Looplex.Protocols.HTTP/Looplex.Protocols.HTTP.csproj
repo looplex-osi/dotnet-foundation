@@ -13,8 +13,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Looplex.Foundation\Looplex.Foundation.csproj"/>
-    <ProjectReference Include="..\Looplex.SCIMv2\Looplex.SCIMv2.csproj"/>
-    <ProjectReference Include="..\Looplex.OAuth2\Looplex.OAuth2.csproj"/>
   </ItemGroup>
 
   <ItemGroup>

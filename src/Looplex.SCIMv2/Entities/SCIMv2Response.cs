@@ -28,6 +28,7 @@ public class SCIMv2Response
     /// HTTP status code
     /// </summary>
     [JsonPropertyName("statusCode")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int StatusCode { get; set; }
 
     /// <summary>

@@ -1,7 +1,5 @@
 using System;
 
-using Looplex.SCIMv2.Entities;
-
 using Newtonsoft.Json;
 
 using PropertyChanged;
@@ -9,7 +7,7 @@ using PropertyChanged;
 namespace Looplex.OAuth2.Entities;
 
 [AddINotifyPropertyChangedInterface]
-public class ClientService : Resource
+public class ClientService
 {
   #region Reflectivity
 
@@ -19,6 +17,8 @@ public class ClientService : Resource
   #endregion
 
   public string? ClientName { get; set; }
+  public string? UserName { get; set; }
+  public string Id { get; set; } = Guid.NewGuid().ToString();
 
   [JsonProperty] public string? ClientSecret { get; set; }
   

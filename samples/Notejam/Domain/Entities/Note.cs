@@ -1,6 +1,7 @@
 using Looplex.SCIMv2.Entities;
 
 using PropertyChanged;
+using ProtoBuf;
 
 namespace Looplex.Samples.Domain.Entities
 {
@@ -28,6 +29,7 @@ namespace Looplex.Samples.Domain.Entities
     private int _status = 1;
     private string _customFields = "{}";
 
+    [ProtoMember(5)]
     public string Name 
     { 
       get => _name;
@@ -38,6 +40,7 @@ namespace Looplex.Samples.Domain.Entities
       }
     }
 
+    [ProtoMember(6)]
     public string Text 
     { 
       get => _text;
@@ -48,12 +51,14 @@ namespace Looplex.Samples.Domain.Entities
       }
     }
 
+    [ProtoMember(7)]
     public bool Active 
     { 
       get => _active;
       set => _active = value;
     }
 
+    [ProtoMember(8)]
     public int Status 
     { 
       get => _status;
@@ -64,6 +69,7 @@ namespace Looplex.Samples.Domain.Entities
       }
     }
 
+    [ProtoMember(9)]
     public string CustomFields 
     { 
       get => _customFields;

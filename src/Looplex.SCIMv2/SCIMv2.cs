@@ -1866,7 +1866,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             // Convert resources to JsonObject for processing using ActorJsonSerializer options
             var jsonResources = resourceList.Select(resource => 
             {
-                var json = JsonSerializer.SerializeToNode(resource, ActorJsonSerializer.DefaultOptions);
+                var json = JsonSerializer.SerializeToNode(resource, resource.GetType(), ActorJsonSerializer.DefaultOptions);
                 return json as JsonObject ?? new JsonObject();
             }).ToList();
 
@@ -1879,7 +1879,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         
         var response = new SCIMv2Response
         {
-            StatusCode = 0, // Set to 0 to indicate this should not be serialized for collections
+            //StatusCode = 0, // Set to 0 to indicate this should not be serialized for collections
             Data = resources, // RFC 7644 Section 3.4.2 - Resources directly in response
             Schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" },
             TotalResults = totalCount,
@@ -1991,7 +1991,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         if (_httpContextAccessor?.HttpContext != null)
         {
             // Convert resource to JsonObject for processing using ActorJsonSerializer options
-            var jsonResource = JsonSerializer.SerializeToNode(resource, ActorJsonSerializer.DefaultOptions) as JsonObject ?? new JsonObject();
+            var jsonResource = JsonSerializer.SerializeToNode(resource, resource.GetType(), ActorJsonSerializer.DefaultOptions) as JsonObject ?? new JsonObject();
             
             // Apply attribute processing
             var processedResource = new[] { jsonResource }.ProcessAttributes(_httpContextAccessor.HttpContext).FirstOrDefault();

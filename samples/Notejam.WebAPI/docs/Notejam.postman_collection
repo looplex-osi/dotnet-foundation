@@ -152,7 +152,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n  \"name\": \"Test Note from Postman\",\n  \"text\": \"This is a test note created via Postman collection\",\n  \"active\": true,\n  \"status\": 1,\n  \"customFields\": {}\n}"
+							"raw": "{"text": "# Título da Nota\n\nConteúdo em **markdownv2 3009250022**ABC",  "active": true,  "status": 1,  "customFields": "{\"priority\": \"high\"}"}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/notes",
@@ -205,7 +205,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n  \"name\": \"Updated Note from Postman\",\n  \"text\": \"This note was updated via Postman collection\",\n  \"active\": false,\n  \"status\": 2,\n  \"customFields\": {\"priority\": \"high\"}\n}"
+							"raw": "{  "name": "Test Note SCIM v2.0 UPDATEDv8.1",  "text": "Test Content SCIM v2.0 UPDATEDv9.1",  "active": false,  "status": 2}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/notes/{{noteId}}",
@@ -269,6 +269,96 @@
 							"path": [
 								"notes",
 								"{{noteId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Notes (List) Attributes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?attributes=id,meta&count=3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "attributes",
+									"value": "id,meta"
+								},
+								{
+									"key": "count",
+									"value": "3"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Note by ID (with attributes)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes/{{noteId}}?attributes=id,meta",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"{{noteId}}"
+							],
+							"query": [
+								{
+									"key": "attributes",
+									"value": "id,meta"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Note by ID (without attributes)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes/{{noteId}}?excludedAttributes=meta",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"{{noteId}}"
+							],
+							"query": [
+								{
+									"key": "excludedAttributes",
+									"value": "meta"
+								}
 							]
 						}
 					},
@@ -719,7 +809,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Pad\"],\n  \"name\": \"Test Pad from Postman\",\n  \"active\": true,\n  \"customFields\": {}\n}"
+							"raw": "{  "name": "Test Pad SCIM v2.0 121415 0205",  "active": true,  "status": 1}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/pads",
@@ -772,7 +862,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Pad\"],\n  \"name\": \"Updated Pad from Postman\",\n  \"active\": false,\n  \"customFields\": {\"priority\": \"high\"}\n}"
+							"raw": "{  "name": "Test Pad SCIM v2.0 UPDATEDv8",  "text": "Test Pad SCIM v2.0 UPDATEDv9",  "active": false,  "status": 2}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/pads/{{padId}}",
@@ -803,7 +893,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"schemas\": [\"urn:ietf:params:scim:api:messages:2.0:PatchOp\"],\n  \"Operations\": [\n    {\n      \"op\": \"replace\",\n      \"path\": \"active\",\n      \"value\": true\n    },\n    {\n      \"op\": \"replace\",\n      \"path\": \"name\",\n      \"value\": \"Updated via PATCH operation\"\n    }\n  ]\n}"
+							"raw": "{  "name": "Test Pad SCIM v2.0 UPDATEDv8",  "text": "Test Pad SCIM v2.0 UPDATEDv9",  "active": false,  "status": 2}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/pads/{{padId}}",

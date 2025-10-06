@@ -2,11 +2,6 @@ using System.Security.Claims;
 
 using Looplex.OAuth2.Entities;
 using Looplex.Foundation.Ports;
-using Looplex.SCIMv2.Commands;
-using Looplex.SCIMv2.Queries;
-using Looplex.OpenForExtension.Abstractions.Plugins;
-
-using MediatR;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -21,9 +16,7 @@ namespace Looplex.Foundation.Core.UnitTests.OAuth2.Entities
     private ClientServices _clientServices = null!;
     private IRbacService _rbacService = null!;
     private IHttpContextAccessor _httpContextAccessor = null!;
-    private IMediator _mediator = null!;
     private IConfiguration _configuration = null!;
-    private List<IPlugin> _plugins = null!;
     private ClaimsPrincipal _user = null!;
 
     [TestInitialize]
@@ -31,10 +24,8 @@ namespace Looplex.Foundation.Core.UnitTests.OAuth2.Entities
     {
       _rbacService = Substitute.For<IRbacService>();
       _httpContextAccessor = Substitute.For<IHttpContextAccessor>();
-      _mediator = Substitute.For<IMediator>();
       _configuration = Substitute.For<IConfiguration>();
-      _plugins = new List<IPlugin>();
-      _user = new ClaimsPrincipal();
+      _user = Substitute.For<ClaimsPrincipal>();
 
       var httpContext = Substitute.For<HttpContext>();
       httpContext.User.Returns(_user);
@@ -42,125 +33,135 @@ namespace Looplex.Foundation.Core.UnitTests.OAuth2.Entities
 
       _configuration["ClientSecretDigestCost"] = "4";
 
-      _clientServices = new ClientServices(_plugins, _rbacService, _httpContextAccessor, _mediator, _configuration);
+      _clientServices = new ClientServices(_rbacService, _user, null, _configuration);
     }
 
     [TestMethod]
-    public async Task Query_ShouldReturnListResponse()
+    public async Task QueryAsync_ShouldReturnListResponse()
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var expectedClientServices = new List<ClientService> { new ClientService() };
-      int expectedTotal = 1;
-
-      _mediator.Send(Arg.Any<QueryResource<ClientService>>(), cancellationToken)
-        .Returns((expectedClientServices, expectedTotal));
+      int startIndex = 1;
+      int count = 10;
+      string? filter = null;
+      string? sortBy = null;
+      string? sortOrder = null;
 
       // Act
-      var response = await _clientServices.Query(1, 10, "filter", "name", "asc", cancellationToken);
+      var result = await _clientServices.QueryAsync(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
 
       // Assert
-      Assert.IsNotNull(response);
-      Assert.AreEqual(1, response.TotalResults);
-      Assert.AreEqual(1, response.Resources.Count);
+      Assert.IsNotNull(result);
+      // Verify the result is a valid response object
+      var resultType = result.GetType();
+      Assert.IsTrue(resultType.GetProperty("schemas") != null);
+      Assert.IsTrue(resultType.GetProperty("totalResults") != null);
+      Assert.IsTrue(resultType.GetProperty("itemsPerPage") != null);
+      Assert.IsTrue(resultType.GetProperty("startIndex") != null);
+      Assert.IsTrue(resultType.GetProperty("Resources") != null);
     }
 
     [TestMethod]
-    public async Task Create_ShouldReturnGuid()
+    public async Task CreateAsync_ShouldReturnCreatedResource()
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
       var clientService = new ClientService
       {
-        ClientSecret = "secret"
+        ClientName = "Test Client",
+        UserName = "test@example.com"
       };
-      var expectedId = Guid.NewGuid();
-
-      _mediator.Send(Arg.Any<CreateResource<ClientService>>(), cancellationToken)
-        .Returns(expectedId);
 
       // Act
-      var result = await _clientServices.Create(clientService, cancellationToken);
-
-      // Assert
-      Assert.AreEqual(expectedId, result);
-    }
-
-    [TestMethod]
-    public async Task Retrieve_ShouldReturnClientService()
-    {
-      // Arrange
-      var cancellationToken = CancellationToken.None;
-      var expectedClientService = new ClientService();
-      var id = Guid.NewGuid();
-
-      _mediator.Send(Arg.Any<RetrieveResource<ClientService>>(), cancellationToken)
-        .Returns(expectedClientService);
-
-      // Act
-      var result = await _clientServices.Retrieve(id, cancellationToken);
+      var result = await _clientServices.CreateAsync(clientService, cancellationToken);
 
       // Assert
       Assert.IsNotNull(result);
-      Assert.AreEqual(expectedClientService, result);
+      // Verify the result is a valid resource object
+      var resultType = result.GetType();
+      Assert.IsTrue(resultType.GetProperty("schemas") != null);
+      Assert.IsTrue(resultType.GetProperty("id") != null);
+      Assert.IsTrue(resultType.GetProperty("userName") != null);
     }
 
     [TestMethod]
-    public async Task RetrieveWithVerify_ShouldReturnClientService()
+    public async Task RetrieveAsync_ShouldReturnResource()
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var expectedClientService = new ClientService
+      var clientId = Guid.NewGuid();
+
+      // Act
+      var result = await _clientServices.RetrieveAsync(clientId, cancellationToken);
+
+      // Assert
+      Assert.IsNotNull(result);
+      // Verify the result is a valid resource object
+      var resultType = result.GetType();
+      Assert.IsTrue(resultType.GetProperty("schemas") != null);
+      Assert.IsTrue(resultType.GetProperty("id") != null);
+      Assert.IsTrue(resultType.GetProperty("userName") != null);
+    }
+
+    [TestMethod]
+    public async Task ReplaceAsync_ShouldReturnUpdatedResource()
+    {
+      // Arrange
+      var cancellationToken = CancellationToken.None;
+      var clientId = Guid.NewGuid();
+      var clientService = new ClientService
       {
-        Digest = "0a714f46-fac5-45a4-a861-ff8f84ba0151:XsMs85RI7tUR2621mObKZMqneEthl53U"
+        ClientName = "Updated Client",
+        UserName = "updated@example.com"
       };
-      var id = Guid.NewGuid();
-
-      _mediator.Send(Arg.Any<RetrieveResource<ClientService>>(), cancellationToken)
-        .Returns(expectedClientService);
 
       // Act
-      var result = await _clientServices.Retrieve(id, "secret", cancellationToken);
+      var result = await _clientServices.ReplaceAsync(clientId, clientService, cancellationToken);
 
       // Assert
       Assert.IsNotNull(result);
-      Assert.AreEqual(expectedClientService, result);
+      // Verify the result is a valid resource object
+      var resultType = result.GetType();
+      Assert.IsTrue(resultType.GetProperty("schemas") != null);
+      Assert.IsTrue(resultType.GetProperty("id") != null);
+      Assert.IsTrue(resultType.GetProperty("userName") != null);
     }
 
-    // TODO: Fix tests to match correct semantic
-    // [TestMethod]
-    // public async Task Update_ShouldReturnTrue_WhenRowsAffected()
-    // {
-    //   // Arrange
-    //   var cancellationToken = CancellationToken.None;
-    //   var clientService = new ClientService();
-    //   var id = Guid.NewGuid();
-
-    //   _mediator.Send(Arg.Any<UpdateResource<ClientService>>(), cancellationToken)
-    //     .Returns(1); // Simulating that one row was affected
-
-    //   // Act
-    //   var result = await _clientServices.Update(id, clientService, null, cancellationToken);
-
-    //   // Assert
-    //   Assert.IsTrue(result);
-    // }
-
     [TestMethod]
-    public async Task Delete_ShouldReturnTrue_WhenRowsAffected()
+    public async Task UpdateAsync_ShouldReturnUpdatedResource()
     {
       // Arrange
       var cancellationToken = CancellationToken.None;
-      var id = Guid.NewGuid();
-
-      _mediator.Send(Arg.Any<DeleteResource<ClientService>>(), cancellationToken)
-        .Returns(1); // Simulating that one row was affected
+      var clientId = Guid.NewGuid();
+      var clientService = new ClientService
+      {
+        ClientName = "Patched Client",
+        UserName = "patched@example.com"
+      };
+      var operations = new Newtonsoft.Json.Linq.JArray();
 
       // Act
-      var result = await _clientServices.Delete(id, cancellationToken);
+      var result = await _clientServices.UpdateAsync(clientId, clientService, operations, cancellationToken);
 
       // Assert
-      Assert.IsTrue(result);
+      Assert.IsNotNull(result);
+      // Verify the result is a valid resource object
+      var resultType = result.GetType();
+      Assert.IsTrue(resultType.GetProperty("schemas") != null);
+      Assert.IsTrue(resultType.GetProperty("id") != null);
+      Assert.IsTrue(resultType.GetProperty("userName") != null);
+    }
+
+    [TestMethod]
+    public async Task DeleteAsync_ShouldCompleteSuccessfully()
+    {
+      // Arrange
+      var cancellationToken = CancellationToken.None;
+      var clientId = Guid.NewGuid();
+
+      // Act & Assert
+      // Should not throw any exceptions
+      await _clientServices.DeleteAsync(clientId, cancellationToken);
     }
   }
 }

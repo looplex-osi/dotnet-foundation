@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Looplex.Foundation.Entities;
 using Looplex.SCIMv2.Entities;
 
@@ -14,7 +15,9 @@ namespace Looplex.SCIMv2.Serialization
     {
       PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
       WriteIndented = true,
-      PropertyNameCaseInsensitive = true
+      PropertyNameCaseInsensitive = true,
+      DefaultIgnoreCondition = JsonIgnoreCondition.Never, // Serialize all properties
+      IncludeFields = false // Only serialize properties, not fields
     };
 
     #region Actor Serialization (Existing - Maintain Compatibility)

@@ -9,7 +9,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
-using Looplex.SCIMv2.Helpers;
 using Looplex.OAuth2.Dtos;
 using Looplex.OAuth2.Entities;
 using Looplex.Foundation.Ports;
@@ -139,7 +138,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     string issuer = _configuration["Issuer"]!;
     var tokenExpirationTimeInMinutes = int.Parse(_configuration["TokenExpirationTimeInMinutes"]!);
 
-    string privateKey = Strings.Base64Decode(_configuration["PrivateKey"]!);
+    string privateKey = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(_configuration["PrivateKey"]!));
 
     string accessToken = _jwtService!.GenerateToken(privateKey, issuer, audience, claims,
       TimeSpan.FromMinutes(tokenExpirationTimeInMinutes));

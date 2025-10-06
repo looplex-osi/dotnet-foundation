@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
-using Looplex.SCIMv2.Helpers;
 using Looplex.OAuth2.Dtos;
 using Looplex.OAuth2.Entities;
 using Looplex.Foundation.Ports;
@@ -122,14 +121,35 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
 
   private static (Guid, string) DecodeCredentials(string credentials)
   {
-    string[] parts = Strings.Base64Decode(credentials).Split(':');
+    if (string.IsNullOrWhiteSpace(credentials))
+      throw new ArgumentException("Credentials cannot be null or empty", nameof(credentials));
 
-    if (parts.Length != 2)
+    try
     {
-      throw new Exception("Invalid credentials format.");
-    }
+      string decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(credentials));
+      string[] parts = decoded.Split(':');
 
-    return (Guid.Parse(parts[0]), parts[1]);
+      if (parts.Length != 2)
+      {
+        throw new InvalidCredentialsException("Invalid credentials format. Expected 'clientId:clientSecret'");
+      }
+
+      if (string.IsNullOrWhiteSpace(parts[0]))
+        throw new InvalidCredentialsException("Client ID cannot be empty");
+
+      if (string.IsNullOrWhiteSpace(parts[1]))
+        throw new InvalidCredentialsException("Client secret cannot be empty");
+
+      return (Guid.Parse(parts[0]), parts[1]);
+    }
+    catch (FormatException ex)
+    {
+      throw new InvalidCredentialsException("Invalid Base64 format in credentials", ex);
+    }
+    catch (ArgumentException ex)
+    {
+      throw new InvalidCredentialsException("Invalid credentials format", ex);
+    }
   }
 
   private static void ValidateGrantType(string? grantType)
@@ -144,12 +164,17 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
   private async Task<ClientService> GetClientCredentialByIdAndSecretOrDefaultAsync(Guid clientId,
     string clientSecret, CancellationToken cancellationToken)
   {
-    var clientService = await _clientServices!.Retrieve(clientId, clientSecret, cancellationToken)
-                           ?? throw new Exception("Invalid clientId or clientSecret.");
+    var result = await _clientServices!.RetrieveAsync(clientId, cancellationToken);
+    
+    if (result == null)
+      throw new InvalidCredentialsException($"Client with ID {clientId} not found");
+
+    if (result is not ClientService clientService)
+      throw new InvalidCredentialsException($"Expected ClientService, got {result.GetType().Name}");
 
     if (clientService.NotBefore > DateTimeOffset.UtcNow)
     {
-      throw new Exception("Client access not allowed.");
+      throw new InvalidCredentialsException("Client access not allowed. Access time has not been reached.");
     }
 
     if (clientService.ExpirationTime <= DateTimeOffset.UtcNow)
@@ -170,7 +195,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     string issuer = _configuration["Issuer"]!;
     var tokenExpirationTimeInMinutes = int.Parse(_configuration["TokenExpirationTimeInMinutes"]!);
 
-    string privateKey = Strings.Base64Decode(_configuration["PrivateKey"]!);
+    string privateKey = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(_configuration["PrivateKey"]!));
 
     string accessToken = _jwtService!.GenerateToken(privateKey, issuer, audience, claims,
       TimeSpan.FromMinutes(tokenExpirationTimeInMinutes));

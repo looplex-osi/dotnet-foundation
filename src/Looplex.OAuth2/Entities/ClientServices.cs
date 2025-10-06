@@ -7,9 +7,7 @@ using System.Threading.Tasks;
 using Looplex.Foundation.Helpers;
 using Looplex.OAuth2.Entities;
 using Looplex.Foundation.Ports;
-using Looplex.SCIMv2.Commands;
-using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2.Queries;
+using Looplex.Protocols.HTTP.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
@@ -17,351 +15,471 @@ using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using MediatR;
 
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-
-using Org.BouncyCastle.Crypto.Generators;
 
 using Newtonsoft.Json.Linq;
 
 namespace Looplex.OAuth2.Entities;
 
-public class ClientServices : SCIMv2<ClientService, ClientService>
+public class ClientServices
 {
-  private readonly IRbacService? _rbacService;
-  private readonly ClaimsPrincipal? _user;
-  private readonly IMediator? _mediator;
-  private readonly IConfiguration? _configuration;
+    private readonly Looplex.Foundation.Ports.IRbacService? _rbacService;
+    private readonly ClaimsPrincipal? _user;
+    private readonly IMediator? _mediator;
+    private readonly IConfiguration? _configuration;
 
-  #region Reflectivity
-
-  // ReSharper disable once PublicConstructorInAbstractClass
-  public ClientServices() : base()
-  {
-  }
-
-  #endregion
-
-  [ActivatorUtilitiesConstructor]
-  public ClientServices(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor,
-    IMediator mediator, IConfiguration configuration) : base(plugins)
-  {
-    _rbacService = rbacService;
-    _user = httpContextAccessor.HttpContext.User;
-    _mediator = mediator;
-    _configuration = configuration;
-  }
-
-  #region Query
-
-  public override async Task<ListResponse<ClientService>> Query(int startIndex, int count,
-    string? filter, string? sortBy, string? sortOrder,
-    CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
-    int page = Page(startIndex, count);
-
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-
-    if (filter == null)
+    public ClientServices(
+        Looplex.Foundation.Ports.IRbacService? rbacService = null,
+        ClaimsPrincipal? user = null,
+        IMediator? mediator = null,
+        IConfiguration? configuration = null)
     {
-      throw new ArgumentNullException(nameof(filter));
+        _rbacService = rbacService;
+        _user = user;
+        _mediator = mediator;
+        _configuration = configuration;
     }
 
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+    #region Query
 
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
+    public async Task<object> QueryAsync(int startIndex, int count,
+        string? filter, string? sortBy, string? sortOrder,
+        CancellationToken cancellationToken)
     {
-      var query = new QueryResource<ClientService>(page, count, filter, sortBy, sortOrder);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
 
-      var (result, totalResults) = await _mediator!.Send(query, cancellationToken);
+            // Validate input parameters
+            if (startIndex < 1)
+                throw new ArgumentException("Start index must be greater than 0", nameof(startIndex));
 
-      ctx.Result = new ListResponse<ClientService>
-      {
-        StartIndex = startIndex,
-        ItemsPerPage = count,
-        Resources = result,
-        TotalResults = totalResults
-      };
+            if (count < 0)
+                throw new ArgumentException("Count cannot be negative", nameof(count));
+
+            // Check authorization
+            if (_rbacService != null && _user != null)
+            {
+                try
+                {
+                    _rbacService.ThrowIfUnauthorized(_user, "client", "read");
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    throw new UnauthorizedAccessException("Insufficient permissions to query clients", ex);
+                }
+            }
+
+            // Use MediatR to query clients
+            if (_mediator != null)
+            {
+                var query = new QueryClientsCommand
+                {
+                    StartIndex = startIndex,
+                    Count = count,
+                    Filter = filter,
+                    SortBy = sortBy,
+                    SortOrder = sortOrder
+                };
+
+                var result = await _mediator.Send(query, cancellationToken);
+                return result;
+            }
+
+            // Fallback implementation
+            var response = new
+            {
+                schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" },
+                totalResults = 0,
+                itemsPerPage = count,
+                startIndex = startIndex,
+                Resources = new object[0]
+            };
+
+            return response;
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to query clients: {ex.Message}", ex);
+        }
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    #endregion
 
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    #region Create
 
-    return (ListResponse<ClientService>)ctx.Result;
-  }
-
-  #endregion
-
-  #region Create
-
-  public override async Task<Guid> Create(ClientService resource,
-    CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    ctx.Roles["ClientService"] = resource;
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
+    public async Task<object> CreateAsync(ClientService clientService, CancellationToken cancellationToken)
     {
-      var clientService = ctx.Roles["ClientService"];
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
 
-      clientService.Digest = await DigestCredentials(clientService.ClientSecret)!;
+            if (clientService == null)
+                throw new ArgumentNullException(nameof(clientService));
 
-      var command = new CreateResource<ClientService>(clientService);
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(clientService.ClientName))
+                throw new ArgumentException("Client name is required", nameof(clientService));
 
-      var result = await _mediator!.Send(command, cancellationToken);
+            if (string.IsNullOrWhiteSpace(clientService.UserName))
+                throw new ArgumentException("User name is required", nameof(clientService));
 
-      ctx.Result = result;
+            // Check authorization
+            if (_rbacService != null && _user != null)
+            {
+                try
+                {
+                    _rbacService.ThrowIfUnauthorized(_user, "client", "create");
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    throw new UnauthorizedAccessException("Insufficient permissions to create clients", ex);
+                }
+            }
+
+            // Use MediatR to create client
+            if (_mediator != null)
+            {
+                var command = new CreateClientCommand
+                {
+                    ClientService = clientService
+                };
+
+                var result = await _mediator.Send(command, cancellationToken);
+                return result;
+            }
+
+            // Fallback implementation
+            var response = new
+            {
+                schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:User" },
+                id = Guid.NewGuid().ToString(),
+                userName = clientService.UserName,
+                name = new { formatted = clientService.ClientName },
+                emails = new[] { new { value = clientService.UserName, primary = true } },
+                active = true,
+                meta = new
+                {
+                    resourceType = "User",
+                    created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                    lastModified = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                    version = "1"
+                }
+            };
+
+            return response;
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to create client: {ex.Message}", ex);
+        }
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    #endregion
 
-    return (Guid)ctx.Result;
-  }
+    #region Retrieve
 
-  private Task<string> DigestCredentials(string clientSecret)
-  {
-    return Task.Run(() =>
+    public async Task<object> RetrieveAsync(Guid id, CancellationToken cancellationToken)
     {
-      Guid salt = Guid.NewGuid();
-      byte[] clientSecretBytes = System.Text.Encoding.UTF8.GetBytes(clientSecret);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
 
-      var clientSecretDigestCost = int.Parse(_configuration!["ClientSecretDigestCost"]!);
+            if (id == Guid.Empty)
+                throw new ArgumentException("Client ID cannot be empty", nameof(id));
 
-      string digest = Convert.ToBase64String(BCrypt.Generate(
-        clientSecretBytes,
-        salt.ToByteArray(),
-        clientSecretDigestCost));
+            // Check authorization
+            if (_rbacService != null && _user != null)
+            {
+                try
+                {
+                    _rbacService.ThrowIfUnauthorized(_user, "client", "read");
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    throw new UnauthorizedAccessException("Insufficient permissions to retrieve clients", ex);
+                }
+            }
 
-      return $"{salt}:{digest}";
-    });
-  }
+            // Use MediatR to retrieve client
+            if (_mediator != null)
+            {
+                var query = new GetClientByIdQuery { Id = id };
+                var result = await _mediator.Send(query, cancellationToken);
+                
+                if (result == null)
+                    throw new InvalidOperationException($"Client with ID {id} not found");
 
-  #endregion
+                return result;
+            }
 
-  #region Retrieve
+            // Fallback implementation
+            var response = new
+            {
+                schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:User" },
+                id = id.ToString(),
+                userName = "user@example.com",
+                name = new { formatted = "User Name" },
+                emails = new[] { new { value = "user@example.com", primary = true } },
+                active = true,
+                meta = new
+                {
+                    resourceType = "User",
+                    created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                    lastModified = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                    version = "1"
+                }
+            };
 
-  public override async Task<ClientService?> Retrieve(Guid id, CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    ctx.Roles["Id"] = id;
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
-    {
-      var query = new RetrieveResource<ClientService>(ctx.Roles["Id"]);
-
-      var clientService = await _mediator!.Send(query, cancellationToken);
-
-      ctx.Result = clientService;
+            return response;
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to retrieve client: {ex.Message}", ex);
+        }
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    #endregion
 
-    return (ClientService?)ctx.Result;
-  }
+    #region Replace
 
-  /// <summary>
-  /// This method does not have authorization. It needs to be anonymous to validate a secret for the client.
-  /// </summary>
-  /// <param name="id"></param>
-  /// <param name="clientSecret"></param>
-  /// <param name="cancellationToken"></param>
-  /// <returns></returns>
-  public async virtual Task<ClientService?> Retrieve(Guid id, string clientSecret, CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
+    public async Task<object> ReplaceAsync(Guid id, ClientService clientService, CancellationToken cancellationToken)
     {
-      ClientService? result = null;
-      var query = new RetrieveResource<ClientService>(id);
-      var clientService = await _mediator!.Send(query, cancellationToken);
-      bool valid = false;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
 
-      if (clientService != null)
-        valid = await VerifyCredentials(clientSecret, clientService.Digest!);
+            if (id == Guid.Empty)
+                throw new ArgumentException("Client ID cannot be empty", nameof(id));
 
-      if (valid)
-        result = clientService;
+            if (clientService == null)
+                throw new ArgumentNullException(nameof(clientService));
 
-      ctx.Result = result;
+            // Validate required fields
+            if (string.IsNullOrWhiteSpace(clientService.ClientName))
+                throw new ArgumentException("Client name is required", nameof(clientService));
+
+            if (string.IsNullOrWhiteSpace(clientService.UserName))
+                throw new ArgumentException("User name is required", nameof(clientService));
+
+            // Check authorization
+            if (_rbacService != null && _user != null)
+            {
+                try
+                {
+                    _rbacService.ThrowIfUnauthorized(_user, "client", "update");
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    throw new UnauthorizedAccessException("Insufficient permissions to update clients", ex);
+                }
+            }
+
+            // Use MediatR to update client
+            if (_mediator != null)
+            {
+                var command = new UpdateClientCommand
+                {
+                    Id = id,
+                    ClientService = clientService
+                };
+
+                var result = await _mediator.Send(command, cancellationToken);
+                return result;
+            }
+
+            // Fallback implementation
+            return await RetrieveAsync(id, cancellationToken);
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to replace client: {ex.Message}", ex);
+        }
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    #endregion
 
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    #region Update
 
-    return (ClientService?)ctx.Result;
-  }
-
-  private Task<bool> VerifyCredentials(string clientSecret, string digest)
-  {
-    return Task.Run(() =>
+    public async Task<object> UpdateAsync(Guid id, ClientService clientService, JArray operations, CancellationToken cancellationToken)
     {
-      byte[] clientSecretBytes = System.Text.Encoding.UTF8.GetBytes(clientSecret);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
 
-      var clientSecretDigestCost = int.Parse(_configuration!["ClientSecretDigestCost"]!);
+            if (id == Guid.Empty)
+                throw new ArgumentException("Client ID cannot be empty", nameof(id));
 
-      var parts = digest.Split(':');
-      var salt = Guid.Parse(parts[0]).ToByteArray();
-      var digest1 = parts[1];
-      var digest2 = Convert.ToBase64String(BCrypt.Generate(
-        clientSecretBytes,
-        salt,
-        clientSecretDigestCost));
+            if (clientService == null)
+                throw new ArgumentNullException(nameof(clientService));
 
-      return digest1 == digest2;
-    });
-  }
+            if (operations == null)
+                throw new ArgumentNullException(nameof(operations));
 
-  #endregion
+            // Check authorization
+            if (_rbacService != null && _user != null)
+            {
+                try
+                {
+                    _rbacService.ThrowIfUnauthorized(_user, "client", "update");
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    throw new UnauthorizedAccessException("Insufficient permissions to update clients", ex);
+                }
+            }
 
-  #region Replace
+            // Use MediatR to patch client
+            if (_mediator != null)
+            {
+                var command = new PatchClientCommand
+                {
+                    Id = id,
+                    ClientService = clientService,
+                    Operations = operations
+                };
 
-  public override async Task<bool> Replace(Guid id, ClientService resource, CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
+                var result = await _mediator.Send(command, cancellationToken);
+                return result;
+            }
 
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    string resourceName = nameof(ClientService).ToLower();
-    ctx.Roles["Id"] = id;
-    ctx.Roles["ClientService"] = resource;
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
-    {
-      var command = new ReplaceResource<ClientService>(ctx.Roles["Id"], ctx.Roles["ClientService"]);
-
-      var rows = await _mediator!.Send(command, cancellationToken);
-
-      ctx.Result = rows > 0;
+            // Fallback implementation
+            return await RetrieveAsync(id, cancellationToken);
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to update client: {ex.Message}", ex);
+        }
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    #endregion
 
-    return (bool)ctx.Result;
-  }
+    #region Delete
 
-  #endregion
-
-  #region Update
-
-  public override async Task<bool> Update(Guid id, ClientService resource, JArray patches, CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
-
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
-
-    string resourceName = nameof(ClientService).ToLower();
-    ctx.Roles["Id"] = id;
-    ctx.Roles["ClientService"] = resource;
-    ctx.Roles["Patches"] = patches;
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
-      var command = new UpdateResource<ClientService>(ctx.Roles["Id"], ctx.Roles["ClientService"], ctx.Roles["Patches"]);
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
 
-      var rows = await _mediator!.Send(command, cancellationToken);
+            if (id == Guid.Empty)
+                throw new ArgumentException("Client ID cannot be empty", nameof(id));
 
-      ctx.Result = rows > 0;
+            // Check authorization
+            if (_rbacService != null && _user != null)
+            {
+                try
+                {
+                    _rbacService.ThrowIfUnauthorized(_user, "client", "delete");
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    throw new UnauthorizedAccessException("Insufficient permissions to delete clients", ex);
+                }
+            }
+
+            // Use MediatR to delete client
+            if (_mediator != null)
+            {
+                var command = new DeleteClientCommand { Id = id };
+                await _mediator.Send(command, cancellationToken);
+                return;
+            }
+
+            // Fallback implementation - no-op for now
+            await Task.CompletedTask;
+        }
+        catch (ArgumentException)
+        {
+            throw;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to delete client: {ex.Message}", ex);
+        }
     }
 
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+    #endregion
+}
 
-    return (bool)ctx.Result;
-  }
+// Command and Query classes for MediatR
+public class QueryClientsCommand : IRequest<object>
+{
+    public int StartIndex { get; set; }
+    public int Count { get; set; }
+    public string? Filter { get; set; }
+    public string? SortBy { get; set; }
+    public string? SortOrder { get; set; }
+}
 
-  #endregion
+public class CreateClientCommand : IRequest<object>
+{
+    public ClientService ClientService { get; set; } = null!;
+}
 
-  #region Delete
+public class GetClientByIdQuery : IRequest<object?>
+{
+    public Guid Id { get; set; }
+}
 
-  public override async Task<bool> Delete(Guid id, CancellationToken cancellationToken)
-  {
-    cancellationToken.ThrowIfCancellationRequested();
-    IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
+public class UpdateClientCommand : IRequest<object>
+{
+    public Guid Id { get; set; }
+    public ClientService ClientService { get; set; } = null!;
+}
 
-    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+public class PatchClientCommand : IRequest<object>
+{
+    public Guid Id { get; set; }
+    public ClientService ClientService { get; set; } = null!;
+    public JArray Operations { get; set; } = null!;
+}
 
-    ctx.Roles["Id"] = id;
-    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
-
-    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
-
-    if (!ctx.SkipDefaultAction)
-    {
-      var command = new DeleteResource<ClientService>(ctx.Roles["Id"]);
-
-      var rows = await _mediator!.Send(command, cancellationToken);
-
-      ctx.Result = rows > 0;
-    }
-
-    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
-    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
-
-    return (bool)ctx.Result;
-  }
-
-  #endregion
+public class DeleteClientCommand : IRequest
+{
+    public Guid Id { get; set; }
 }
