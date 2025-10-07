@@ -37,6 +37,63 @@ namespace Looplex.Samples.WebAPI;
 
 public static class Program
 {
+  /// <summary>
+  /// Creates a SCIMv2 error response for authentication failures
+  /// </summary>
+  private static IResult CreateSCIMv2AuthError(HttpContext context)
+  {
+    var scimError = new Looplex.SCIMv2.Entities.SCIMv2Error
+    {
+      Status = "401",
+      Detail = "Authentication required",
+      ScimType = "invalidCredentials",
+      Timestamp = DateTime.UtcNow.ToString("O")
+    };
+    
+    var scimResponse = new Looplex.SCIMv2.Entities.SCIMv2Response
+    {
+      StatusCode = 401,
+      Error = scimError
+    };
+    
+    context.Response.ContentType = "application/scim+json";
+    return Results.Json(scimResponse, statusCode: 401);
+  }
+
+  /// <summary>
+  /// Wraps an endpoint with SCIMv2 authentication and error handling
+  /// </summary>
+  private static Func<HttpContext, Task<IResult>> WithSCIMv2Auth(Func<HttpContext, Task<IResult>> endpoint)
+  {
+    return async (HttpContext context) =>
+    {
+      // Check authentication and return SCIMv2 error format if not authenticated
+      if (!context.User.Identity?.IsAuthenticated ?? true)
+      {
+        return CreateSCIMv2AuthError(context);
+      }
+      
+      return await endpoint(context);
+    };
+  }
+
+  /// <summary>
+  /// Wraps an endpoint with SCIMv2 authentication and error handling (with parameters)
+  /// </summary>
+  private static Func<string, HttpContext, Task<IResult>> WithSCIMv2Auth(Func<string, HttpContext, Task<IResult>> endpoint)
+  {
+    return async (string id, HttpContext context) =>
+    {
+      // Check authentication and return SCIMv2 error format if not authenticated
+      if (!context.User.Identity?.IsAuthenticated ?? true)
+      {
+        return CreateSCIMv2AuthError(context);
+      }
+      
+      return await endpoint(id, context);
+    };
+  }
+
   public static void Main(string[] args)
   {
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -120,8 +177,78 @@ public static class Program
     builder.Services.AddSingleton<IResourceService<User>, UserService>();
     builder.Services.AddSingleton<IResourceService<Group>, GroupService>();
     
+    // Add OAuth2 authentication (simplified configuration)
+    builder.Services.AddAuthentication("Bearer")
+        .AddJwtBearer("Bearer", options =>
+        {
+            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = builder.Configuration["JWT:Issuer"] ?? "https://localhost:7065",
+                ValidAudience = builder.Configuration["JWT:Audience"] ?? "notejam-api",
+                IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                    System.Text.Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"] ?? "your-256-bit-secret-key-for-notejam-development"))
+            };
+        });
+
+    // Add authorization policies
+    builder.Services.AddAuthorization(options =>
+    {
+        options.AddPolicy("RequireAuthenticatedUser", policy =>
+            policy.RequireAuthenticatedUser());
+    });
 
     WebApplication app = builder.Build();
+
+    // Add authentication and authorization middleware
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    // Add SCIMv2 authentication middleware for all SCIMv2 endpoints
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path.Value?.ToLower();
+        
+        // Check if this is a SCIMv2 endpoint that needs authentication
+        if (path != null && (
+            path.StartsWith("/scim/v2/") ||
+            path == "/serviceproviderconfig" ||
+            path == "/resourcetypes" ||
+            path == "/schemas" ||
+            path == "/notes" ||
+            path == "/pads" ||
+            path.StartsWith("/notes/") ||
+            path.StartsWith("/pads/")))
+        {
+            // Check authentication and return SCIMv2 error format if not authenticated
+            if (!context.User.Identity?.IsAuthenticated ?? true)
+            {
+                var scimError = new Looplex.SCIMv2.Entities.SCIMv2Error
+                {
+                    Status = "401",
+                    Detail = "Authentication required",
+                    ScimType = "invalidCredentials",
+                    Timestamp = DateTime.UtcNow.ToString("O")
+                };
+                
+                var scimResponse = new Looplex.SCIMv2.Entities.SCIMv2Response
+                {
+                    StatusCode = 401,
+                    Error = scimError
+                };
+                
+                context.Response.ContentType = "application/scim+json";
+                context.Response.StatusCode = 401;
+                await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(scimResponse));
+                return;
+            }
+        }
+        
+        await next();
+    });
 
     app.MapHealthChecks("/health", new HealthCheckOptions
       {
@@ -187,39 +314,12 @@ public static class Program
         Console.WriteLine($"🔍 Response Headers: {string.Join(", ", context.Response.Headers.Select(h => $"{h.Key}={h.Value}"))}");
     });
 
-    // Map SCIMv2 discovery endpoints using generic extension methods
+    // Map SCIMv2 discovery endpoints using Foundation's native extensions
     app.MapSCIMv2DiscoveryEndpoints("/scim/v2");
-    // Map discovery endpoints without /scim/v2/ prefix for Postman compatibility with unique names
-    app.MapGet("/ServiceProviderConfig", async (HttpContext context) =>
-    {
-        var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
-        var result = await scimService.GetServiceProviderConfigAsync();
-        return Results.Ok(result);
-    })
-    .WithName("SCIMv2ServiceProviderConfigDirect")
-    .WithTags("SCIMv2");
 
-    app.MapGet("/ResourceTypes", async (HttpContext context) =>
-    {
-        var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
-        var result = await scimService.GetResourceTypesAsync();
-        return Results.Ok(result);
-    })
-    .WithName("SCIMv2ResourceTypesDirect")
-    .WithTags("SCIMv2");
-
-    app.MapGet("/Schemas", async (HttpContext context) =>
-    {
-        var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
-        var result = await scimService.GetSchemasAsync();
-        return Results.Ok(result);
-    })
-    .WithName("SCIMv2SchemasDirect")
-    .WithTags("SCIMv2");
-
-    // Map SCIMv2 resource endpoints using generic extension methods from Looplex.SCIMv2
-    MapSCIMv2ResourceEndpoints(app, "notes");
-    MapSCIMv2ResourceEndpoints(app, "pads");
+    // Map SCIMv2 resource endpoints using Foundation's native extensions
+    Looplex.SCIMv2.Extensions.EndpointExtensions.MapSCIMv2ResourceEndpoints(app, "notes");
+    Looplex.SCIMv2.Extensions.EndpointExtensions.MapSCIMv2ResourceEndpoints(app, "pads");
 
     Console.WriteLine("🚀 SCIMv2 endpoints mapped successfully");
 

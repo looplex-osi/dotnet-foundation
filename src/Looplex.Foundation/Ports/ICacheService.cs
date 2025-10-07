@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 
 namespace Looplex.Foundation.Ports;
 
-public interface IRedisService
+public interface ICacheService
 {
   Task SetAsync(string key, string value);
   Task<string> GetAsync(string key);
