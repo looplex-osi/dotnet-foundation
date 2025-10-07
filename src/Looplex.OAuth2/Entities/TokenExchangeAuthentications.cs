@@ -20,10 +20,15 @@ using Looplex.OpenForExtension.Abstractions.Plugins;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-using Newtonsoft.Json;
+using System.Text.Json;
 
 namespace Looplex.OAuth2.Entities;
 
+/// <summary>
+/// Implements OAuth2 token exchange authentication flow following RFC 8693 specification.
+/// This service handles the exchange of external tokens for internal JWT access tokens,
+/// supporting various token types and authentication mechanisms for secure token exchange.
+/// </summary>
 public class TokenExchangeAuthentications : Service, IAuthentications
 {
   private readonly IConfiguration? _configuration;
@@ -51,6 +56,17 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     _httpClient = httpClient;
   }
 
+  /// <summary>
+  /// Creates an access token by exchanging external authentication credentials.
+  /// This method processes client credentials and external tokens to generate a new JWT access token
+  /// following OAuth2 token exchange specification (RFC 8693).
+  /// </summary>
+  /// <param name="json">JSON string containing client credentials and token exchange parameters</param>
+  /// <param name="authentication">Authentication method identifier for the token exchange</param>
+  /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
+  /// <returns>A JWT access token string that can be used for API authentication</returns>
+  /// <exception cref="ArgumentNullException">Thrown when the JSON parameter is null or invalid</exception>
+  /// <exception cref="UnauthorizedAccessException">Thrown when authentication fails or credentials are invalid</exception>
   public async Task<string> CreateAccessToken(string json, string authentication, CancellationToken cancellationToken)
   {
     cancellationToken.ThrowIfCancellationRequested();
@@ -122,15 +138,15 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     HttpResponseMessage response = await _httpClient.GetAsync(userInfoEndpoint);
     response.EnsureSuccessStatusCode();
     string content = await response.Content.ReadAsStringAsync();
-    return JsonConvert.DeserializeObject<UserInfo>(content)!;
+    return JsonSerializer.Deserialize<UserInfo>(content)!;
   }
 
   private string CreateAccessToken(UserInfo userInfo)
   {
     ClaimsIdentity claims = new([
-      new Claim("name", $"{userInfo.GivenName} {userInfo.FamilyName}"),
-      new Claim("email", userInfo.Email),
-      new Claim("photo", userInfo.Picture)
+      new Claim("name", $"{userInfo.GivenName ?? ""} {userInfo.FamilyName ?? ""}"),
+      new Claim("email", userInfo.Email ?? ""),
+      new Claim("photo", userInfo.Picture ?? "")
       // TODO add preferredLanguage
     ]);
 

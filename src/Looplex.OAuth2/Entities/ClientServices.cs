@@ -16,10 +16,15 @@ using MediatR;
 
 using Microsoft.Extensions.Configuration;
 
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
 namespace Looplex.OAuth2.Entities;
 
+/// <summary>
+/// Provides comprehensive OAuth2 client service management operations including CRUD operations,
+/// authentication, authorization, and client lifecycle management following OAuth2 specification.
+/// This service handles client registration, credential management, and access control for OAuth2 clients.
+/// </summary>
 public class ClientServices
 {
     private readonly Looplex.Foundation.Ports.IRbacService? _rbacService;
@@ -332,7 +337,20 @@ public class ClientServices
 
     #region Update
 
-    public async Task<object> UpdateAsync(Guid id, ClientService clientService, JArray operations, CancellationToken cancellationToken)
+    /// <summary>
+    /// Updates an existing OAuth2 client service with the specified operations.
+    /// This method applies JSON Patch operations to modify client service properties
+    /// following RFC 6902 specification for JSON Patch operations.
+    /// </summary>
+    /// <param name="id">Unique identifier of the client service to update</param>
+    /// <param name="clientService">Client service object containing the updated properties</param>
+    /// <param name="operations">JSON Patch operations to be applied to the client service</param>
+    /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
+    /// <returns>Updated client service object or operation result</returns>
+    /// <exception cref="ArgumentException">Thrown when the client ID is empty or invalid</exception>
+    /// <exception cref="ArgumentNullException">Thrown when client service or operations are null</exception>
+    /// <exception cref="UnauthorizedAccessException">Thrown when the user lacks permission to update the client service</exception>
+    public async Task<object> UpdateAsync(Guid id, ClientService clientService, JsonElement operations, CancellationToken cancellationToken)
     {
         try
         {
@@ -344,8 +362,8 @@ public class ClientServices
             if (clientService == null)
                 throw new ArgumentNullException(nameof(clientService));
 
-            if (operations == null)
-                throw new ArgumentNullException(nameof(operations));
+            if (operations.ValueKind == JsonValueKind.Undefined)
+                throw new ArgumentException("Operations cannot be undefined", nameof(operations));
 
             // Check authorization
             if (_rbacService != null && _user != null)
@@ -471,11 +489,29 @@ public class UpdateClientCommand : IRequest<object>
     public ClientService ClientService { get; set; } = null!;
 }
 
+/// <summary>
+/// Command for applying JSON Patch operations to an OAuth2 client service.
+/// This command encapsulates the necessary data for performing partial updates
+/// to client service properties following RFC 6902 JSON Patch specification.
+/// </summary>
 public class PatchClientCommand : IRequest<object>
 {
+    /// <summary>
+    /// Gets or sets the unique identifier of the client service to be patched.
+    /// </summary>
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// Gets or sets the client service object containing the current state.
+    /// This object will be modified according to the specified operations.
+    /// </summary>
     public ClientService ClientService { get; set; } = null!;
-    public JArray Operations { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the JSON Patch operations to be applied to the client service.
+    /// These operations define the specific changes to be made to the client service properties.
+    /// </summary>
+    public JsonElement Operations { get; set; }
 }
 
 public class DeleteClientCommand : IRequest

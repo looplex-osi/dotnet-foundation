@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 
 using Looplex.OAuth2.Entities;
 using Looplex.Foundation.Ports;
@@ -138,7 +139,7 @@ namespace Looplex.Foundation.Core.UnitTests.OAuth2.Entities
         ClientName = "Patched Client",
         UserName = "patched@example.com"
       };
-      var operations = new Newtonsoft.Json.Linq.JArray();
+      var operations = JsonDocument.Parse("[]").RootElement;
 
       // Act
       var result = await _clientServices.UpdateAsync(clientId, clientService, operations, cancellationToken);
