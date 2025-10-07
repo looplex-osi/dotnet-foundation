@@ -68,6 +68,20 @@ namespace Looplex.SCIMv2
             
             return services;
         }
+        
+        /// <summary>
+        /// Configures SCIMv2 with custom service and application names.
+        /// </summary>
+        /// <param name="services">Service collection</param>
+        /// <param name="serviceName">Service name (e.g., "looplex")</param>
+        /// <param name="applicationName">Application name (e.g., "notejam", "case-management")</param>
+        /// <returns>Service collection for chaining</returns>
+        public static IServiceCollection ConfigureSCIMv2Names(this IServiceCollection services, string serviceName, string applicationName)
+        {
+            services.AddSingleton<IServiceNameProvider>(new ServiceNameProvider(serviceName));
+            services.AddSingleton<IApplicationNameProvider>(new ApplicationNameProvider(applicationName));
+            return services;
+        }
     }
     
     /// <summary>

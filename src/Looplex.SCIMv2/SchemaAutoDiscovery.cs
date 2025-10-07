@@ -15,11 +15,13 @@ namespace Looplex.SCIMv2
     public class SchemaAutoDiscovery : ISchemaAutoDiscovery
     {
         private readonly IServiceNameProvider? _serviceNameProvider;
+        private readonly IApplicationNameProvider? _applicationNameProvider;
         private readonly IHttpContextAccessor? _httpContextAccessor;
         
-        public SchemaAutoDiscovery(IServiceNameProvider? serviceNameProvider = null, IHttpContextAccessor? httpContextAccessor = null)
+        public SchemaAutoDiscovery(IServiceNameProvider? serviceNameProvider = null, IApplicationNameProvider? applicationNameProvider = null, IHttpContextAccessor? httpContextAccessor = null)
         {
             _serviceNameProvider = serviceNameProvider;
+            _applicationNameProvider = applicationNameProvider;
             _httpContextAccessor = httpContextAccessor;
         }
         
@@ -69,7 +71,8 @@ namespace Looplex.SCIMv2
                 throw new ArgumentException($"Type {resourceType.Name} does not implement IResource", nameof(resourceType));
                 
             var serviceName = _serviceNameProvider?.GetServiceName() ?? "looplex";
-            var schemaId = SCIMv2Conventions.GenerateSchemaUri(resourceType.Name, serviceName);
+            var applicationName = _applicationNameProvider?.GetApplicationName() ?? "core";
+            var schemaId = SCIMv2Conventions.GenerateSchemaUri(resourceType.Name, serviceName, applicationName);
             
             var attributes = ExtractAttributesFromType(resourceType);
             

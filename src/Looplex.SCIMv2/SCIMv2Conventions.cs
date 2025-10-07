@@ -89,11 +89,13 @@ namespace Looplex.SCIMv2
         /// </summary>
         /// <param name="resourceType">Resource type name</param>
         /// <param name="serviceName">Service name (optional)</param>
+        /// <param name="applicationName">Application name (optional)</param>
         /// <returns>SCIMv2 compliant schema URI</returns>
-        public static string GenerateSchemaUri(string resourceType, string? serviceName = null)
+        public static string GenerateSchemaUri(string resourceType, string? serviceName = null, string? applicationName = null)
         {
             var service = string.IsNullOrEmpty(serviceName) ? "looplex" : serviceName;
-            return $"urn:{service}:params:scim:schemas:notejam:2.0:{resourceType}";
+            var app = string.IsNullOrEmpty(applicationName) ? "core" : applicationName;
+            return $"urn:{service}:params:scim:schemas:{app}:2.0:{resourceType}";
         }
         
         /// <summary>
