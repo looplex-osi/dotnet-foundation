@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Looplex.SCIMv2.Entities;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
 namespace Looplex.SCIMv2.Modules;
 
@@ -134,21 +134,21 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     /// <param name="patches">JSON Patch operations as JArray</param>
     /// <param name="cancellationToken">Cancellation token for async operation</param>
     /// <returns>True if patches were successfully applied, false otherwise</returns>
-    public virtual async Task<bool> Update(Guid id, T resource, JArray patches, CancellationToken cancellationToken)
+    public virtual async Task<bool> Update(Guid id, T resource, JsonElement patches, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        // Convert JArray to PatchOperation[]
+        // Convert JsonElement to PatchOperation[]
         var patchOperations = new List<PatchOperation>();
-        foreach (var patch in patches)
+        if (patches.ValueKind == JsonValueKind.Array)
         {
-            if (patch is JObject patchObj)
+            foreach (var patch in patches.EnumerateArray())
             {
                 patchOperations.Add(new PatchOperation
                 {
-                    Op = patchObj["op"]?.ToString() ?? "replace",
-                    Path = patchObj["path"]?.ToString() ?? "",
-                    Value = patchObj["value"]
+                    Op = patch.GetProperty("op").GetString() ?? "replace",
+                    Path = patch.GetProperty("path").GetString() ?? "",
+                    Value = patch.TryGetProperty("value", out var valueProp) ? valueProp : null
                 });
             }
         }
@@ -268,19 +268,21 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     /// <returns>True if patches were successfully applied, false otherwise</returns>
     public async Task<bool> UpdateAsync(Guid id, T resource, PatchOperation[] patches, CancellationToken cancellationToken = default)
     {
-        // Convert PatchOperation[] to JArray manually to avoid circular reference issues
-        var jArray = new JArray();
+        // Convert PatchOperation[] to JsonElement manually to avoid circular reference issues
+        var patchArray = new List<object>();
         foreach (var patch in patches)
         {
-            var patchObj = new JObject
+            var patchObj = new Dictionary<string, object?>
             {
                 ["op"] = patch.Op,
                 ["path"] = patch.Path,
-                ["value"] = patch.Value != null ? JToken.FromObject(patch.Value) : null
+                ["value"] = patch.Value
             };
-            jArray.Add(patchObj);
+            patchArray.Add(patchObj);
         }
-        return await Update(id, resource, jArray, cancellationToken);
+        var jsonString = System.Text.Json.JsonSerializer.Serialize(patchArray);
+        var jsonElement = JsonDocument.Parse(jsonString).RootElement;
+        return await Update(id, resource, jsonElement, cancellationToken);
     }
 
     /// <summary>

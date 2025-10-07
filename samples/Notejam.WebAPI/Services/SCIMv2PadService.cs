@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Looplex.SCIMv2.Entities;
 using Looplex.SCIMv2.Modules;
 using Looplex.SCIMv2.Serialization;
@@ -146,7 +147,7 @@ public class SCIMv2PadService : BaseResourceService<Pad>
             _logger.LogInformation("🔄 Calling base.Update...");
             
             // Use empty JArray to avoid circular reference issues
-            var success = await base.Update(id, currentResource, new Newtonsoft.Json.Linq.JArray(), cancellationToken);
+            var success = await base.Update(id, currentResource, JsonDocument.Parse("[]").RootElement, cancellationToken);
             var updatedResource = success ? currentResource : null;
             
             if (updatedResource != null)
@@ -191,7 +192,7 @@ public class SCIMv2PadService : BaseResourceService<Pad>
             _logger.LogInformation("✅ JSON deserialized successfully: Name='{Name}', Active={Active}", pad.Name, pad.Active);
             
             // Call the base Update method
-            var success = await base.Update(Guid.Parse(id), pad, new Newtonsoft.Json.Linq.JArray(), cancellationToken);
+            var success = await base.Update(Guid.Parse(id), pad, JsonDocument.Parse("[]").RootElement, cancellationToken);
             
             if (success)
             {

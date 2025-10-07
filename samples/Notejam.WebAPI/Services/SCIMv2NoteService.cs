@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Looplex.SCIMv2.Entities;
 using Looplex.SCIMv2.Modules;
 using Looplex.SCIMv2.Serialization;
@@ -120,7 +121,7 @@ public class SCIMv2NoteService : BaseResourceService<Note>
             
             // Call the base Update method
             _logger.LogInformation("🔄 Calling base.Update with Guid: {GuidId}, Note: {NoteName}", guidId, note.Name);
-            var success = await base.Update(guidId, note, new Newtonsoft.Json.Linq.JArray(), cancellationToken);
+            var success = await base.Update(guidId, note, JsonDocument.Parse("[]").RootElement, cancellationToken);
             _logger.LogInformation("🔍 Base.Update returned: {Success}", success);
             
             if (success)
@@ -177,7 +178,7 @@ public class SCIMv2NoteService : BaseResourceService<Note>
             
             // Call the base Update method with the patched resource
             _logger.LogInformation("🔄 Calling base.Update with Guid: {GuidId}, Note: {NoteName}", id, resource?.Name);
-            var success = await base.Update(id, resource, new Newtonsoft.Json.Linq.JArray(), cancellationToken);
+            var success = await base.Update(id, resource, JsonDocument.Parse("[]").RootElement, cancellationToken);
             _logger.LogInformation("🔍 Base.Update returned: {Success}", success);
             
             if (success)
@@ -288,7 +289,7 @@ public class SCIMv2NoteService : BaseResourceService<Note>
             _logger.LogInformation("🔄 Calling base.Update...");
             
             // Use empty JArray to avoid circular reference issues
-            var success = await base.Update(id, currentResource, new Newtonsoft.Json.Linq.JArray(), cancellationToken);
+            var success = await base.Update(id, currentResource, JsonDocument.Parse("[]").RootElement, cancellationToken);
             var updatedResource = success ? currentResource : null;
             
             if (updatedResource != null)

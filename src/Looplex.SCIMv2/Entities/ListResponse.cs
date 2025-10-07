@@ -1,8 +1,7 @@
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 using Looplex.Foundation.Entities;
-
-using Newtonsoft.Json;
 
 namespace Looplex.SCIMv2.Entities;
 
@@ -16,7 +15,7 @@ public class ListResponse<T> : Actor
   /// <summary>
   /// A list of complex objects containing the requested resources. REQUIRED if 'totalResults' is non-zero.
   /// </summary>
-  [JsonProperty("Resources")]
+  [JsonPropertyName("Resources")]
   public IList<T> Resources { get; set; } = [];
 
   /// <summary>
@@ -35,5 +34,5 @@ public class ListResponseContinuous<T> : Actor
   public long StartIndex { get; set; }
   public long ItemsPerPage { get; set; }
   public bool? HasNext { get; set; } = null;
-  [JsonProperty("Resources")] public List<T> Resources { get; set; } = [];
+  [JsonPropertyName("Resources")] public List<T> Resources { get; set; } = [];
 }

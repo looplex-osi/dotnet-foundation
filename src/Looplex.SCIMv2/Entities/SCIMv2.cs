@@ -5,8 +5,7 @@ using System.Threading.Tasks;
 
 using Looplex.Foundation.Entities;
 using Looplex.OpenForExtension.Abstractions.Plugins;
-
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 
 namespace Looplex.SCIMv2.Entities;
 
@@ -33,7 +32,7 @@ public abstract class SCIMv2<Tmeta, Tdata> : Service where Tmeta : Resource, new
 
   public abstract Task<bool> Replace(Guid id, Tdata resource, CancellationToken cancellationToken);
 
-  public abstract Task<bool> Update(Guid id, Tdata resource, JArray patches, CancellationToken cancellationToken);
+  public abstract Task<bool> Update(Guid id, Tdata resource, JsonElement patches, CancellationToken cancellationToken);
 
   public abstract Task<bool> Delete(Guid id, CancellationToken cancellationToken);
 }

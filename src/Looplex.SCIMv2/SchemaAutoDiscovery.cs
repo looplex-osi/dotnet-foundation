@@ -195,11 +195,10 @@ namespace Looplex.SCIMv2
         private Dictionary<string, string> ExtractAttributeMappings(Type resourceType)
         {
             var mappings = new Dictionary<string, string>();
-            var tablePrefix = GetTablePrefix(resourceType.Name);
             
             // Add standard SCIM mappings
-            mappings["meta.created"] = $"{tablePrefix}.created_at";
-            mappings["meta.lastModified"] = $"{tablePrefix}.updated_at";
+            mappings["meta.created"] = "created_at";
+            mappings["meta.lastModified"] = "updated_at";
             
             // Add resource-specific mappings
             var properties = resourceType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -209,7 +208,7 @@ namespace Looplex.SCIMv2
             {
                 var attributeName = SCIMv2Conventions.ToSCIMAttribute(property.Name);
                 var columnName = SCIMv2Conventions.ToDatabaseColumn(property.Name);
-                mappings[attributeName] = $"{tablePrefix}.{columnName}";
+                mappings[attributeName] = columnName;
             }
             
             return mappings;
@@ -232,15 +231,6 @@ namespace Looplex.SCIMv2
             return underlyingType == null && property.PropertyType.IsValueType;
         }
         
-        /// <summary>
-        /// Gets table prefix for a resource type using naming conventions.
-        /// </summary>
-        /// <param name="resourceTypeName">Resource type name</param>
-        /// <returns>Table prefix for database mapping</returns>
-        private string GetTablePrefix(string resourceTypeName)
-        {
-            return resourceTypeName.ToLower().First().ToString();
-        }
         
         /// <summary>
         /// Determines if a type is a standard SCIM type (User, Group) that should be excluded.

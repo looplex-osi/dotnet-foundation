@@ -1,6 +1,5 @@
 using System.Collections.Generic;
-
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 using PropertyChanged;
 
@@ -19,7 +18,7 @@ public class Group : Resource
 
   #endregion
 
-  [JsonIgnore] public int? GroupId { get; set; }
+  [System.Text.Json.Serialization.JsonIgnore] public int? GroupId { get; set; }
 
   [ProtoMember(1)] public string? DisplayName { get; set; }
 

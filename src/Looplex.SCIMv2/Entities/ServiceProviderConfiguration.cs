@@ -4,8 +4,6 @@ using System.Text.Json.Serialization;
 
 using Looplex.Foundation.Entities;
 
-using Newtonsoft.Json;
-
 namespace Looplex.SCIMv2.Entities;
 
 /// <summary>
