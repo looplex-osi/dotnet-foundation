@@ -158,7 +158,6 @@ public class SCIMv2Response
     {
         return new SCIMv2Response
         {
-            StatusCode = 201,
             Data = resource, // Will be wrapped in "Resources"
             Schemas = schemas,
             HttpMethod = "POST",
@@ -180,7 +179,6 @@ public class SCIMv2Response
     {
         return new SCIMv2Response
         {
-            StatusCode = 200,
             Data = resource, // Will be serialized directly (no "Resources" wrapper)
             Schemas = schemas,
             HttpMethod = "GET",
@@ -202,7 +200,6 @@ public class SCIMv2Response
     {
         return new SCIMv2Response
         {
-            StatusCode = 200,
             Data = resource, // Will be serialized directly (no "Resources" wrapper)
             Schemas = schemas,
             HttpMethod = "PATCH",
@@ -220,7 +217,6 @@ public class SCIMv2Response
     {
         return new SCIMv2Response
         {
-            StatusCode = 204,
             Data = null,
             Schemas = Array.Empty<string>(),
             HttpMethod = "DELETE"

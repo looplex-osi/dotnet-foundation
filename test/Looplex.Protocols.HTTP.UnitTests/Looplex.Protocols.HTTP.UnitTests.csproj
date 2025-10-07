@@ -25,6 +25,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Looplex.Foundation.Protocols.Http\Looplex.Foundation.Protocols.Http.csproj"/>
+    <ProjectReference Include="..\..\src\Looplex.Protocols.HTTP\Looplex.Protocols.HTTP.csproj"/>
+    <ProjectReference Include="..\..\src\Looplex.Foundation\Looplex.Foundation.csproj"/>
+    <ProjectReference Include="..\..\src\Looplex.SCIMv2\Looplex.SCIMv2.csproj"/>
+    <ProjectReference Include="..\..\src\Looplex.OAuth2\Looplex.OAuth2.csproj"/>
   </ItemGroup>
 </Project>

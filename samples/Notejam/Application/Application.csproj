@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Domain\Domain.csproj" />
-    <ProjectReference Include="..\..\..\src\Looplex.Foundation.Core\Looplex.Foundation.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Looplex.Foundation\Looplex.Foundation.csproj" />
   </ItemGroup>
 
 </Project>

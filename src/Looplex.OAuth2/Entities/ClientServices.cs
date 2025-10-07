@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Looplex.Foundation.Helpers;
 using Looplex.OAuth2.Entities;
 using Looplex.Foundation.Ports;
-using Looplex.Protocols.HTTP.Ports;
 using Looplex.OpenForExtension.Abstractions.Commands;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.OpenForExtension.Abstractions.ExtensionMethods;

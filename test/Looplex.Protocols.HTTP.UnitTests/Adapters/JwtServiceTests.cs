@@ -2,9 +2,9 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-using Looplex.Foundation.Protocols.Http.Adapters;
+using Looplex.Foundation.Adapters;
 
-namespace Looplex.Foundation.Protocols.Http.UnitTests.Adapters;
+namespace Looplex.Protocols.HTTP.UnitTests.Adapters;
 
 [TestClass]
 public class JwtServiceTests

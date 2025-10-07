@@ -1,10 +1,36 @@
 using Looplex.SCIMv2.Entities;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
 
 using System.Text.Json.Nodes;
 
 namespace Looplex.Foundation.Core.UnitTests.SCIMv2.Entities;
+
+// Mock implementation of IQueryCollection for testing
+public class MockQueryCollection : IQueryCollection
+{
+    private readonly Dictionary<string, Microsoft.Extensions.Primitives.StringValues> _values;
+
+    public MockQueryCollection(Dictionary<string, Microsoft.Extensions.Primitives.StringValues> values)
+    {
+        _values = values;
+    }
+
+    public Microsoft.Extensions.Primitives.StringValues this[string key] => _values.TryGetValue(key, out var value) ? value : Microsoft.Extensions.Primitives.StringValues.Empty;
+
+    public int Count => _values.Count;
+
+    public ICollection<string> Keys => _values.Keys;
+
+    public bool ContainsKey(string key) => _values.ContainsKey(key);
+
+    public IEnumerator<KeyValuePair<string, Microsoft.Extensions.Primitives.StringValues>> GetEnumerator() => _values.GetEnumerator();
+
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+
+    public bool TryGetValue(string key, out Microsoft.Extensions.Primitives.StringValues value) => _values.TryGetValue(key, out value);
+}
 
 [TestClass]
 public class AttributeProcessorTests
@@ -12,11 +38,13 @@ public class AttributeProcessorTests
   private static HttpContext CreateHttpContext(string? attributes = null, string? excludedAttributes = null)
   {
     var context = new DefaultHttpContext();
-    var query = new QueryCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
-    {
-      { "attributes", attributes }, { "excludedAttributes", excludedAttributes }
-    }.ToDictionary(k => k.Key, v => v.Value));
-    context.Request.QueryString = QueryString.Create(query);
+    var queryParams = new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>();
+    if (attributes != null) queryParams["attributes"] = attributes;
+    if (excludedAttributes != null) queryParams["excludedAttributes"] = excludedAttributes;
+    
+    // Create a mock IQueryCollection
+    var query = new MockQueryCollection(queryParams);
+    context.Request.Query = query;
     return context;
   }
 

@@ -88,6 +88,7 @@ public static class Objects
   /// <summary>
   /// Weak ETag from a final SCIM JsonNode (apply same canonization).
   /// </summary>
+#if NET6_0_OR_GREATER
   public static string ComputeMD5(this JsonNode node)
   {
     if (node is null) throw new ArgumentNullException(nameof(node));
@@ -96,6 +97,16 @@ public static class Objects
     using var md5 = MD5.Create();
     return Convert.ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(canonicalJson)));
   }
+#else
+  public static string ComputeMD5(this object node)
+  {
+    if (node is null) throw new ArgumentNullException(nameof(node));
+    // Re-serialize to enforce canonical options (camelCase, compact, omit nulls)
+    string canonicalJson = System.Text.Json.JsonSerializer.Serialize(node, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = false });
+    using var md5 = MD5.Create();
+    return Convert.ToBase64String(md5.ComputeHash(Encoding.UTF8.GetBytes(canonicalJson)));
+  }
+#endif
 
   /// <summary>
   /// Weak ETag from a JsonElement (re-serialize with canonicals options).

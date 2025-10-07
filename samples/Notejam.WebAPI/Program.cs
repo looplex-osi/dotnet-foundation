@@ -26,10 +26,6 @@ using Looplex.Samples.WebAPI.Services;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
-
-
-
-
 using Polly;
 using Polly.Extensions.Http;
 
@@ -141,12 +137,8 @@ public static class Program
     
     Console.WriteLine("✅ Foundation SCIMv2 configured for Notejam");
 
-    // Configure in-memory settings for SQL Server database
-    var inMemorySettings = new Dictionary<string, string?>
-    {
-        { "Database:UseProductionDatabase", "true" }
-    };
-    builder.Configuration.AddInMemoryCollection(inMemorySettings);
+    // Configure database settings for SQL Server database
+    builder.Configuration["Database:UseProductionDatabase"] = "true";
     
     // Register ServiceNameProvider for custom schema URIs
     builder.Services.AddSingleton<IServiceNameProvider>(new ServiceNameProvider("notejam"));
@@ -211,41 +203,21 @@ public static class Program
     app.Use(async (context, next) =>
     {
         var path = context.Request.Path.Value?.ToLower();
-        
-        // Check if this is a SCIMv2 endpoint that needs authentication
-        if (path != null && (
-            path.StartsWith("/scim/v2/") ||
-            path == "/serviceproviderconfig" ||
-            path == "/resourcetypes" ||
-            path == "/schemas" ||
-            path == "/notes" ||
-            path == "/pads" ||
-            path.StartsWith("/notes/") ||
-            path.StartsWith("/pads/")))
+
+        // Allow discovery endpoints without authentication
+        if (path == "/serviceproviderconfig" || path == "/resourcetypes" || path == "/schemas")
         {
-            // Check authentication and return SCIMv2 error format if not authenticated
-            if (!context.User.Identity?.IsAuthenticated ?? true)
-            {
-                var scimError = new Looplex.SCIMv2.Entities.SCIMv2Error
-                {
-                    Status = "401",
-                    Detail = "Authentication required",
-                    ScimType = "invalidCredentials",
-                    Timestamp = DateTime.UtcNow.ToString("O")
-                };
-                
-                var scimResponse = new Looplex.SCIMv2.Entities.SCIMv2Response
-                {
-                    StatusCode = 401,
-                    Error = scimError
-                };
-                
-                context.Response.ContentType = "application/scim+json";
-                context.Response.StatusCode = 401;
-                await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(scimResponse));
-                return;
-            }
+            await next();
+            return;
         }
+
+          // Check authentication and return SCIMv2 error format if not authenticated
+          if (!context.User.Identity?.IsAuthenticated ?? true)
+          {
+              var result = CreateSCIMv2AuthError(context);
+              await result.ExecuteAsync(context);
+              return;
+          }
         
         await next();
     });
@@ -301,21 +273,14 @@ public static class Program
     app.Use(async (context, next) =>
     {
         Console.WriteLine($"🔍 REQUEST: {context.Request.Method} {context.Request.Path}");
-        Console.WriteLine($"🔍 Headers: {string.Join(", ", context.Request.Headers.Select(h => $"{h.Key}={h.Value}"))}");
-        
-        if (context.Request.Path.StartsWithSegments("/notes") && context.Request.Method == "PUT")
-        {
-            Console.WriteLine($"🔍 PUT /notes DETECTED - Rastreando trilha...");
-        }
         
         await next();
         
         Console.WriteLine($"🔍 RESPONSE: {context.Response.StatusCode}");
-        Console.WriteLine($"🔍 Response Headers: {string.Join(", ", context.Response.Headers.Select(h => $"{h.Key}={h.Value}"))}");
     });
 
     // Map SCIMv2 discovery endpoints using Foundation's native extensions
-    app.MapSCIMv2DiscoveryEndpoints("/scim/v2");
+    app.MapSCIMv2DiscoveryEndpoints("");
 
     // Map SCIMv2 resource endpoints using Foundation's native extensions
     Looplex.SCIMv2.Extensions.EndpointExtensions.MapSCIMv2ResourceEndpoints(app, "notes");

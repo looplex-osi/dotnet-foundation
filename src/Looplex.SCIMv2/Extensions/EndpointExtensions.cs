@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
 
@@ -20,12 +20,12 @@ namespace Looplex.SCIMv2.Extensions
         /// <summary>
         /// Maps SCIMv2 resource endpoints for a given collection name
         /// </summary>
-        /// <param name="endpoints">Endpoint route builder</param>
+        /// <param name="app">Application builder</param>
         /// <param name="collectionName">Name of the resource collection (e.g., "notes", "pads", "users")</param>
         /// <param name="basePath">Optional base path, defaults to collection name</param>
-        /// <returns>Endpoint route builder for chaining</returns>
-        public static IEndpointRouteBuilder MapSCIMv2ResourceEndpoints(
-            this IEndpointRouteBuilder endpoints, 
+        /// <returns>Application builder for chaining</returns>
+        public static IApplicationBuilder MapSCIMv2ResourceEndpoints(
+            this IApplicationBuilder app, 
             string collectionName, 
             string? basePath = null)
         {
@@ -35,169 +35,643 @@ namespace Looplex.SCIMv2.Extensions
             var path = basePath ?? $"/{collectionName}";
 
             // GET /{collectionName} - List resources
-            endpoints.MapGet(path, async (HttpContext context) =>
-            {
-                var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
-                // Parse startIndex with validation
-                if (!int.TryParse(context.Request.Query["startIndex"].FirstOrDefault() ?? "1", out var startIndex) || startIndex < 1)
+            app.MapWhen(context => context.Request.Path.StartsWithSegments(path) && 
+                                   context.Request.Method == "GET" && 
+                                   context.Request.Path.Value.Length <= path.Length + 1, 
+                builder => builder.Run(async context =>
                 {
-                    return Results.BadRequest(new SCIMv2Response
+                    try
                     {
-                        StatusCode = 400,
-                        Error = new SCIMv2Error
+                        // Get SCIMv2 service from DI
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        if (scimService == null)
                         {
-                            Status = "400",
-                            ScimType = "invalidValue",
-                            Detail = "startIndex must be a positive integer"
+                            context.Response.StatusCode = 500;
+                            await context.Response.WriteAsync("SCIMv2 service not configured");
+                            return;
                         }
-                    });
-                }
 
-                // Parse count with validation
-                if (!int.TryParse(context.Request.Query["count"].FirstOrDefault() ?? "100", out var count) || count < 1)
-                {
-                    return Results.BadRequest(new SCIMv2Response
-                    {
-                        StatusCode = 400,
-                        Error = new SCIMv2Error
+                        // Get query parameters
+                        var startIndex = int.TryParse(context.Request.Query["startIndex"], out var si) ? si : 1;
+                        var count = int.TryParse(context.Request.Query["count"], out var c) ? c : 100;
+                        var filter = context.Request.Query["filter"].ToString();
+                        var attributes = context.Request.Query["attributes"].ToString();
+
+                        // Check if collection is registered
+                        if (!scimService.IsCollectionRegistered(collectionName))
                         {
-                            Status = "400",
-                            ScimType = "invalidValue",
-                            Detail = "count must be a positive integer"
+                            context.Response.StatusCode = 404;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Collection '{collectionName}' not found" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
                         }
-                    });
-                }
-                var filter = context.Request.Query["filter"].FirstOrDefault();
-                var attributes = context.Request.Query["attributes"].FirstOrDefault();
-                var excludedAttributes = context.Request.Query["excludedAttributes"].FirstOrDefault();
-                
-                var result = await scimService.QueryAsync(collectionName, startIndex, count, filter, attributes, excludedAttributes);
-                return Results.Ok(result);
-            })
-            .WithName($"SCIMv2{collectionName}List")
-            .WithTags("SCIMv2")
-            .WithSummary($"List {collectionName}")
-            .WithDescription($"RFC 7644 compliant {collectionName} list endpoint");
+
+                        // Use the registered service to get actual data
+                        try
+                        {
+                            // Use the SCIMv2 service to query resources
+                            var scimResponse = await scimService.QueryAsync(collectionName, startIndex, count, filter, null, null, CancellationToken.None);
+                            
+                            // Return the SCIMv2 response with proper formatting
+                            context.Response.StatusCode = scimResponse.StatusCode;
+                            context.Response.ContentType = "application/scim+json";
+                            await context.Response.WriteAsync(Looplex.SCIMv2.SCIMv2.FormatResponseByHttpMethod(scimResponse));
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            // If service integration fails, return 501
+                            context.Response.StatusCode = 501;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Service integration not implemented: {ex.Message}" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "application/scim+json";
+                        var error = new { error = ex.Message };
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                    }
+                }));
 
             // GET /{collectionName}/{id} - Get specific resource
-            endpoints.MapGet($"{path}/{{id}}", async (HttpContext context, string id) =>
-            {
-                var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
-                var result = await scimService.RetrieveAsync(collectionName, id);
-                return Results.Ok(result);
-            })
-            .WithName($"SCIMv2{collectionName}Get")
-            .WithTags("SCIMv2")
-            .WithSummary($"Get {collectionName} by ID")
-            .WithDescription($"RFC 7644 compliant {collectionName} retrieval endpoint");
+            app.MapWhen(context => context.Request.Path.StartsWithSegments(path) && 
+                                   context.Request.Method == "GET" && 
+                                   context.Request.Path.Value.Length > path.Length + 1, 
+                builder => builder.Run(async context =>
+                {
+                    try
+                    {
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        if (scimService == null)
+                        {
+                            context.Response.StatusCode = 500;
+                            await context.Response.WriteAsync("SCIMv2 service not configured");
+                            return;
+                        }
+
+                        // Extract ID from path
+                        var pathSegments = context.Request.Path.Value.Split('/');
+                        var id = pathSegments.LastOrDefault();
+                        
+                        if (string.IsNullOrEmpty(id))
+                        {
+                            context.Response.StatusCode = 400;
+                            await context.Response.WriteAsync("Invalid resource ID");
+                            return;
+                        }
+
+                        // Check if collection is registered
+                        if (!scimService.IsCollectionRegistered(collectionName))
+                        {
+                            context.Response.StatusCode = 404;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Collection '{collectionName}' not found" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
+
+                        // Use the registered service to get actual data
+                        try
+                        {
+                            // Use the SCIMv2 service to retrieve the resource
+                            var scimResponse = await scimService.RetrieveAsync(collectionName, id, CancellationToken.None);
+                            
+                            // Return the SCIMv2 response with proper formatting
+                            context.Response.StatusCode = scimResponse.StatusCode;
+                            context.Response.ContentType = "application/scim+json";
+                            await context.Response.WriteAsync(Looplex.SCIMv2.SCIMv2.FormatResponseByHttpMethod(scimResponse));
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            // If service integration fails, return 501
+                            context.Response.StatusCode = 501;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Service integration not implemented: {ex.Message}" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "application/scim+json";
+                        var error = new { error = ex.Message };
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                    }
+                }));
 
             // POST /{collectionName} - Create resource
-            endpoints.MapPost(path, async (HttpContext context) =>
-            {
-                var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
+            app.MapWhen(context => context.Request.Path.StartsWithSegments(path) && 
+                                   context.Request.Method == "POST", 
+                builder => builder.Run(async context =>
+                {
+                    try
+                    {
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        if (scimService == null)
+                        {
+                            context.Response.StatusCode = 500;
+                            await context.Response.WriteAsync("SCIMv2 service not configured");
+                            return;
+                        }
+
+                        // Read request body
                 using var reader = new StreamReader(context.Request.Body);
                 var body = await reader.ReadToEndAsync();
-                var result = await scimService.CreateAsync(collectionName, body);
-                return Results.Ok(result);
-            })
-            .WithName($"SCIMv2{collectionName}Create")
-            .WithTags("SCIMv2")
-            .WithSummary($"Create {collectionName}")
-            .WithDescription($"RFC 7644 compliant {collectionName} creation endpoint");
+                        
+                        if (string.IsNullOrEmpty(body))
+                        {
+                            context.Response.StatusCode = 400;
+                            await context.Response.WriteAsync("Request body is required");
+                            return;
+                        }
+
+                        // Check if collection is registered
+                        if (!scimService.IsCollectionRegistered(collectionName))
+                        {
+                            context.Response.StatusCode = 404;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Collection '{collectionName}' not found" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
+
+                        // Use the registered service to create the resource
+                        try
+                        {
+                            // Use the SCIMv2 service to create the resource
+                            var scimResponse = await scimService.CreateAsync(collectionName, body, CancellationToken.None);
+                            
+                            // Return the SCIMv2 response with proper formatting
+                            context.Response.StatusCode = scimResponse.StatusCode;
+                            context.Response.ContentType = "application/scim+json";
+                            await context.Response.WriteAsync(Looplex.SCIMv2.SCIMv2.FormatResponseByHttpMethod(scimResponse));
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            // If service integration fails, return 501
+                            context.Response.StatusCode = 501;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Service integration not implemented: {ex.Message}" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "application/scim+json";
+                        var error = new { error = ex.Message };
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                    }
+                }));
 
             // PUT /{collectionName}/{id} - Replace resource
-            endpoints.MapPut($"{path}/{{id}}", async (HttpContext context, string id) =>
-            {
-                var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
-                using var reader = new StreamReader(context.Request.Body);
-                var body = await reader.ReadToEndAsync();
-                var result = await scimService.ReplaceAsync(collectionName, id, body);
-                return Results.Ok(result);
-            })
-            .WithName($"SCIMv2{collectionName}Replace")
-            .WithTags("SCIMv2")
-            .WithSummary($"Replace {collectionName}")
-            .WithDescription($"RFC 7644 compliant {collectionName} replacement endpoint");
+            app.MapWhen(context => context.Request.Path.StartsWithSegments(path) && 
+                                   context.Request.Method == "PUT" && 
+                                   context.Request.Path.Value.Length > path.Length + 1, 
+                builder => builder.Run(async context =>
+                {
+                    try
+                    {
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        if (scimService == null)
+                        {
+                            context.Response.StatusCode = 500;
+                            await context.Response.WriteAsync("SCIMv2 service not configured");
+                            return;
+                        }
+
+                        // Extract ID from path
+                        var pathSegments = context.Request.Path.Value.Split('/');
+                        var id = pathSegments.LastOrDefault();
+                        
+                        if (string.IsNullOrEmpty(id))
+                        {
+                            context.Response.StatusCode = 400;
+                            await context.Response.WriteAsync("Invalid resource ID");
+                            return;
+                        }
+
+                        // Read request body
+                        using var reader = new StreamReader(context.Request.Body);
+                        var body = await reader.ReadToEndAsync();
+                        
+                        if (string.IsNullOrEmpty(body))
+                        {
+                            context.Response.StatusCode = 400;
+                            await context.Response.WriteAsync("Request body is required");
+                            return;
+                        }
+
+                        // Check if collection is registered
+                        if (!scimService.IsCollectionRegistered(collectionName))
+                        {
+                            context.Response.StatusCode = 404;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Collection '{collectionName}' not found" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
+
+                        // Use the registered service to replace the resource
+                        try
+                        {
+                            var scimResponse = await scimService.ReplaceAsync(collectionName, id, body, CancellationToken.None);
+                            
+                            context.Response.StatusCode = scimResponse.StatusCode;
+                            context.Response.ContentType = "application/scim+json";
+                            await context.Response.WriteAsync(Looplex.SCIMv2.SCIMv2.FormatResponseByHttpMethod(scimResponse));
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Response.StatusCode = 501;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Service integration not implemented: {ex.Message}" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "application/scim+json";
+                        var error = new { error = ex.Message };
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                    }
+                }));
 
             // PATCH /{collectionName}/{id} - Modify resource
-            endpoints.MapPatch($"{path}/{{id}}", async (HttpContext context, string id) =>
-            {
-                var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
-                using var reader = new StreamReader(context.Request.Body);
-                var body = await reader.ReadToEndAsync();
-                var patchOps = JsonSerializer.Deserialize<Entities.PatchOperation[]>(body);
-                var result = await scimService.ModifyAsync(collectionName, id, patchOps ?? Array.Empty<Entities.PatchOperation>());
-                return Results.Ok(result);
-            })
-            .WithName($"SCIMv2{collectionName}Modify")
-            .WithTags("SCIMv2")
-            .WithSummary($"Modify {collectionName}")
-            .WithDescription($"RFC 7644 compliant {collectionName} modification endpoint");
+            app.MapWhen(context => context.Request.Path.StartsWithSegments(path) && 
+                                   context.Request.Method == "PATCH" && 
+                                   context.Request.Path.Value.Length > path.Length + 1, 
+                builder => builder.Run(async context =>
+                {
+                    try
+                    {
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        if (scimService == null)
+                        {
+                            context.Response.StatusCode = 500;
+                            await context.Response.WriteAsync("SCIMv2 service not configured");
+                            return;
+                        }
+
+                        // Extract ID from path
+                        var pathSegments = context.Request.Path.Value.Split('/');
+                        var id = pathSegments.LastOrDefault();
+                        
+                        if (string.IsNullOrEmpty(id))
+                        {
+                            context.Response.StatusCode = 400;
+                            await context.Response.WriteAsync("Invalid resource ID");
+                            return;
+                        }
+
+                        // Read request body
+                        using var reader = new StreamReader(context.Request.Body);
+                        var body = await reader.ReadToEndAsync();
+                        
+                        if (string.IsNullOrEmpty(body))
+                        {
+                            context.Response.StatusCode = 400;
+                            await context.Response.WriteAsync("Request body is required");
+                            return;
+                        }
+
+                        // Check if collection is registered
+                        if (!scimService.IsCollectionRegistered(collectionName))
+                        {
+                            context.Response.StatusCode = 404;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Collection '{collectionName}' not found" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
+
+                        // Use the registered service to modify the resource
+                        try
+                        {
+                            // Deserialize the JSON body to PatchOperation[]
+                            Looplex.SCIMv2.Entities.PatchOperation[] patches;
+                            
+                            try
+                            {
+                                // Try to deserialize as direct array first
+                                patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(body, new JsonSerializerOptions
+                                {
+                                    PropertyNameCaseInsensitive = true
+                                });
+                            }
+                            catch (JsonException)
+                            {
+                                // If direct array fails, try to deserialize as object with Operations property
+                                try
+                                {
+                                    var wrapper = JsonSerializer.Deserialize<JsonElement>(body, new JsonSerializerOptions
+                                    {
+                                        PropertyNameCaseInsensitive = true
+                                    });
+                                    
+                                    if (wrapper.TryGetProperty("operations", out var operationsElement))
+                                    {
+                                        patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(operationsElement.GetRawText(), new JsonSerializerOptions
+                                        {
+                                            PropertyNameCaseInsensitive = true
+                                        });
+                                    }
+                                    else if (wrapper.TryGetProperty("Operations", out var operationsElement2))
+                                    {
+                                        patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(operationsElement2.GetRawText(), new JsonSerializerOptions
+                                        {
+                                            PropertyNameCaseInsensitive = true
+                                        });
+                                    }
+                                    else
+                                    {
+                                        patches = null;
+                                    }
+                                }
+                                catch
+                                {
+                                    patches = null;
+                                }
+                            }
+                            
+                            if (patches == null || patches.Length == 0)
+                            {
+                                context.Response.StatusCode = 400;
+                                context.Response.ContentType = "application/scim+json";
+                                var error = new { 
+                                    error = "No patch operations provided",
+                                    detail = $"Received body: {body.Substring(0, Math.Min(body.Length, 500))}"
+                                };
+                                await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                                return;
+                            }
+                            
+                            // Validate each patch operation
+                            foreach (var patch in patches)
+                            {
+                                if (!patch.IsValid())
+                                {
+                                    context.Response.StatusCode = 400;
+                                    context.Response.ContentType = "application/scim+json";
+                                    var error = new { error = $"Invalid patch operation: {patch.GetDescription()}" };
+                                    await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                                    return;
+                                }
+                            }
+                            
+                            var scimResponse = await scimService.ModifyAsync(collectionName, id, patches, CancellationToken.None);
+                            
+                            context.Response.StatusCode = scimResponse.StatusCode;
+                            context.Response.ContentType = "application/scim+json";
+                            await context.Response.WriteAsync(Looplex.SCIMv2.SCIMv2.FormatResponseByHttpMethod(scimResponse));
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Response.StatusCode = 501;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Service integration not implemented: {ex.Message}" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "application/scim+json";
+                        var error = new { error = ex.Message };
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                    }
+                }));
 
             // DELETE /{collectionName}/{id} - Delete resource
-            endpoints.MapDelete($"{path}/{{id}}", async (HttpContext context, string id) =>
-            {
-                var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
-                var result = await scimService.DeleteAsync(collectionName, id);
-                return Results.Ok(result);
-            })
-            .WithName($"SCIMv2{collectionName}Delete")
-            .WithTags("SCIMv2")
-            .WithSummary($"Delete {collectionName}")
-            .WithDescription($"RFC 7644 compliant {collectionName} deletion endpoint");
+            app.MapWhen(context => context.Request.Path.StartsWithSegments(path) && 
+                                   context.Request.Method == "DELETE" && 
+                                   context.Request.Path.Value.Length > path.Length + 1, 
+                builder => builder.Run(async context =>
+                {
+                    try
+                    {
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        if (scimService == null)
+                        {
+                            context.Response.StatusCode = 500;
+                            await context.Response.WriteAsync("SCIMv2 service not configured");
+                            return;
+                        }
 
-            return endpoints;
+                        // Extract ID from path
+                        var pathSegments = context.Request.Path.Value.Split('/');
+                        var id = pathSegments.LastOrDefault();
+                        
+                        if (string.IsNullOrEmpty(id))
+                        {
+                            context.Response.StatusCode = 400;
+                            await context.Response.WriteAsync("Invalid resource ID");
+                            return;
+                        }
+
+                        // Check if collection is registered
+                        if (!scimService.IsCollectionRegistered(collectionName))
+                        {
+                            context.Response.StatusCode = 404;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Collection '{collectionName}' not found" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
+
+                        // Use the registered service to delete the resource
+                        try
+                        {
+                            var scimResponse = await scimService.DeleteAsync(collectionName, id, CancellationToken.None);
+                            
+                            context.Response.StatusCode = scimResponse.StatusCode;
+                            context.Response.ContentType = "application/scim+json";
+                            await context.Response.WriteAsync(Looplex.SCIMv2.SCIMv2.FormatResponseByHttpMethod(scimResponse));
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Response.StatusCode = 501;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Service integration not implemented: {ex.Message}" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "application/scim+json";
+                        var error = new { error = ex.Message };
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                    }
+                }));
+
+            return app;
         }
 
         /// <summary>
         /// Maps SCIMv2 discovery endpoints (ServiceProviderConfig, ResourceTypes, Schemas)
         /// </summary>
-        /// <param name="endpoints">Endpoint route builder</param>
+        /// <param name="app">Application builder</param>
         /// <param name="basePath">Optional base path for discovery endpoints</param>
-        /// <returns>Endpoint route builder for chaining</returns>
-        public static IEndpointRouteBuilder MapSCIMv2DiscoveryEndpoints(
-            this IEndpointRouteBuilder endpoints, 
+        /// <returns>Application builder for chaining</returns>
+        public static IApplicationBuilder MapSCIMv2DiscoveryEndpoints(
+            this IApplicationBuilder app, 
             string? basePath = null)
         {
             var path = basePath ?? "";
 
             // GET /ServiceProviderConfig
-            endpoints.MapGet($"{path}/ServiceProviderConfig", async (HttpContext context) =>
-            {
-                var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
-                var result = await scimService.GetServiceProviderConfigAsync();
-                return Results.Ok(result);
-            })
-            .WithName("SCIMv2ServiceProviderConfig")
-            .WithTags("SCIMv2")
-            .WithSummary("Get Service Provider Configuration")
-            .WithDescription("RFC 7644 compliant service provider configuration endpoint");
+            app.MapWhen(context => context.Request.Path.StartsWithSegments($"{path}/ServiceProviderConfig") && context.Request.Method == "GET", 
+                builder => builder.Run(async context =>
+                {
+                    var config = new
+                    {
+                        schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig" },
+                        patch = new { supported = true },
+                        bulk = new { supported = false, maxOperations = 0, maxPayloadSize = 0 },
+                        filter = new { supported = true, maxResults = 200 },
+                        changePassword = new { supported = true },
+                        sort = new { supported = false },
+                        etag = new { supported = true },
+                        authenticationSchemes = new[]
+                        {
+                            new
+                            {
+                                name = "OAuth Bearer Token",
+                                description = "Authentication scheme using the OAuth Bearer Token Standard",
+                                specUri = "http://www.rfc-editor.org/info/rfc6750",
+                                documentationUri = "http://example.com/help/oauth.html"
+                            }
+                        }
+                    };
+
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/scim+json";
+                    await context.Response.WriteAsync(JsonSerializer.Serialize(config));
+                }));
 
             // GET /ResourceTypes
-            endpoints.MapGet($"{path}/ResourceTypes", async (HttpContext context) =>
-            {
-                var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
-                var result = await scimService.GetResourceTypesAsync();
-                return Results.Ok(result);
-            })
-            .WithName("SCIMv2ResourceTypes")
-            .WithTags("SCIMv2")
-            .WithSummary("Get Resource Types")
-            .WithDescription("RFC 7644 compliant resource types endpoint");
+            app.MapWhen(context => context.Request.Path.StartsWithSegments($"{path}/ResourceTypes") && context.Request.Method == "GET", 
+                builder => builder.Run(async context =>
+                {
+                    try
+                    {
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        if (scimService == null)
+                        {
+                            context.Response.StatusCode = 500;
+                            await context.Response.WriteAsync("SCIMv2 service not configured");
+                            return;
+                        }
 
-            // GET /Schemas
-            endpoints.MapGet($"{path}/Schemas", async (HttpContext context) =>
-            {
-                var scimService = context.RequestServices.GetRequiredService<ISCIMv2>();
-                var result = await scimService.GetSchemasAsync();
-                return Results.Ok(result);
-            })
-            .WithName("SCIMv2Schemas")
-            .WithTags("SCIMv2")
-            .WithSummary("Get Schemas")
-            .WithDescription("RFC 7644 compliant schemas endpoint");
+                        // Use the SCIMv2 service to get ResourceTypes
+                        var scimResponse = await scimService.GetResourceTypesAsync(CancellationToken.None);
+                        
+                        context.Response.StatusCode = scimResponse.StatusCode;
+                        context.Response.ContentType = "application/scim+json";
+                        await context.Response.WriteAsync(Looplex.SCIMv2.SCIMv2.FormatResponseByHttpMethod(scimResponse));
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "application/scim+json";
+                        var error = new { error = ex.Message };
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                    }
+                }));
 
-            return endpoints;
+            // GET /Schemas - List all schemas
+            app.MapWhen(context => context.Request.Path.StartsWithSegments($"{path}/Schemas") && 
+                                   context.Request.Method == "GET" && 
+                                   context.Request.Path.Value.Length <= $"{path}/Schemas".Length + 1, 
+                builder => builder.Run(async context =>
+                {
+                    try
+                    {
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        if (scimService == null)
+                        {
+                            context.Response.StatusCode = 500;
+                            await context.Response.WriteAsync("SCIMv2 service not configured");
+                            return;
+                        }
+
+                        // Use the SCIMv2 service to get all Schemas
+                        var scimResponse = await scimService.GetSchemasAsync(CancellationToken.None);
+                        
+                        context.Response.StatusCode = scimResponse.StatusCode;
+                        context.Response.ContentType = "application/scim+json";
+                        await context.Response.WriteAsync(Looplex.SCIMv2.SCIMv2.FormatResponseByHttpMethod(scimResponse));
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "application/scim+json";
+                        var error = new { error = ex.Message };
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                    }
+                }));
+
+            // GET /Schemas/{schemaId} - Get specific schema
+            app.MapWhen(context => context.Request.Path.StartsWithSegments($"{path}/Schemas") && 
+                                   context.Request.Method == "GET" && 
+                                   context.Request.Path.Value.Length > $"{path}/Schemas".Length + 1, 
+                builder => builder.Run(async context =>
+                {
+                    try
+                    {
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        if (scimService == null)
+                        {
+                            context.Response.StatusCode = 500;
+                            await context.Response.WriteAsync("SCIMv2 service not configured");
+                            return;
+                        }
+
+                        // Extract schema ID from path
+                        var pathSegments = context.Request.Path.Value.Split('/');
+                        var schemaId = pathSegments.LastOrDefault();
+                        
+                        if (string.IsNullOrEmpty(schemaId))
+                        {
+                            context.Response.StatusCode = 400;
+                            await context.Response.WriteAsync("Invalid schema ID");
+                            return;
+                        }
+
+                        // Use the SCIMv2 service to get specific Schema
+                        var scimResponse = await scimService.GetSchemaAsync(schemaId, CancellationToken.None);
+                        
+                        context.Response.StatusCode = scimResponse.StatusCode;
+                        context.Response.ContentType = "application/scim+json";
+                        await context.Response.WriteAsync(Looplex.SCIMv2.SCIMv2.FormatResponseByHttpMethod(scimResponse));
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "application/scim+json";
+                        var error = new { error = ex.Message };
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                    }
+                }));
+
+            return app;
         }
     }
 }

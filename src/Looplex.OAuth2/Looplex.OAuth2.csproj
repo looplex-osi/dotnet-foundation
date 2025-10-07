@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
     <IsPackable>true</IsPackable>
     <PackageId>Looplex.OAuth2</PackageId>
     <PackageLicenseUrl>https://github.com/looplex-osi/dotnet-foundation/blob/master/LICENSE.md</PackageLicenseUrl>
@@ -21,8 +21,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.3.0"/>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
-    <PackageReference Include="MediatR" Version="12.5.0" />
-    <PackageReference Include="MediatR.Contracts" Version="2.0.1"/>
+    <PackageReference Include="MediatR" Version="9.0.0" />
     <PackageReference Include="PropertyChanged.Fody" Version="4.1.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -31,7 +30,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Looplex.Protocols.HTTP\Looplex.Protocols.HTTP.csproj" />
+    <ProjectReference Include="..\Looplex.Foundation\Looplex.Foundation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="MediatR.Contracts">
+      <Aliases>MediatRContracts</Aliases>
+    </Reference>
   </ItemGroup>
 
 </Project>

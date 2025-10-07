@@ -1879,7 +1879,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         
         var response = new SCIMv2Response
         {
-            //StatusCode = 0, // Set to 0 to indicate this should not be serialized for collections
+            StatusCode = 200, // Set to 200 for successful query
             Data = resources, // RFC 7644 Section 3.4.2 - Resources directly in response
             Schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" },
             TotalResults = totalCount,
