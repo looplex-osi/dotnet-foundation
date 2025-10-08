@@ -1,10 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.IO;
-using System.Linq;
 using System.Xml.Serialization;
-using Looplex.Foundation.Entities;
 using Looplex.Foundation.Serialization;
 using Looplex.SCIMv2.Entities;
 
@@ -12,30 +8,13 @@ namespace Looplex.SCIMv2.Serialization
 {
   public static class ActorXmlSerializer
   {
-    // Namespaces centralizados para SCIMv2
-    private static readonly XmlSerializerNamespaces DefaultNamespaces = new();
+    // Centralized configuration for SCIMv2 XML serialization
+    public static readonly XmlSerializerNamespaces DefaultNamespaces = new();
     
     static ActorXmlSerializer()
     {
       DefaultNamespaces.Add("scim", "urn:ietf:params:scim:api:messages:2.0");
     }
-
-    #region Actor Serialization (Existing - Maintain Compatibility)
-    
-    public static string Serialize(Actor actor)
-    {
-      if (actor == null) throw new ArgumentNullException(nameof(actor));
-      return Foundation.Serialization.XmlSerializer.SerializeActor(actor, DefaultNamespaces);
-    }
-
-    public static T Deserialize<T>(string xml) where T : Actor
-    {
-      if (string.IsNullOrWhiteSpace(xml))
-        throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
-      return Foundation.Serialization.XmlSerializer.DeserializeActor<T>(xml);
-    }
-    
-    #endregion
 
     #region SCIMv2 Serialization (New - Centralized Logic)
     
@@ -72,7 +51,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeResources<T>(IEnumerable<T> resources) where T : IResource
     {
       if (resources == null) throw new ArgumentNullException(nameof(resources));
-      return Foundation.Serialization.XmlSerializer.SerializeCollection(resources, DefaultNamespaces);
+      return Foundation.Serialization.XmlSerializer.Serialize(resources, DefaultNamespaces);
     }
     
     /// <summary>
@@ -91,7 +70,7 @@ namespace Looplex.SCIMv2.Serialization
     {
       if (string.IsNullOrWhiteSpace(xml))
         throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
-      return Foundation.Serialization.XmlSerializer.Deserialize<T>(xml);
+      return Foundation.Serialization.XmlSerializer.Deserialize<T>(xml, DefaultNamespaces);
     }
     
     /// <summary>
@@ -101,7 +80,7 @@ namespace Looplex.SCIMv2.Serialization
     {
       if (string.IsNullOrWhiteSpace(xml))
         throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
-      return Foundation.Serialization.XmlSerializer.Deserialize<SCIMv2Response>(xml);
+      return Foundation.Serialization.XmlSerializer.Deserialize<SCIMv2Response>(xml, DefaultNamespaces);
     }
     
     #endregion

@@ -21,22 +21,7 @@ namespace Looplex.SCIMv2.Serialization
       IncludeFields = false // Only serialize properties, not fields
     };
 
-    #region Actor Serialization (Existing - Maintain Compatibility)
-    
-    public static string Serialize(Actor actor)
-    {
-      if (actor == null) throw new ArgumentNullException(nameof(actor));
-      return Foundation.Serialization.JsonSerializer.SerializeActor(actor, DefaultOptions);
-    }
 
-    public static T Deserialize<T>(string json) where T : Actor
-    {
-      if (string.IsNullOrWhiteSpace(json))
-        throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
-      return Foundation.Serialization.JsonSerializer.DeserializeActor<T>(json, DefaultOptions);
-    }
-    
-    #endregion
 
     #region SCIMv2 Serialization (New - Centralized Logic)
     
@@ -73,7 +58,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeResources<T>(IEnumerable<T> resources) where T : IResource
     {
       if (resources == null) throw new ArgumentNullException(nameof(resources));
-      return Foundation.Serialization.JsonSerializer.SerializeCollection(resources, DefaultOptions);
+      return Foundation.Serialization.JsonSerializer.Serialize(resources, DefaultOptions);
     }
     
     /// <summary>

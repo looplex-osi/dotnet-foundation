@@ -66,8 +66,8 @@ public class ConcurrencyTests
             {
                 for (int j = 0; j < operationsPerThread; j++)
                 {
-                    var json = ActorJsonSerializer.Serialize(testUser);
-                    var deserialized = ActorJsonSerializer.Deserialize<User>(json);
+                    var json = Foundation.Serialization.JsonSerializer.Serialize(testUser, Foundation.Serialization.JsonSerializer.DefaultOptions);
+                    var deserialized = Foundation.Serialization.JsonSerializer.Deserialize<User>(json, Foundation.Serialization.JsonSerializer.DefaultOptions);
                     results.Add(deserialized?.UserName ?? "null");
                 }
             });

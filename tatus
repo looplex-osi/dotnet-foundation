@@ -1,0 +1,14 @@
+warning: in the working copy of 'src/Looplex.SCIMv2/Helpers/Strings.cs', CRLF will be replaced by LF the next time Git touches it
+[1mdiff --git a/src/Looplex.SCIMv2/Helpers/Strings.cs b/src/Looplex.SCIMv2/Helpers/Strings.cs[m
+[1mindex fd12c4b..57f2329 100644[m
+[1m--- a/src/Looplex.SCIMv2/Helpers/Strings.cs[m
+[1m+++ b/src/Looplex.SCIMv2/Helpers/Strings.cs[m
+[36m@@ -11,7 +11,7 @@[m [mnamespace Looplex.SCIMv2.Helpers;[m
+ [m
+ public static class Strings[m
+ {[m
+[31m-  public static string Base64Decode(string base64EncodedData)[m
+[32m+[m[32m  public static string Uft8FromBase64(string base64EncodedData)[m
+   {[m
+     byte[] base64EncodedBytes = Convert.FromBase64String(base64EncodedData);[m
+     return Encoding.UTF8.GetString(base64EncodedBytes);[m

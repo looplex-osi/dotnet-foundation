@@ -40,8 +40,8 @@ public class SerializationPerformanceTests
         // Act
         for (int i = 0; i < iterations; i++)
         {
-            var json = ActorJsonSerializer.Serialize(_testActor);
-            var deserialized = ActorJsonSerializer.Deserialize<TestActor>(json);
+            var json = Foundation.Serialization.JsonSerializer.Serialize(_testActor, Foundation.Serialization.JsonSerializer.DefaultOptions);
+            var deserialized = Foundation.Serialization.JsonSerializer.Deserialize<TestActor>(json, Foundation.Serialization.JsonSerializer.DefaultOptions);
         }
 
         stopwatch.Stop();
@@ -61,8 +61,8 @@ public class SerializationPerformanceTests
         // Act
         for (int i = 0; i < iterations; i++)
         {
-            var xml = ActorXmlSerializer.Serialize(_testActor);
-            var deserialized = ActorXmlSerializer.Deserialize<TestActor>(xml);
+            var xml = Foundation.Serialization.XmlSerializer.Serialize(_testActor, Foundation.Serialization.XmlSerializer.DefaultNamespaces);
+            var deserialized = Foundation.Serialization.XmlSerializer.Deserialize<TestActor>(xml, Foundation.Serialization.XmlSerializer.DefaultNamespaces);
         }
 
         stopwatch.Stop();
@@ -89,8 +89,8 @@ public class SerializationPerformanceTests
         // Act
         for (int i = 0; i < iterations; i++)
         {
-            var json = ActorJsonSerializer.Serialize(_testUser);
-            var deserialized = ActorJsonSerializer.Deserialize<User>(json);
+            var json = Foundation.Serialization.JsonSerializer.Serialize(_testUser, Foundation.Serialization.JsonSerializer.DefaultOptions);
+            var deserialized = Foundation.Serialization.JsonSerializer.Deserialize<User>(json, Foundation.Serialization.JsonSerializer.DefaultOptions);
         }
 
         stopwatch.Stop();
@@ -119,8 +119,8 @@ public class SerializationPerformanceTests
                 
                 for (int j = 0; j < iterationsPerThread; j++)
                 {
-                    var json = ActorJsonSerializer.Serialize(_testActor);
-                    var deserialized = ActorJsonSerializer.Deserialize<TestActor>(json);
+                    var json = Foundation.Serialization.JsonSerializer.Serialize(_testActor, Foundation.Serialization.JsonSerializer.DefaultOptions);
+                    var deserialized = Foundation.Serialization.JsonSerializer.Deserialize<TestActor>(json, Foundation.Serialization.JsonSerializer.DefaultOptions);
                 }
                 
                 stopwatch.Stop();

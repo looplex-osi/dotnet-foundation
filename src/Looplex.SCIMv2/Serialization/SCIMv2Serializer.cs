@@ -39,23 +39,7 @@ namespace Looplex.SCIMv2.Serialization
             };
         }
 
-        /// <summary>
-        /// Serializes a collection of SCIMv2 resources to the specified format
-        /// </summary>
-        /// <typeparam name="T">Resource type implementing IResource</typeparam>
-        /// <param name="resources">Resources to serialize</param>
-        /// <param name="contentType">Output format (default: Json)</param>
-        /// <returns>Serialized resources</returns>
-        public static string SerializeResources<T>(IEnumerable<T> resources, ContentType contentType = ContentType.Json) 
-            where T : IResource
-        {
-            return contentType switch
-            {
-                ContentType.Json => ActorJsonSerializer.SerializeResources(resources),
-                ContentType.Xml => ActorXmlSerializer.SerializeResources(resources),
-                _ => throw new NotSupportedException($"Content type {contentType} not supported")
-            };
-        }
+
 
         /// <summary>
         /// Deserializes a SCIMv2 resource from the specified format
