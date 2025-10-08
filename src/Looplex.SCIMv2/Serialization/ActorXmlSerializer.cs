@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
 using Looplex.Foundation.Entities;
+using Looplex.Foundation.Serialization;
 using Looplex.SCIMv2.Entities;
 
 namespace Looplex.SCIMv2.Serialization
@@ -24,22 +25,14 @@ namespace Looplex.SCIMv2.Serialization
     public static string Serialize(Actor actor)
     {
       if (actor == null) throw new ArgumentNullException(nameof(actor));
-      var serializer = new XmlSerializer(actor.GetType());
-      using var writer = new StringWriter();
-      serializer.Serialize(writer, actor);
-      return writer.ToString();
+      return Foundation.Serialization.XmlSerializer.SerializeActor(actor, DefaultNamespaces);
     }
 
     public static T Deserialize<T>(string xml) where T : Actor
     {
       if (string.IsNullOrWhiteSpace(xml))
         throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
-      var serializer = new XmlSerializer(typeof(T));
-      using var reader = new StringReader(xml);
-      var result = (T)serializer.Deserialize(reader);
-      if (result == null)
-        throw new InvalidOperationException($"Failed to deserialize XML to {typeof(T).Name}");
-      return result;
+      return Foundation.Serialization.XmlSerializer.DeserializeActor<T>(xml);
     }
     
     #endregion
@@ -52,10 +45,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeResource<T>(T resource) where T : IResource
     {
       if (resource == null) throw new ArgumentNullException(nameof(resource));
-      var serializer = new XmlSerializer(typeof(T));
-      using var writer = new StringWriter();
-      serializer.Serialize(writer, resource, DefaultNamespaces);
-      return writer.ToString();
+      return Foundation.Serialization.XmlSerializer.Serialize(resource, DefaultNamespaces);
     }
     
     /// <summary>
@@ -64,10 +54,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeResponse(SCIMv2Response response)
     {
       if (response == null) throw new ArgumentNullException(nameof(response));
-      var serializer = new XmlSerializer(typeof(SCIMv2Response));
-      using var writer = new StringWriter();
-      serializer.Serialize(writer, response, DefaultNamespaces);
-      return writer.ToString();
+      return Foundation.Serialization.XmlSerializer.Serialize(response, DefaultNamespaces);
     }
     
     /// <summary>
@@ -76,10 +63,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeSchema(SchemaDefinition schema)
     {
       if (schema == null) throw new ArgumentNullException(nameof(schema));
-      var serializer = new XmlSerializer(typeof(SchemaDefinition));
-      using var writer = new StringWriter();
-      serializer.Serialize(writer, schema, DefaultNamespaces);
-      return writer.ToString();
+      return Foundation.Serialization.XmlSerializer.Serialize(schema, DefaultNamespaces);
     }
     
     /// <summary>
@@ -88,10 +72,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeResources<T>(IEnumerable<T> resources) where T : IResource
     {
       if (resources == null) throw new ArgumentNullException(nameof(resources));
-      var serializer = new XmlSerializer(typeof(List<T>));
-      using var writer = new StringWriter();
-      serializer.Serialize(writer, resources.ToList(), DefaultNamespaces);
-      return writer.ToString();
+      return Foundation.Serialization.XmlSerializer.SerializeCollection(resources, DefaultNamespaces);
     }
     
     /// <summary>
@@ -100,10 +81,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeError(SCIMv2Error error)
     {
       if (error == null) throw new ArgumentNullException(nameof(error));
-      var serializer = new XmlSerializer(typeof(SCIMv2Error));
-      using var writer = new StringWriter();
-      serializer.Serialize(writer, error, DefaultNamespaces);
-      return writer.ToString();
+      return Foundation.Serialization.XmlSerializer.Serialize(error, DefaultNamespaces);
     }
     
     /// <summary>
@@ -113,12 +91,7 @@ namespace Looplex.SCIMv2.Serialization
     {
       if (string.IsNullOrWhiteSpace(xml))
         throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
-      var serializer = new XmlSerializer(typeof(T));
-      using var reader = new StringReader(xml);
-      var result = (T)serializer.Deserialize(reader);
-      if (result == null)
-        throw new InvalidOperationException($"Failed to deserialize XML to {typeof(T).Name}");
-      return result;
+      return Foundation.Serialization.XmlSerializer.Deserialize<T>(xml);
     }
     
     /// <summary>
@@ -128,12 +101,7 @@ namespace Looplex.SCIMv2.Serialization
     {
       if (string.IsNullOrWhiteSpace(xml))
         throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));
-      var serializer = new XmlSerializer(typeof(SCIMv2Response));
-      using var reader = new StringReader(xml);
-      var result = (SCIMv2Response)serializer.Deserialize(reader);
-      if (result == null)
-        throw new InvalidOperationException("Failed to deserialize XML to SCIMv2Response");
-      return result;
+      return Foundation.Serialization.XmlSerializer.Deserialize<SCIMv2Response>(xml);
     }
     
     #endregion

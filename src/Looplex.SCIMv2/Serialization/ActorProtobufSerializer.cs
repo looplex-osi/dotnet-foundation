@@ -2,6 +2,7 @@ using System;
 using System.IO;
 
 using Looplex.Foundation.Entities;
+using Looplex.Foundation.Serialization;
 
 using ProtoBuf;
 
@@ -17,14 +18,12 @@ public static class ActorProtobufSerializer
       throw new ArgumentNullException(nameof(actor));
     }
 
-    using MemoryStream memoryStream = new();
-    Serializer.Serialize(memoryStream, actor);
-    return memoryStream.ToArray();
+    return Foundation.Serialization.ProtobufSerializer.SerializeActor(actor);
   }
 
   public static T? Deserialize<T>(this byte[] binary) where T : Actor
   {
-    return (T?)Deserialize(binary, typeof(T));
+    return Foundation.Serialization.ProtobufSerializer.DeserializeActor<T>(binary);
   }
 
   public static object Deserialize(this byte[] binary, Type type)
@@ -35,7 +34,6 @@ public static class ActorProtobufSerializer
     if (binary == null || binary.Length == 0)
       throw new ArgumentException("Bite array cannot be null or empty.", nameof(binary));
 
-    using MemoryStream memoryStream = new(binary);
-    return Serializer.Deserialize(type, memoryStream);
+    return Foundation.Serialization.ProtobufSerializer.DeserializeActor(binary, type);
   }
 }

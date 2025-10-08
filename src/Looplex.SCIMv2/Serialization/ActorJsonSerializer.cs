@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Looplex.Foundation.Entities;
+using Looplex.Foundation.Serialization;
 using Looplex.SCIMv2.Entities;
 
 namespace Looplex.SCIMv2.Serialization
@@ -25,17 +26,14 @@ namespace Looplex.SCIMv2.Serialization
     public static string Serialize(Actor actor)
     {
       if (actor == null) throw new ArgumentNullException(nameof(actor));
-      return JsonSerializer.Serialize(actor, actor.GetType(), DefaultOptions);
+      return Foundation.Serialization.JsonSerializer.SerializeActor(actor, DefaultOptions);
     }
 
     public static T Deserialize<T>(string json) where T : Actor
     {
       if (string.IsNullOrWhiteSpace(json))
         throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
-      var result = JsonSerializer.Deserialize<T>(json, DefaultOptions);
-      if (result is null)
-        throw new JsonException($"Deserialization returned null for type {typeof(T).Name}.");
-      return result;
+      return Foundation.Serialization.JsonSerializer.DeserializeActor<T>(json, DefaultOptions);
     }
     
     #endregion
@@ -48,7 +46,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeResource<T>(T resource) where T : IResource
     {
       if (resource == null) throw new ArgumentNullException(nameof(resource));
-      return JsonSerializer.Serialize(resource, DefaultOptions);
+      return Foundation.Serialization.JsonSerializer.Serialize(resource, DefaultOptions);
     }
     
     /// <summary>
@@ -57,7 +55,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeResponse(SCIMv2Response response)
     {
       if (response == null) throw new ArgumentNullException(nameof(response));
-      return JsonSerializer.Serialize(response, DefaultOptions);
+      return Foundation.Serialization.JsonSerializer.Serialize(response, DefaultOptions);
     }
     
     /// <summary>
@@ -66,7 +64,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeSchema(SchemaDefinition schema)
     {
       if (schema == null) throw new ArgumentNullException(nameof(schema));
-      return JsonSerializer.Serialize(schema, DefaultOptions);
+      return Foundation.Serialization.JsonSerializer.Serialize(schema, DefaultOptions);
     }
     
     /// <summary>
@@ -75,7 +73,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeResources<T>(IEnumerable<T> resources) where T : IResource
     {
       if (resources == null) throw new ArgumentNullException(nameof(resources));
-      return JsonSerializer.Serialize(resources, DefaultOptions);
+      return Foundation.Serialization.JsonSerializer.SerializeCollection(resources, DefaultOptions);
     }
     
     /// <summary>
@@ -84,7 +82,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeError(SCIMv2Error error)
     {
       if (error == null) throw new ArgumentNullException(nameof(error));
-      return JsonSerializer.Serialize(error, DefaultOptions);
+      return Foundation.Serialization.JsonSerializer.Serialize(error, DefaultOptions);
     }
     
     /// <summary>
@@ -94,10 +92,7 @@ namespace Looplex.SCIMv2.Serialization
     {
       if (string.IsNullOrWhiteSpace(json))
         throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
-      var result = JsonSerializer.Deserialize<T>(json, DefaultOptions);
-      if (result is null)
-        throw new JsonException($"Deserialization returned null for type {typeof(T).Name}.");
-      return result;
+      return Foundation.Serialization.JsonSerializer.Deserialize<T>(json, DefaultOptions);
     }
     
     /// <summary>
@@ -107,10 +102,7 @@ namespace Looplex.SCIMv2.Serialization
     {
       if (string.IsNullOrWhiteSpace(json))
         throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
-      var result = JsonSerializer.Deserialize<SCIMv2Response>(json, DefaultOptions);
-      if (result is null)
-        throw new JsonException("Deserialization returned null for SCIMv2Response.");
-      return result;
+      return Foundation.Serialization.JsonSerializer.Deserialize<SCIMv2Response>(json, DefaultOptions);
     }
     
     #endregion

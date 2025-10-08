@@ -5,7 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <AssemblyName>Looplex.Protocols.HTTP</AssemblyName>
     <RootNamespace>Looplex.Protocols.HTTP</RootNamespace>
