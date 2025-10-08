@@ -16,7 +16,6 @@ using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.DependencyInjection;
 
-using System.Text.Json.Serialization;
 namespace Looplex.SCIMv2.Entities;
 
 public class Bulks : Service
@@ -282,7 +281,7 @@ public class Bulks : Service
   internal static (ResourceMap, Guid?) GetResourceMap(BulkRequestOperation operation,
     ServiceProviderConfiguration serviceProviderConfiguration)
   {
-    var path = operation.Path;
+    var path = operation.Path ?? throw new ArgumentNullException(nameof(operation.Path));
     if (path.StartsWith("/"))
       path = path[1..];
 

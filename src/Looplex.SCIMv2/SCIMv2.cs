@@ -441,7 +441,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                     ValidateResourcesForOutput(convertedResourceList);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -507,7 +507,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                     // Update meta.version with cryptographic hash FIRST
                     createdResource.Meta.Version = GenerateResourceVersion(createdResource);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     throw;
                 }
@@ -516,7 +516,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             {
                 ValidateResourceForOutput(createdResource);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     throw;
                 }
@@ -1024,7 +1024,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         if (string.IsNullOrEmpty(schemaId))
             return Task.FromResult<SchemaDefinition?>(null);
             
-        return Task.FromResult(_schemas.TryGetValue(schemaId, out var schema) ? schema : null);
+        return Task.FromResult(_schemas.TryGetValue(schemaId ?? string.Empty, out var schema) ? schema : null);
     }
 
     #endregion
@@ -1038,13 +1038,13 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>SCIMv2 response with all registered schemas</returns>
-    public async Task<SCIMv2Response> GetSchemasAsync(CancellationToken cancellationToken = default)
+    public Task<SCIMv2Response> GetSchemasAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             var schemas = _schemas.Values.ToList();
             
-            return new SCIMv2Response
+            return Task.FromResult(new SCIMv2Response
             {
                 StatusCode = 200,
                 HttpMethod = "SCHEMAS",
@@ -1057,11 +1057,11 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                     Resources = schemas
                 },
                 Schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" }
-            };
+            });
         }
         catch (Exception ex)
         {
-            return HandleException(ex, "retrieving schemas");
+            return Task.FromResult(HandleException(ex, "retrieving schemas"));
         }
     }
 
@@ -1073,18 +1073,18 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// <param name="schemaId">Schema identifier to retrieve</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>SCIMv2 response with the requested schema definition</returns>
-    public async Task<SCIMv2Response> GetSchemaAsync(string schemaId, CancellationToken cancellationToken = default)
+    public Task<SCIMv2Response> GetSchemaAsync(string schemaId, CancellationToken cancellationToken = default)
     {
         try
         {
             if (string.IsNullOrEmpty(schemaId))
             {
-                return CreateErrorResponse(400, "Bad request", "Schema ID is required");
+                return Task.FromResult(CreateErrorResponse(400, "Bad request", "Schema ID is required"));
             }
 
             if (!_schemas.TryGetValue(schemaId, out var schema))
             {
-                return CreateErrorResponse(404, "Not found", $"Schema '{schemaId}' not found");
+                return Task.FromResult(CreateErrorResponse(404, "Not found", $"Schema '{schemaId}' not found"));
             }
 
             // Update schema location with current request host
@@ -1093,16 +1093,16 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
                 schema.Meta.Location = $"{GetBaseUrl()}/Schemas/{schemaId}";
             }
 
-            return new SCIMv2Response
+            return Task.FromResult(new SCIMv2Response
             {
                 StatusCode = 200,
                 Data = schema,
                 Schemas = new[] { schema.Id }
-            };
+            });
         }
         catch (Exception ex)
         {
-            return HandleException(ex, "retrieving schema");
+            return Task.FromResult(HandleException(ex, "retrieving schema"));
         }
     }
 
@@ -1492,7 +1492,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         // Apply sorting if provided
         if (!string.IsNullOrEmpty(sortBy))
         {
-            processedResources = await ApplyAdvancedSortingAsync(processedResources, sortBy, sortOrder, cancellationToken);
+            processedResources = await ApplyAdvancedSortingAsync(processedResources, sortBy ?? string.Empty, sortOrder, cancellationToken);
         }
 
         // Apply pagination with SCIM 1-based indexing
@@ -2196,7 +2196,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             {
                 Status = statusCode.ToString(), //  RFC 7644 Section 3.12.1 - Status field required
                 Detail = detail,
-                ScimType = scimType,
+                ScimType = scimType ?? string.Empty,
                 Timestamp = DateTime.UtcNow.ToString("O")
             }
         };
@@ -2743,7 +2743,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         /// <returns>Default value for the type</returns>
         private static object GetDefaultValue(Type type)
         {
-            return type.IsValueType ? Activator.CreateInstance(type) : null;
+            return type.IsValueType ? Activator.CreateInstance(type) : null!;
         }
     }
 
@@ -2858,7 +2858,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         private static void ApplyAddOperation<T>(T resource, PatchOperation patch) where T : IResource
         {
             // Apply ADD operation using reflection to set properties based on path and value
-            SetPropertyByPath(resource, patch.Path, patch.Value);
+            SetPropertyByPath(resource, patch.Path ?? string.Empty, patch.Value ?? string.Empty);
         }
 
         /// <summary>
@@ -2872,7 +2872,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         private static void ApplyRemoveOperation<T>(T resource, PatchOperation patch) where T : IResource
         {
             // Apply REMOVE operation using reflection to clear properties based on path
-            SetPropertyByPath(resource, patch.Path, null);
+            SetPropertyByPath(resource, patch.Path ?? string.Empty, null!);
         }
 
         /// <summary>
@@ -2886,7 +2886,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         private static void ApplyReplaceOperation<T>(T resource, PatchOperation patch) where T : IResource
         {
             // Apply REPLACE operation using reflection to set properties based on path and value
-            SetPropertyByPath(resource, patch.Path, patch.Value);
+            SetPropertyByPath(resource, patch.Path ?? string.Empty, patch.Value ?? string.Empty);
         }
 
         /// <summary>
@@ -2935,7 +2935,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         /// <returns>Default value for the type</returns>
         private static object GetDefaultValue(Type type)
         {
-            return type.IsValueType ? Activator.CreateInstance(type) : null;
+            return type.IsValueType ? Activator.CreateInstance(type) : null!;
         }
     }
     /*

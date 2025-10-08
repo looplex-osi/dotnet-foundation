@@ -366,10 +366,10 @@ namespace Looplex.SCIMv2.Extensions
                             try
                             {
                                 // Try to deserialize as direct array first
-                                patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(body, new JsonSerializerOptions
+                                patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(body ?? string.Empty, new JsonSerializerOptions
                                 {
                                     PropertyNameCaseInsensitive = true
-                                });
+                                }) ?? Array.Empty<Looplex.SCIMv2.Entities.PatchOperation>();
                             }
                             catch (JsonException)
                             {
@@ -383,21 +383,21 @@ namespace Looplex.SCIMv2.Extensions
                                     
                                     if (wrapper.TryGetProperty("operations", out var operationsElement))
                                     {
-                                        patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(operationsElement.GetRawText(), new JsonSerializerOptions
+                                        patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(operationsElement.GetRawText() ?? string.Empty, new JsonSerializerOptions
                                         {
                                             PropertyNameCaseInsensitive = true
-                                        });
+                                        }) ?? Array.Empty<Looplex.SCIMv2.Entities.PatchOperation>();
                                     }
                                     else if (wrapper.TryGetProperty("Operations", out var operationsElement2))
                                     {
-                                        patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(operationsElement2.GetRawText(), new JsonSerializerOptions
+                                        patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(operationsElement2.GetRawText() ?? string.Empty, new JsonSerializerOptions
                                         {
                                             PropertyNameCaseInsensitive = true
-                                        });
+                                        }) ?? Array.Empty<Looplex.SCIMv2.Entities.PatchOperation>();
                                     }
                                     else
                                     {
-                                        patches = null;
+                                        patches = Array.Empty<Looplex.SCIMv2.Entities.PatchOperation>();
                                     }
                                 }
                                 catch
@@ -412,7 +412,7 @@ namespace Looplex.SCIMv2.Extensions
                                 context.Response.ContentType = "application/scim+json";
                                 var error = new { 
                                     error = "No patch operations provided",
-                                    detail = $"Received body: {body.Substring(0, Math.Min(body.Length, 500))}"
+                                    detail = $"Received body: {(body ?? string.Empty).Substring(0, Math.Min((body ?? string.Empty).Length, 500))}"
                                 };
                                 await context.Response.WriteAsync(JsonSerializer.Serialize(error));
                                 return;

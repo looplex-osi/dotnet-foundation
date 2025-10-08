@@ -22,23 +22,23 @@ public class User : Resource
 
   [ProtoMember(1)] public string? UserName { get; set; }
 
-  [ProtoMember(2)] public ScimName Name { get; set; }
+  [ProtoMember(2)] public ScimName Name { get; set; } = new();
 
-  [ProtoMember(3)] public string DisplayName { get; set; }
+  [ProtoMember(3)] public string DisplayName { get; set; } = string.Empty;
 
-  [ProtoMember(4)] public string NickName { get; set; }
+  [ProtoMember(4)] public string NickName { get; set; } = string.Empty;
 
-  [ProtoMember(5)] public string ProfileUrl { get; set; }
+  [ProtoMember(5)] public string ProfileUrl { get; set; } = string.Empty;
 
-  [ProtoMember(6)] public string Title { get; set; }
+  [ProtoMember(6)] public string Title { get; set; } = string.Empty;
 
-  [ProtoMember(7)] public string UserType { get; set; }
+  [ProtoMember(7)] public string UserType { get; set; } = string.Empty;
 
-  [ProtoMember(8)] public string PreferredLanguage { get; set; }
+  [ProtoMember(8)] public string PreferredLanguage { get; set; } = string.Empty;
 
-  [ProtoMember(9)] public string Locale { get; set; }
+  [ProtoMember(9)] public string Locale { get; set; } = string.Empty;
 
-  [ProtoMember(10)] public string Timezone { get; set; }
+  [ProtoMember(10)] public string Timezone { get; set; } = string.Empty;
 
   [ProtoMember(11)] public bool Active { get; set; }
 
@@ -57,26 +57,26 @@ public class User : Resource
 [AddINotifyPropertyChangedInterface]
 public class ScimName
 {
-  [ProtoMember(1)] public string Formatted { get; set; }
+  [ProtoMember(1)] public string Formatted { get; set; } = string.Empty;
 
-  [ProtoMember(2)] public string FamilyName { get; set; }
+  [ProtoMember(2)] public string FamilyName { get; set; } = string.Empty;
 
-  [ProtoMember(3)] public string GivenName { get; set; }
+  [ProtoMember(3)] public string GivenName { get; set; } = string.Empty;
 
-  [ProtoMember(4)] public string MiddleName { get; set; }
+  [ProtoMember(4)] public string MiddleName { get; set; } = string.Empty;
 
-  [ProtoMember(5)] public string HonorificPrefix { get; set; }
+  [ProtoMember(5)] public string HonorificPrefix { get; set; } = string.Empty;
 
-  [ProtoMember(6)] public string HonorificSuffix { get; set; }
+  [ProtoMember(6)] public string HonorificSuffix { get; set; } = string.Empty;
 }
 
 [ProtoContract]
 [AddINotifyPropertyChangedInterface]
 public class ScimEmail
 {
-  [ProtoMember(1)] public string Value { get; set; }
+  [ProtoMember(1)] public string Value { get; set; } = string.Empty;
 
-  [ProtoMember(2)] public string Type { get; set; }
+  [ProtoMember(2)] public string Type { get; set; } = string.Empty;
 
   [ProtoMember(3)] public bool Primary { get; set; }
 }
@@ -85,28 +85,28 @@ public class ScimEmail
 [AddINotifyPropertyChangedInterface]
 public class ScimPhoneNumber
 {
-  [ProtoMember(1)] public string Value { get; set; }
+  [ProtoMember(1)] public string Value { get; set; } = string.Empty;
 
-  [ProtoMember(2)] public string Type { get; set; }
+  [ProtoMember(2)] public string Type { get; set; } = string.Empty;
 }
 
 [ProtoContract]
 [AddINotifyPropertyChangedInterface]
 public class ScimAddress
 {
-  [ProtoMember(1)] public string Formatted { get; set; }
+  [ProtoMember(1)] public string Formatted { get; set; } = string.Empty;
 
-  [ProtoMember(2)] public string StreetAddress { get; set; }
+  [ProtoMember(2)] public string StreetAddress { get; set; } = string.Empty;
 
-  [ProtoMember(3)] public string Locality { get; set; }
+  [ProtoMember(3)] public string Locality { get; set; } = string.Empty;
 
-  [ProtoMember(4)] public string Region { get; set; }
+  [ProtoMember(4)] public string Region { get; set; } = string.Empty;
 
-  [ProtoMember(5)] public string PostalCode { get; set; }
+  [ProtoMember(5)] public string PostalCode { get; set; } = string.Empty;
 
-  [ProtoMember(6)] public string Country { get; set; }
+  [ProtoMember(6)] public string Country { get; set; } = string.Empty;
 
-  [ProtoMember(7)] public string Type { get; set; }
+  [ProtoMember(7)] public string Type { get; set; } = string.Empty;
 
   [ProtoMember(8)] public bool Primary { get; set; }
 }
@@ -115,11 +115,11 @@ public class ScimAddress
 [AddINotifyPropertyChangedInterface]
 public class ScimGroupRef
 {
-  [ProtoMember(1)] public string Value { get; set; }
+  [ProtoMember(1)] public string Value { get; set; } = string.Empty;
 
-  [ProtoMember(2)] public string Display { get; set; }
+  [ProtoMember(2)] public string Display { get; set; } = string.Empty;
 
-  [ProtoMember(3)] public string Type { get; set; }
+  [ProtoMember(3)] public string Type { get; set; } = string.Empty;
 
-  [ProtoMember(4)] public string Ref { get; set; }
+  [ProtoMember(4)] public string Ref { get; set; } = string.Empty;
 }
