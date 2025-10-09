@@ -347,22 +347,26 @@ public sealed class BulkRequestOperation
   /// <summary>
   /// The transient identifier of a newly created resource. REQUIRED when 'method' is 'POST'.
   /// </summary>
+  [JsonPropertyName("bulkId")]
   public string? BulkId { get; set; }
 
   /// <summary>
   /// The resource data as it would appear for a single SCIM POST, PUT, or PATCH operation.
   /// REQUIRED when 'method' is 'POST', 'PUT', or 'PATCH'.
   /// </summary>
+  [JsonPropertyName("data")]
   public JsonElement? Data { get; set; }
 
   /// <summary>
   /// The HTTP method of the current operation.
   /// </summary>
+  [JsonPropertyName("method")]
   public Method Method { get; set; }
 
   /// <summary>
   /// The resource's relative path. REQUIRED in a request.
   /// </summary>
+  [JsonPropertyName("path")]
   public string? Path { get; set; }
 
   /// <summary>
@@ -375,13 +379,56 @@ public sealed class BulkRequestOperation
 /// <summary>
 /// The HTTP method of the current operation.
 /// </summary>
+[JsonConverter(typeof(MethodJsonConverter))]
 public enum Method
 {
   Delete,
   Patch,
   Post,
   Put
-};
+}
+
+/// <summary>
+/// JSON converter for Method enum to handle string values
+/// </summary>
+public class MethodJsonConverter : JsonConverter<Method>
+{
+    public override Method Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            var stringValue = reader.GetString();
+            return stringValue?.ToUpper() switch
+            {
+                "DELETE" => Method.Delete,
+                "PATCH" => Method.Patch,
+                "POST" => Method.Post,
+                "PUT" => Method.Put,
+                _ => throw new JsonException($"Unknown method: {stringValue}")
+            };
+        }
+        else if (reader.TokenType == JsonTokenType.Number)
+        {
+            var intValue = reader.GetInt32();
+            return (Method)intValue;
+        }
+        
+        throw new JsonException($"Unexpected token type: {reader.TokenType}");
+    }
+
+    public override void Write(Utf8JsonWriter writer, Method value, JsonSerializerOptions options)
+    {
+        var stringValue = value switch
+        {
+            Method.Delete => "DELETE",
+            Method.Patch => "PATCH", 
+            Method.Post => "POST",
+            Method.Put => "PUT",
+            _ => throw new JsonException($"Unknown method: {value}")
+        };
+        writer.WriteStringValue(stringValue);
+    }
+}
 
 public sealed class BulkResponse : Actor
 {

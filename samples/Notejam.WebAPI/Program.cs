@@ -145,6 +145,52 @@ public static class Program
     
     // Register SCIMv2 with automatic schema discovery - ZERO CONFIGURATION!
     builder.Services.AddSCIMv2WithResources(typeof(Note), typeof(Pad), typeof(User), typeof(Group));
+    
+    // Configure ServiceProviderConfiguration for Notejam with bulk operations enabled
+    builder.Services.AddSingleton<ServiceProviderConfiguration>(sp =>
+    {
+        return new ServiceProviderConfiguration
+        {
+            AuthenticationSchemes = new[]
+            {
+                new AuthenticationScheme
+                {
+                    Name = "OAuth Bearer Token",
+                    Description = "Authentication scheme using the OAuth Bearer Token Standard",
+                    SpecUri = new Uri("https://tools.ietf.org/html/rfc6750"),
+                    Type = AuthenticationSchemeType.OAuthBearerToken
+                }
+            },
+            Bulk = new Bulk
+            {
+                Supported = true,
+                MaxOperations = 1000,
+                MaxPayloadSize = 1048575 // 1MB
+            },
+            ChangePassword = new ChangePassword
+            {
+                Supported = true
+            },
+            DocumentationUri = new Uri("https://docs.looplex.com/scim"),
+            Etag = new Etag
+            {
+                Supported = true
+            },
+            Filter = new Filter
+            {
+                Supported = true,
+                MaxResults = 200
+            },
+            Patch = new Patch
+            {
+                Supported = true
+            },
+            Sort = new Sort
+            {
+                Supported = true
+            }
+        };
+    });
 
     
     // Register Repository Pattern as SINGLETON to match SCIMv2 services

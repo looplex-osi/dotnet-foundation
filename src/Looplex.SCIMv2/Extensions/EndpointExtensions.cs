@@ -531,30 +531,68 @@ namespace Looplex.SCIMv2.Extensions
             app.MapWhen(context => context.Request.Path.StartsWithSegments($"{path}/ServiceProviderConfig") && context.Request.Method == "GET", 
                 builder => builder.Run(async context =>
                 {
-                    var config = new
+                    try
                     {
-                        schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig" },
-                        patch = new { supported = true },
-                        bulk = new { supported = false, maxOperations = 0, maxPayloadSize = 0 },
-                        filter = new { supported = true, maxResults = 200 },
-                        changePassword = new { supported = true },
-                        sort = new { supported = true },
-                        etag = new { supported = true },
-                        authenticationSchemes = new[]
+                        // Try to get the registered ServiceProviderConfiguration from DI container
+                        var serviceProviderConfig = context.RequestServices.GetService<ServiceProviderConfiguration>();
+                        
+                        // Fallback to default configuration if not registered
+                        if (serviceProviderConfig == null)
                         {
-                            new
+                            serviceProviderConfig = new ServiceProviderConfiguration
                             {
-                                name = "OAuth Bearer Token",
-                                description = "Authentication scheme using the OAuth Bearer Token Standard",
-                                specUri = "http://www.rfc-editor.org/info/rfc6750",
-                                documentationUri = "http://example.com/help/oauth.html"
-                            }
+                                AuthenticationSchemes = new[]
+                                {
+                                    new AuthenticationScheme
+                                    {
+                                        Name = "OAuth Bearer Token",
+                                        Description = "Authentication scheme using the OAuth Bearer Token Standard",
+                                        SpecUri = new Uri("https://tools.ietf.org/html/rfc6750"),
+                                        Type = AuthenticationSchemeType.OAuthBearerToken
+                                    }
+                                },
+                                Bulk = new Bulk
+                                {
+                                    Supported = false,
+                                    MaxOperations = 0,
+                                    MaxPayloadSize = 0
+                                },
+                                ChangePassword = new ChangePassword
+                                {
+                                    Supported = true
+                                },
+                                DocumentationUri = new Uri("https://docs.looplex.com/scim"),
+                                Etag = new Etag
+                                {
+                                    Supported = true
+                                },
+                                Filter = new Filter
+                                {
+                                    Supported = true,
+                                    MaxResults = 200
+                                },
+                                Patch = new Patch
+                                {
+                                    Supported = true
+                                },
+                                Sort = new Sort
+                                {
+                                    Supported = true
+                                }
+                            };
                         }
-                    };
 
-                    context.Response.StatusCode = 200;
-                    context.Response.ContentType = "application/scim+json";
-                    await context.Response.WriteAsync(JsonSerializer.Serialize(config));
+                        context.Response.StatusCode = 200;
+                        context.Response.ContentType = "application/scim+json";
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(serviceProviderConfig));
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "application/scim+json";
+                        var error = new { error = ex.Message };
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                    }
                 }));
 
             // GET /ResourceTypes
@@ -652,6 +690,59 @@ namespace Looplex.SCIMv2.Extensions
                         context.Response.StatusCode = scimResponse.StatusCode;
                         context.Response.ContentType = "application/scim+json";
                         await context.Response.WriteAsync(Looplex.SCIMv2.SCIMv2.FormatResponseByHttpMethod(scimResponse));
+                    }
+                    catch (Exception ex)
+                    {
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "application/scim+json";
+                        var error = new { error = ex.Message };
+                        await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                    }
+                }));
+
+            // POST /Bulk - Bulk operations
+            app.MapWhen(context => context.Request.Path.StartsWithSegments($"{path}/Bulk") && context.Request.Method == "POST", 
+                builder => builder.Run(async context =>
+                {
+                    try
+                    {
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        if (scimService == null)
+                        {
+                            context.Response.StatusCode = 500;
+                            await context.Response.WriteAsync("SCIMv2 service not configured");
+                            return;
+                        }
+
+                        // Read request body
+                        using var reader = new StreamReader(context.Request.Body);
+                        var body = await reader.ReadToEndAsync();
+                        
+                        if (string.IsNullOrEmpty(body))
+                        {
+                            context.Response.StatusCode = 400;
+                            await context.Response.WriteAsync("Request body is required");
+                            return;
+                        }
+
+                        // Use the SCIMv2 service to process bulk operations
+                        try
+                        {
+                            var scimResponse = await scimService.BulkAsync(body, CancellationToken.None);
+                            
+                            context.Response.StatusCode = scimResponse.StatusCode;
+                            context.Response.ContentType = "application/scim+json";
+                            await context.Response.WriteAsync(Looplex.SCIMv2.SCIMv2.FormatResponseByHttpMethod(scimResponse));
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Response.StatusCode = 501;
+                            context.Response.ContentType = "application/scim+json";
+                            var error = new { error = $"Bulk operation failed: {ex.Message}" };
+                            await context.Response.WriteAsync(JsonSerializer.Serialize(error));
+                            return;
+                        }
                     }
                     catch (Exception ex)
                     {

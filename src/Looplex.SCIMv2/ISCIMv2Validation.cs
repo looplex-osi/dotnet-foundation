@@ -14,12 +14,6 @@ public interface ISCIMv2Validation
     /// <returns>Validation result with error message if invalid</returns>
     (bool IsValid, string ErrorMessage) ValidateJsonRequest(string json);
 
-    /// <summary>
-    /// Parses PATCH operations from JSON array
-    /// </summary>
-    /// <param name="json">JSON array of patch operations</param>
-    /// <returns>Parsed patch operations or error result</returns>
-    (bool IsValid, PatchOperation[] Operations, string ErrorMessage) ParsePatchOperations(string json);
 
     /// <summary>
     /// Validates collection name for SCIMv2 operations

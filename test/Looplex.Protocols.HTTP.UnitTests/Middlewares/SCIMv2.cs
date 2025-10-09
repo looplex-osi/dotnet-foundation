@@ -66,17 +66,12 @@ public class SCIMv2Tests
           // Configure validation service mocks
           // validationService.ValidateJsonRequest(Arg.Any<string>()).Returns((true, string.Empty));
           // validationService.ValidateCollection(Arg.Any<string>()).Returns((true, string.Empty));
-          validationService.ParsePatchOperations(Arg.Any<string>()).Returns((true, Array.Empty<PatchOperation>(), string.Empty));
           // validationService.CreateMockResource(Arg.Any<string>(), Arg.Any<string>()).Returns(new User { Id = "test-id" });
           
           // Configure validation service for invalid JSON scenarios
           // validationService.ValidateJsonRequest("").Returns((false, "Request body is required"));
           // validationService.ValidateJsonRequest("invalid json").Returns((false, "Invalid JSON"));
           // validationService.ValidateJsonRequest("{ invalid json }").Returns((false, "Invalid JSON"));
-          validationService.ParsePatchOperations("[]").Returns((false, Array.Empty<PatchOperation>(), "Invalid PATCH operations"));
-          validationService.ParsePatchOperations("invalid").Returns((false, Array.Empty<PatchOperation>(), "Invalid PATCH operations"));
-          validationService.ParsePatchOperations("[{\"op\":\"invalid\"}]").Returns((false, Array.Empty<PatchOperation>(), "Invalid PATCH operations"));
-          validationService.ParsePatchOperations("[{\"op\":\"invalid\",\"path\":\"displayName\",\"value\":\"Test\"}]").Returns((false, Array.Empty<PatchOperation>(), "Invalid PATCH operations"));
           
           services.AddSingleton(validationService);
         });

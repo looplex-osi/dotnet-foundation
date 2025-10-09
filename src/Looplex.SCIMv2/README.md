@@ -211,7 +211,6 @@ public interface ISCIMv2Validation
 {
     (bool IsValid, string? Error) ValidateJsonRequest(string json);
     (bool IsValid, string? Error) ValidateCollection(string collection);
-    (bool IsValid, PatchOperation[] Operations, string? Error) ParsePatchOperations(string json);
     IResource CreateMockResource(string collectionName, string id);
 }
 ```

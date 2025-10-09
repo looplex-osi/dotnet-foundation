@@ -1,0 +1,101 @@
+{
+  "schemas": ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"],
+  "failOnErrors": 5,
+  "Operations": [
+    {
+      "method": "POST",
+      "path": "/notes",
+      "bulkId": "create-note-1",
+      "data": {
+        "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
+        "name": "Bulk Note 1 - Real Test",
+        "text": "This is the first bulk note created via SCIMv2 bulk operations with real IDs",
+        "active": true,
+        "status": 1,
+        "customFields": {
+          "priority": "high",
+          "category": "bulk-test"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/pads",
+      "bulkId": "create-pad-1",
+      "data": {
+        "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Pad"],
+        "name": "Bulk Pad 1 - Real Test",
+        "description": "This is the first bulk pad created via SCIMv2 bulk operations with real IDs",
+        "active": true,
+        "status": 1
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/notes/97AF463E-F36B-1410-85CC-0046C3744233",
+      "data": {
+        "schemas": ["urn:looplex:params:scim:schemas:notejam:2.0:Note"],
+        "name": "Updated Bulk Note - Real ID",
+        "text": "This note has been completely replaced via bulk operation using real ID",
+        "active": false,
+        "status": 2,
+        "customFields": {
+          "priority": "low",
+          "category": "updated",
+          "updated": true
+        }
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/notes/9BAF463E-F36B-1410-85CC-0046C3744233",
+      "data": {
+        "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+        "Operations": [
+          {
+            "op": "replace",
+            "path": "text",
+            "value": "This note text has been updated via PATCH bulk operation using real ID"
+          },
+          {
+            "op": "replace",
+            "path": "active",
+            "value": true
+          },
+          {
+            "op": "add",
+            "path": "customFields.updated",
+            "value": true
+          }
+        ]
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/pads/DC284A3E-F36B-1410-85CB-0046C3744233",
+      "data": {
+        "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+        "Operations": [
+          {
+            "op": "replace",
+            "path": "description",
+            "value": "This pad description has been updated via PATCH bulk operation using real ID"
+          },
+          {
+            "op": "replace",
+            "path": "status",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/notes/A1AF463E-F36B-1410-85CC-0046C3744233"
+    },
+    {
+      "method": "DELETE",
+      "path": "/pads/E0284A3E-F36B-1410-85CB-0046C3744233"
+    }
+  ]
+}
