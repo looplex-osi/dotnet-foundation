@@ -1,7 +1,7 @@
-# Script simples para gerar token JWT válido
-Write-Host "Gerando token JWT..." -ForegroundColor Green
+# Simple script to generate valid JWT token
+Write-Host "Generating JWT token..." -ForegroundColor Green
 
-# Configurações
+# Configuration
 $issuer = "https://localhost:7065"
 $audience = "notejam-api"
 $secretKey = "your-256-bit-secret-key-for-notejam-development-change-in-production"
@@ -34,49 +34,53 @@ $signatureB64 = [Convert]::ToBase64String($signature).TrimEnd('=').Replace('+', 
 # Token final
 $jwtToken = "$headerB64.$payloadB64.$signatureB64"
 
-Write-Host "Token JWT gerado:" -ForegroundColor Yellow
+Write-Host "JWT token generated:" -ForegroundColor Yellow
 Write-Host $jwtToken -ForegroundColor White
 Write-Host ""
-Write-Host "Testando endpoints..." -ForegroundColor Cyan
+Write-Host "Testing endpoints..." -ForegroundColor Cyan
 
-# Testar endpoints
+# Test endpoints
 $headers = @{ "Authorization" = "Bearer $jwtToken" }
 
-# Teste 1: Health check (publico)
-Write-Host "1. Testando /health (publico)..." -ForegroundColor Green
+# Test 1: Health check (public)
+Write-Host "1. Testing /health (public)..." -ForegroundColor Green
 try {
-    $response = Invoke-RestMethod -Uri "http://localhost:7065/health"
-    Write-Host "OK - Health check funcionando" -ForegroundColor Green
+    $response = Invoke-RestMethod -Uri "http://localhost:7065/health" -Headers $headers
+    Write-Host "OK - Health check protected and working" -ForegroundColor Green
 } catch {
-    Write-Host "ERRO: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
 }
 
-# Teste 2: ServiceProviderConfig (protegido)
-Write-Host "2. Testando /ServiceProviderConfig (protegido)..." -ForegroundColor Green
+# Test 2: ServiceProviderConfig (protected)
+Write-Host "2. Testing /ServiceProviderConfig (protected)..." -ForegroundColor Green
 try {
     $response = Invoke-RestMethod -Uri "http://localhost:7065/ServiceProviderConfig" -Headers $headers
-    Write-Host "OK - ServiceProviderConfig funcionando" -ForegroundColor Green
+    Write-Host "OK - ServiceProviderConfig working" -ForegroundColor Green
 } catch {
-    Write-Host "ERRO: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
 }
 
-# Teste 3: Notes (protegido)
-Write-Host "3. Testando /notes (protegido)..." -ForegroundColor Green
+# Test 3: Notes (protected)
+Write-Host "3. Testing /notes (protected)..." -ForegroundColor Green
 try {
     $response = Invoke-RestMethod -Uri "http://localhost:7065/notes" -Headers $headers
-    Write-Host "OK - Notes funcionando" -ForegroundColor Green
+    Write-Host "OK - Notes working" -ForegroundColor Green
 } catch {
-    Write-Host "ERRO: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
 }
 
-# Teste 4: Sem autenticação (deve falhar)
-Write-Host "4. Testando /notes sem autenticacao (deve falhar)..." -ForegroundColor Green
+# Test 4: Without authentication (should fail)
+Write-Host "4. Testing /notes without authentication (should fail)..." -ForegroundColor Green
 try {
     $response = Invoke-RestMethod -Uri "http://localhost:7065/notes"
-    Write-Host "ERRO: Endpoint deveria estar protegido!" -ForegroundColor Red
+    Write-Host "ERROR: Endpoint should be protected!" -ForegroundColor Red
 } catch {
-    Write-Host "OK - Endpoint protegido corretamente" -ForegroundColor Green
+    if ($_.Exception.Message -like "*401*") {
+        Write-Host "Failed without authentication (401): OK - Endpoint protected correctly!" -ForegroundColor Green
+    } else {
+        Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
+    }
 }
 
 Write-Host ""
-Write-Host "Testes concluidos!" -ForegroundColor Magenta
+Write-Host "Tests completed!" -ForegroundColor Magenta

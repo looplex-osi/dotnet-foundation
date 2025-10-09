@@ -14,6 +14,16 @@
 				{
 					"name": "GET ServiceProviderConfig",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -36,6 +46,16 @@
 				{
 					"name": "GET ResourceTypes",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -58,6 +78,16 @@
 				{
 					"name": "GET Schemas",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -85,6 +115,16 @@
 				{
 					"name": "GET Notes (List)",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -105,8 +145,18 @@
 					"response": []
 				},
 				{
-					"name": "GET Notes with Pagination",
+					"name": "GET Notes (List) Attributes",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -115,7 +165,49 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/notes?startIndex=1&count=10",
+							"raw": "{{baseUrl}}/notes?attributes=id,meta&count=3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "attributes",
+									"value": "id,meta"
+								},
+								{
+									"key": "count",
+									"value": "3"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Notes with Pagination",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes?startIndex=1&count=5",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -129,7 +221,7 @@
 								},
 								{
 									"key": "count",
-									"value": "10"
+									"value": "5"
 								}
 							]
 						}
@@ -139,6 +231,16 @@
 				{
 					"name": "POST Create Note",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
@@ -152,7 +254,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{"text": "# Título da Nota\n\nConteúdo em **markdownv2 3009250022**ABC",  "active": true,  "status": 1,  "customFields": "{\"priority\": \"high\"}"}"
+							"raw": "{\n  \"text\": \"# Título da Nota\\n\\nConteúdo em **markdownv2 3009250022**ABCD11470229\",\n  \"active\": true,\n  \"status\": 1,\n  \"customFields\": \"{\\\"priority\\\": \\\"high\\\"}\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/notes",
@@ -169,6 +271,16 @@
 				{
 					"name": "GET Note by ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -184,6 +296,79 @@
 							"path": [
 								"notes",
 								"{{noteId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Note by ID (with attributes)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notes/{{noteId}}?attributes=id,meta",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"{{noteId}}"
+							],
+							"query": [
+								{
+									"key": "attributes",
+									"value": "id,meta"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET NOTE by ID (without attributes)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/scim+json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/notes/{{noteId}}?excludedAttributes=meta",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes",
+								"{{noteId}}"
+							],
+							"query": [
+								{
+									"key": "excludedAttributes",
+									"value": "meta"
+								}
 							]
 						}
 					},
@@ -205,7 +390,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{  "name": "Test Note SCIM v2.0 UPDATEDv8.1",  "text": "Test Content SCIM v2.0 UPDATEDv9.1",  "active": false,  "status": 2}"
+							"raw": "{\n  \"name\": \"Test Note SCIM v2.0 UPDATEDv8.122\",\n  \"text\": \"Test Content SCIM v2.0 UPDATEDv9.122\",\n  \"active\": false,\n  \"status\": 2\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/notes/{{noteId}}",
@@ -223,6 +408,16 @@
 				{
 					"name": "PATCH Update Note",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PATCH",
 						"header": [
 							{
@@ -236,7 +431,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"schemas\": [\"urn:ietf:params:scim:api:messages:2.0:PatchOp\"],\n  \"Operations\": [\n    {\n      \"op\": \"replace\",\n      \"path\": \"active\",\n      \"value\": true\n    },\n    {\n      \"op\": \"replace\",\n      \"path\": \"text\",\n      \"value\": \"Updated via PATCH operation\"\n    }\n  ]\n}"
+							"raw": "{\n  \"Operations\": [\n    {\n      \"op\": \"replace\",\n      \"path\": \"active\",\n      \"value\": true\n    },\n    {\n      \"op\": \"replace\",\n      \"path\": \"text\",\n      \"value\": \"Updated via PATCH operatTION3\"\n    }\n  ]\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/notes/{{noteId}}",
@@ -273,96 +468,6 @@
 						}
 					},
 					"response": []
-				},
-				{
-					"name": "GET Notes (List) Attributes",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/scim+json"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/notes?attributes=id,meta&count=3",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"notes"
-							],
-							"query": [
-								{
-									"key": "attributes",
-									"value": "id,meta"
-								},
-								{
-									"key": "count",
-									"value": "3"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "GET Note by ID (with attributes)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/scim+json"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/notes/{{noteId}}?attributes=id,meta",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"notes",
-								"{{noteId}}"
-							],
-							"query": [
-								{
-									"key": "attributes",
-									"value": "id,meta"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "GET Note by ID (without attributes)",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/scim+json"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/notes/{{noteId}}?excludedAttributes=meta",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"notes",
-								"{{noteId}}"
-							],
-							"query": [
-								{
-									"key": "excludedAttributes",
-									"value": "meta"
-								}
-							]
-						}
-					},
-					"response": []
 				}
 			]
 		},
@@ -372,6 +477,16 @@
 				{
 					"name": "Filter: externalId pr",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -484,6 +599,16 @@
 				{
 					"name": "Filter: text co \"test\"",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -512,6 +637,16 @@
 				{
 					"name": "Filter: text sw \"Test\"",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -624,6 +759,16 @@
 				{
 					"name": "Filter: meta.created gt \"2025-01-01T00:00:00.000Z\"",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -632,7 +777,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/notes?filter=meta.created gt \"2025-01-01T00:00:00.000Z\"",
+							"raw": "{{baseUrl}}/notes?filter=meta.created gt \"2025-09-25T00:00:00.000Z\"",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -642,7 +787,7 @@
 							"query": [
 								{
 									"key": "filter",
-									"value": "meta.created gt \"2025-01-01T00:00:00.000Z\""
+									"value": "meta.created gt \"2025-09-25T00:00:00.000Z\""
 								}
 							]
 						}
@@ -769,6 +914,60 @@
 			]
 		},
 		{
+			"name": "Notes - Ordering (sortBy/sortOrder)",
+			"item": [
+				{
+					"name": "SorterOrder: Descending with filter",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notes?filter=text sw \"Test\"&sortBy=meta.created&sortOrder=descending",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notes"
+							],
+							"query": [
+								{
+									"key": "filter",
+									"value": "text sw \"Test\""
+								},
+								{
+									"key": "sortBy",
+									"value": "meta.created"
+								},
+								{
+									"key": "sortOrder",
+									"value": "descending"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "SorterOrder: Descending with filter Copy",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "Pads - CRUD Operations",
 			"item": [
 				{
@@ -809,7 +1008,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{  "name": "Test Pad SCIM v2.0 121415 0205",  "active": true,  "status": 1}"
+							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Pad\"],\n  \"name\": \"Test Pad from Postman\",\n  \"active\": true,\n  \"customFields\": {}\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/pads",
@@ -862,7 +1061,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{  "name": "Test Pad SCIM v2.0 UPDATEDv8",  "text": "Test Pad SCIM v2.0 UPDATEDv9",  "active": false,  "status": 2}"
+							"raw": "{\n  \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Pad\"],\n  \"name\": \"Updated Pad from Postman\",\n  \"active\": false,\n  \"customFields\": {\"priority\": \"high\"}\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/pads/{{padId}}",
@@ -893,7 +1092,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{  "name": "Test Pad SCIM v2.0 UPDATEDv8",  "text": "Test Pad SCIM v2.0 UPDATEDv9",  "active": false,  "status": 2}"
+							"raw": "{\n  \"schemas\": [\"urn:ietf:params:scim:api:messages:2.0:PatchOp\"],\n  \"Operations\": [\n    {\n      \"op\": \"replace\",\n      \"path\": \"active\",\n      \"value\": true\n    },\n    {\n      \"op\": \"replace\",\n      \"path\": \"name\",\n      \"value\": \"Updated via PATCH operation\"\n    }\n  ]\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/pads/{{padId}}",
@@ -939,6 +1138,16 @@
 				{
 					"name": "Filter: active eq \"true\"",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -967,6 +1176,16 @@
 				{
 					"name": "Filter: name co \"Test\"",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -1000,6 +1219,16 @@
 				{
 					"name": "POST Bulk Operations",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
@@ -1013,7 +1242,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"schemas\": [\"urn:ietf:params:scim:api:messages:2.0:BulkRequest\"],\n  \"Operations\": [\n    {\n      \"method\": \"POST\",\n      \"path\": \"/notes\",\n      \"bulkId\": \"bulk-1\",\n      \"data\": {\n        \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n        \"name\": \"Bulk Note 1\",\n        \"text\": \"Created via Bulk operation\",\n        \"active\": true,\n        \"status\": 1,\n        \"customFields\": {}\n      }\n    },\n    {\n      \"method\": \"POST\",\n      \"path\": \"/pads\",\n      \"bulkId\": \"bulk-2\",\n      \"data\": {\n        \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Pad\"],\n        \"name\": \"Bulk Pad 1\",\n        \"active\": true,\n        \"customFields\": {}\n      }\n    }\n  ]\n}"
+							"raw": "{\n  \"schemas\": [\"urn:ietf:params:scim:api:messages:2.0:BulkRequest\"],\n  \"failOnErrors\": 2,\n  \"Operations\": [\n    {\n      \"method\": \"POST\",\n      \"path\": \"/notes\",\n      \"bulkId\": \"bulk-note-1\",\n      \"data\": {\n        \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n        \"name\": \"Complex Bulk Note 1\",\n        \"text\": \"This is a complex bulk operation test for Note 1 with detailed content and multiple operations\",\n        \"active\": true,\n        \"status\": 1,\n        \"customFields\": {\n          \"priority\": \"high\",\n          \"category\": \"bulk-test\",\n          \"tags\": [\"bulk\", \"test\", \"complex\"]\n        }\n      }\n    },\n    {\n      \"method\": \"POST\",\n      \"path\": \"/notes\",\n      \"bulkId\": \"bulk-note-2\",\n      \"data\": {\n        \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n        \"name\": \"Complex Bulk Note 2\",\n        \"text\": \"This is another complex bulk operation test for Note 2 with different content and metadata\",\n        \"active\": true,\n        \"status\": 1,\n        \"customFields\": {\n          \"priority\": \"medium\",\n          \"category\": \"bulk-test\",\n          \"tags\": [\"bulk\", \"test\", \"automation\"]\n        }\n      }\n    },\n    {\n      \"method\": \"POST\",\n      \"path\": \"/notes\",\n      \"bulkId\": \"bulk-note-3\",\n      \"data\": {\n        \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n        \"name\": \"Complex Bulk Note 3\",\n        \"text\": \"Third note in the complex bulk operation with extensive content and detailed information for testing purposes\",\n        \"active\": false,\n        \"status\": 2,\n        \"customFields\": {\n          \"priority\": \"low\",\n          \"category\": \"bulk-test\",\n          \"tags\": [\"bulk\", \"test\", \"performance\"]\n        }\n      }\n    },\n    {\n      \"method\": \"POST\",\n      \"path\": \"/pads\",\n      \"bulkId\": \"bulk-pad-1\",\n      \"data\": {\n        \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Pad\"],\n        \"name\": \"Complex Bulk Pad 1\",\n        \"active\": true,\n        \"status\": 1,\n        \"customFields\": {\n          \"type\": \"bulk-test\",\n          \"description\": \"Complex bulk operation test pad\"\n        }\n      }\n    },\n    {\n      \"method\": \"POST\",\n      \"path\": \"/pads\",\n      \"bulkId\": \"bulk-pad-2\",\n      \"data\": {\n        \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Pad\"],\n        \"name\": \"Complex Bulk Pad 2\",\n        \"active\": true,\n        \"status\": 1,\n        \"customFields\": {\n          \"type\": \"bulk-test\",\n          \"description\": \"Second complex bulk operation test pad\"\n        }\n      }\n    },\n    {\n      \"method\": \"POST\",\n      \"path\": \"/notes\",\n      \"bulkId\": \"bulk-note-4\",\n      \"data\": {\n        \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n        \"name\": \"Complex Bulk Note 4\",\n        \"text\": \"Fourth note in the complex bulk operation with additional metadata and extended content for comprehensive testing\",\n        \"active\": true,\n        \"status\": 1,\n        \"customFields\": {\n          \"priority\": \"critical\",\n          \"category\": \"bulk-test\",\n          \"tags\": [\"bulk\", \"test\", \"critical\", \"automation\"],\n          \"metadata\": {\n            \"createdBy\": \"bulk-test-suite\",\n            \"testType\": \"complex-operation\",\n            \"expectedResult\": \"success\"\n          }\n        }\n      }\n    },\n    {\n      \"method\": \"POST\",\n      \"path\": \"/notes\",\n      \"bulkId\": \"bulk-note-5\",\n      \"data\": {\n        \"schemas\": [\"urn:looplex:params:scim:schemas:notejam:2.0:Note\"],\n        \"name\": \"Complex Bulk Note 5\",\n        \"text\": \"Fifth and final note in the complex bulk operation with comprehensive testing data and detailed metadata for validation\",\n        \"active\": true,\n        \"status\": 1,\n        \"customFields\": {\n          \"priority\": \"high\",\n          \"category\": \"bulk-test\",\n          \"tags\": [\"bulk\", \"test\", \"final\", \"validation\"],\n          \"testData\": {\n            \"operationCount\": 7,\n            \"testType\": \"complex-bulk\",\n            \"validationRequired\": true\n          }\n        }\n      }\n    }\n  ]\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/Bulk",
@@ -1187,21 +1416,64 @@
 			]
 		}
 	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
 	"variable": [
 		{
 			"key": "baseUrl",
-			"value": "http://localhost:7065",
-			"type": "string"
+			"value": "http://localhost:7065"
 		},
 		{
 			"key": "noteId",
-			"value": "",
-			"type": "string"
+			"value": ""
 		},
 		{
 			"key": "padId",
-			"value": "",
-			"type": "string"
+			"value": ""
+		},
+		{
+			"key": "token",
+			"value": ""
+		},
+		{
+			"key": "token",
+			"value": ""
+		},
+		{
+			"key": "token",
+			"value": ""
 		}
 	]
 }
