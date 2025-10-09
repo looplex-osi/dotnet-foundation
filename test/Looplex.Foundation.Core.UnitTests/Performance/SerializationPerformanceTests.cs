@@ -40,8 +40,8 @@ public class SerializationPerformanceTests
         // Act
         for (int i = 0; i < iterations; i++)
         {
-            var json = Foundation.Serialization.JsonSerializer.Serialize(_testActor, Foundation.Serialization.JsonSerializer.DefaultOptions);
-            var deserialized = Foundation.Serialization.JsonSerializer.Deserialize<TestActor>(json, Foundation.Serialization.JsonSerializer.DefaultOptions);
+            var json = Foundation.Serialization.FoundationJsonSerializer.Serialize(_testActor, Foundation.Serialization.FoundationJsonSerializer.DefaultOptions);
+            var deserialized = Foundation.Serialization.FoundationJsonSerializer.Deserialize<TestActor>(json, Foundation.Serialization.FoundationJsonSerializer.DefaultOptions);
         }
 
         stopwatch.Stop();
@@ -61,8 +61,8 @@ public class SerializationPerformanceTests
         // Act
         for (int i = 0; i < iterations; i++)
         {
-            var xml = Foundation.Serialization.XmlSerializer.Serialize(_testActor, Foundation.Serialization.XmlSerializer.DefaultNamespaces);
-            var deserialized = Foundation.Serialization.XmlSerializer.Deserialize<TestActor>(xml, Foundation.Serialization.XmlSerializer.DefaultNamespaces);
+            var xml = Foundation.Serialization.FoundationXmlSerializer.Serialize(_testActor, Foundation.Serialization.FoundationXmlSerializer.DefaultNamespaces);
+            var deserialized = Foundation.Serialization.FoundationXmlSerializer.Deserialize<TestActor>(xml, Foundation.Serialization.FoundationXmlSerializer.DefaultNamespaces);
         }
 
         stopwatch.Stop();
@@ -89,8 +89,8 @@ public class SerializationPerformanceTests
         // Act
         for (int i = 0; i < iterations; i++)
         {
-            var json = Foundation.Serialization.JsonSerializer.Serialize(_testUser, Foundation.Serialization.JsonSerializer.DefaultOptions);
-            var deserialized = Foundation.Serialization.JsonSerializer.Deserialize<User>(json, Foundation.Serialization.JsonSerializer.DefaultOptions);
+            var json = Foundation.Serialization.FoundationJsonSerializer.Serialize(_testUser, Foundation.Serialization.FoundationJsonSerializer.DefaultOptions);
+            var deserialized = Foundation.Serialization.FoundationJsonSerializer.Deserialize<User>(json, Foundation.Serialization.FoundationJsonSerializer.DefaultOptions);
         }
 
         stopwatch.Stop();
@@ -119,8 +119,8 @@ public class SerializationPerformanceTests
                 
                 for (int j = 0; j < iterationsPerThread; j++)
                 {
-                    var json = Foundation.Serialization.JsonSerializer.Serialize(_testActor, Foundation.Serialization.JsonSerializer.DefaultOptions);
-                    var deserialized = Foundation.Serialization.JsonSerializer.Deserialize<TestActor>(json, Foundation.Serialization.JsonSerializer.DefaultOptions);
+                    var json = Foundation.Serialization.FoundationJsonSerializer.Serialize(_testActor, Foundation.Serialization.FoundationJsonSerializer.DefaultOptions);
+                    var deserialized = Foundation.Serialization.FoundationJsonSerializer.Deserialize<TestActor>(json, Foundation.Serialization.FoundationJsonSerializer.DefaultOptions);
                 }
                 
                 stopwatch.Stop();

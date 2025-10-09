@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
+using Looplex.Foundation.Serialization;
 
 namespace Looplex.SCIMv2.Extensions
 {
@@ -368,34 +369,22 @@ namespace Looplex.SCIMv2.Extensions
                             try
                             {
                                 // Try to deserialize as direct array first
-                                patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(body ?? string.Empty, new JsonSerializerOptions
-                                {
-                                    PropertyNameCaseInsensitive = true
-                                }) ?? Array.Empty<Looplex.SCIMv2.Entities.PatchOperation>();
+                                patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(body ?? string.Empty, FoundationJsonSerializer.DefaultOptions) ?? Array.Empty<Looplex.SCIMv2.Entities.PatchOperation>();
                             }
                             catch (JsonException)
                             {
                                 // If direct array fails, try to deserialize as object with Operations property
                                 try
                                 {
-                                    var wrapper = JsonSerializer.Deserialize<JsonElement>(body, new JsonSerializerOptions
-                                    {
-                                        PropertyNameCaseInsensitive = true
-                                    });
+                                    var wrapper = JsonSerializer.Deserialize<JsonElement>(body, FoundationJsonSerializer.DefaultOptions);
                                     
                                     if (wrapper.TryGetProperty("operations", out var operationsElement))
                                     {
-                                        patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(operationsElement.GetRawText() ?? string.Empty, new JsonSerializerOptions
-                                        {
-                                            PropertyNameCaseInsensitive = true
-                                        }) ?? Array.Empty<Looplex.SCIMv2.Entities.PatchOperation>();
+                                        patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(operationsElement.GetRawText() ?? string.Empty, FoundationJsonSerializer.DefaultOptions) ?? Array.Empty<Looplex.SCIMv2.Entities.PatchOperation>();
                                     }
                                     else if (wrapper.TryGetProperty("Operations", out var operationsElement2))
                                     {
-                                        patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(operationsElement2.GetRawText() ?? string.Empty, new JsonSerializerOptions
-                                        {
-                                            PropertyNameCaseInsensitive = true
-                                        }) ?? Array.Empty<Looplex.SCIMv2.Entities.PatchOperation>();
+                                        patches = JsonSerializer.Deserialize<Looplex.SCIMv2.Entities.PatchOperation[]>(operationsElement2.GetRawText() ?? string.Empty, FoundationJsonSerializer.DefaultOptions) ?? Array.Empty<Looplex.SCIMv2.Entities.PatchOperation>();
                                     }
                                     else
                                     {

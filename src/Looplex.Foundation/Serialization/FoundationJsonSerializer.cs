@@ -7,7 +7,7 @@ namespace Looplex.Foundation.Serialization
     /// Generic JSON serializer for Foundation entities
     /// Provides generic JSON serialization without domain-specific dependencies
     /// </summary>
-    public static class JsonSerializer
+    public static class FoundationJsonSerializer
     {
         /// <summary>
         /// Default JSON options (camelCase, case-insensitive, includes fields)

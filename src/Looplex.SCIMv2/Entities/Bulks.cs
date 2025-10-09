@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Looplex.Foundation.Serialization;
 
 using Looplex.Foundation.Entities;
 using Looplex.Foundation.Helpers;
@@ -129,7 +130,7 @@ public class Bulks : Service
             break;
           response.Operations.Add(new()
           {
-            Method = operation.Method, Path = operation.Path, Status = error.Status, Response = JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(error, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })).RootElement
+            Method = operation.Method, Path = operation.Path, Status = error.Status, Response = JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(error, FoundationJsonSerializer.DefaultOptions)).RootElement
           });
         }
       }

@@ -4,7 +4,7 @@ using Looplex.Foundation.Serialization;
 namespace Looplex.Foundation.Core.UnitTests.Serialization;
 
 [TestClass]
-public class ActorJsonSerializerTests
+public class ActorFoundationJsonSerializerTests
 {
   private TestActor _actor = null!;
 
@@ -19,7 +19,7 @@ public class ActorJsonSerializerTests
   public void JsonSerialize_ShouldConvertActorToJsonString()
   {
     // Act
-    string json = JsonSerializer.Serialize(_actor, JsonSerializer.DefaultOptions);
+    string json = FoundationJsonSerializer.Serialize(_actor, FoundationJsonSerializer.DefaultOptions);
 
     // Assert
     Assert.IsNotNull(json);
@@ -30,10 +30,10 @@ public class ActorJsonSerializerTests
   public void JsonDeserialize_ShouldConvertJsonStringToActor()
   {
     // Arrange
-    string json = JsonSerializer.Serialize(_actor, JsonSerializer.DefaultOptions);
+    string json = FoundationJsonSerializer.Serialize(_actor, FoundationJsonSerializer.DefaultOptions);
 
     // Act
-    TestActor? deserializedActor = JsonSerializer.Deserialize<TestActor>(json, JsonSerializer.DefaultOptions);
+    TestActor? deserializedActor = FoundationJsonSerializer.Deserialize<TestActor>(json, FoundationJsonSerializer.DefaultOptions);
 
     // Assert
     Assert.IsNotNull(deserializedActor);
@@ -45,7 +45,7 @@ public class ActorJsonSerializerTests
   public void JsonDeserialize_ShouldThrowExceptionForEmptyJson()
   {
     // Act
-    JsonSerializer.Deserialize<TestActor>("", JsonSerializer.DefaultOptions);
+    FoundationJsonSerializer.Deserialize<TestActor>("", FoundationJsonSerializer.DefaultOptions);
   }
 
   [TestMethod]
@@ -54,7 +54,7 @@ public class ActorJsonSerializerTests
   {
     // Act
     Actor? nullActor = null;
-    JsonSerializer.Serialize(nullActor, JsonSerializer.DefaultOptions);
+    FoundationJsonSerializer.Serialize(nullActor, FoundationJsonSerializer.DefaultOptions);
   }
 
   public class TestActor : Actor

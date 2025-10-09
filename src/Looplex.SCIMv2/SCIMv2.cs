@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
 using Looplex.SCIMv2.Modules;
 using Looplex.SCIMv2.Serialization;
+using Looplex.Foundation.Serialization;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.SCIMv2.Antlr;
 using Microsoft.AspNetCore.Http;
@@ -1866,7 +1867,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             // Convert resources to JsonObject for processing using ActorJsonSerializer options
             var jsonResources = resourceList.Select(resource => 
             {
-                var json = JsonSerializer.SerializeToNode(resource, resource.GetType(), Looplex.Foundation.Serialization.JsonSerializer.DefaultOptions);
+                var json = JsonSerializer.SerializeToNode(resource, resource.GetType(), FoundationJsonSerializer.DefaultOptions);
                 return json as JsonObject ?? new JsonObject();
             }).ToList();
 
@@ -1991,7 +1992,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         if (_httpContextAccessor?.HttpContext != null)
         {
             // Convert resource to JsonObject for processing using ActorJsonSerializer options
-            var jsonResource = JsonSerializer.SerializeToNode(resource, resource.GetType(), Looplex.Foundation.Serialization.JsonSerializer.DefaultOptions) as JsonObject ?? new JsonObject();
+            var jsonResource = JsonSerializer.SerializeToNode(resource, resource.GetType(), FoundationJsonSerializer.DefaultOptions) as JsonObject ?? new JsonObject();
             
             // Apply attribute processing
             var processedResource = new[] { jsonResource }.ProcessAttributes(_httpContextAccessor.HttpContext).FirstOrDefault();
@@ -2066,12 +2067,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     private static string FormatQueryResponse(SCIMv2Response response)
     {
         // Serialize Resources array with camelCase for individual resource properties
-        var resourcesJson = System.Text.Json.JsonSerializer.Serialize(response.Data, new System.Text.Json.JsonSerializerOptions
-        {
-            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-            WriteIndented = true,
-            PropertyNameCaseInsensitive = true
-        });
+        var resourcesJson = System.Text.Json.JsonSerializer.Serialize(response.Data, FoundationJsonSerializer.DefaultOptions);
 
         // Parse back to get camelCase Resources
         var resourcesArray = System.Text.Json.JsonSerializer.Deserialize<object[]>(resourcesJson);
@@ -2153,13 +2149,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         
         // For single resources, return the resource directly flattened
         // Remove statusCode, location, etag from JSON body (they should be HTTP headers only)
-        // Flatten the resource data directly using Looplex.Foundation.Core serializer options
-        var result = System.Text.Json.JsonSerializer.Serialize(response.Data, new System.Text.Json.JsonSerializerOptions
-        {
-            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-            WriteIndented = true,
-            PropertyNameCaseInsensitive = true
-        });
+        // Flatten the resource data directly using Foundation serializer options
+        var result = System.Text.Json.JsonSerializer.Serialize(response.Data, FoundationJsonSerializer.DefaultOptions);
         
         return result;
     }
@@ -2818,34 +2809,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     /// </summary>
     public static class ScimPatchProcessor
     {
-        /// <summary>
-        /// Apply PATCH operations to any IResource following RFC 7644 Section 3.5.
-        /// Implements RFC 7644 Section 3.5 - Update Resource (PATCH) operations.
-        /// [RFC 7644 Section 3.5](https://datatracker.ietf.org/doc/html/rfc7644#section-3.5)
-        /// </summary>
-        /// <typeparam name="T">Resource type implementing IResource</typeparam>
-        /// <param name="resource">Resource to apply patches to</param>
-        /// <param name="patches">Array of PATCH operations following RFC 7644 Section 3.5</param>
-        public static void ApplyPatches<T>(T resource, PatchOperation[] patches) where T : IResource
-        {
-            foreach (var patch in patches)
-            {
-                switch (patch.Op?.ToLower())
-                {
-                    case "add":
-                        ApplyAddOperation(resource, patch);
-                        break;
-                    case "remove":
-                        ApplyRemoveOperation(resource, patch);
-                        break;
-                    case "replace":
-                        ApplyReplaceOperation(resource, patch);
-                        break;
-                    default:
-                        throw new ArgumentException($"Unsupported PATCH operation: {patch.Op}");
-                }
-            }
-        }
+        
 
         /// <summary>
         /// Apply ADD operation to resource following RFC 7644 Section 3.5.2.1.
@@ -2938,82 +2902,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             return type.IsValueType ? Activator.CreateInstance(type) : null!;
         }
     }
-    /*
-    /// <summary>
-    /// Generic SCIM validator for any IResource type.
-    /// Provides generic validation following RFC 7643 Section 2.1 - Core Schema requirements.
-    /// Implements RFC 7643 Section 2.1 - Core Schema
-    /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
-    /// </summary>
-    public static class ScimValidator
-    {
-        /// <summary>
-        /// Validate any IResource for SCIM v2.0 compliance following RFC 7643 standards.
-        /// Implements RFC 7643 Section 2.1 - Core Schema validation requirements.
-        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
-        /// </summary>
-        /// <typeparam name="T">Resource type implementing IResource</typeparam>
-        /// <param name="resource">Resource to validate for SCIM compliance</param>
-        /// <returns>True if valid according to SCIM v2.0 standards, false otherwise</returns>
-        public static bool Validate<T>(T resource) where T : IResource
-        {
-            if (resource == null)
-                return false;
-
-            // Validate base SCIM v2.0 requirements as defined in RFC 7643 Section 2.1
-            if (string.IsNullOrEmpty(resource.Id))
-                return false;
-                
-            if (resource.Meta == null)
-                return false;
-
-            // Validate SCIM v2.0 compliance following RFC 7643 standards
-            return ValidateScimCompliance(resource);
-        }
-
-        /// <summary>
-        /// Validate SCIM v2.0 compliance for any resource following RFC 7643 Section 2.1.
-        /// Implements RFC 7643 Section 2.1 - Core Schema compliance validation.
-        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
-        /// </summary>
-        /// <typeparam name="T">Resource type implementing IResource</typeparam>
-        /// <param name="resource">Resource to validate for SCIM compliance</param>
-        /// <returns>True if compliant with SCIM v2.0 standards, false otherwise</returns>
-        private static bool ValidateScimCompliance<T>(T resource) where T : IResource
-        {
-            // Check for required SCIM v2.0 properties as defined in RFC 7643 Section 2.1
-            if (string.IsNullOrEmpty(resource.Meta.ResourceType))
-                return false;
-
-            if (resource.Meta.Created == default(DateTime))
-                return false;
-
-            if (resource.Meta.LastModified == default(DateTime))
-                return false;
-
-            // Additional SCIM v2.0 validation can be added here following RFC 7643
-            return true;
-        }
-
-        /// <summary>
-        /// Validate resource for specific business rules following SCIM v2.0 standards.
-        /// Implements RFC 7643 Section 2.1 - Core Schema with custom validation rules.
-        /// [RFC 7643 Section 2.1](https://datatracker.ietf.org/doc/html/rfc7643#section-2.1)
-        /// </summary>
-        /// <typeparam name="T">Resource type implementing IResource</typeparam>
-        /// <param name="resource">Resource to validate</param>
-        /// <param name="validationRules">Custom validation rules following SCIM v2.0 standards</param>
-        /// <returns>True if valid according to SCIM v2.0 standards and custom rules, false otherwise</returns>
-        public static bool ValidateWithRules<T>(T resource, Func<T, bool> validationRules) where T : IResource
-        {
-            if (!Validate(resource))
-                return false;
-
-            return validationRules(resource);
-        }
-   
-    }
- */
+    
     /// <summary>
     /// Generic SCIM type converter for any resource type.
     /// Provides generic type conversion helpers following RFC 7643 Section 2.1 - Core Schema data types.

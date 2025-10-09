@@ -13,7 +13,7 @@ namespace Looplex.SCIMv2.Serialization
     public static string SerializeSchema(SchemaDefinition schema)
     {
       if (schema == null) throw new ArgumentNullException(nameof(schema));
-      return JsonSerializer.Serialize(schema, JsonSerializer.DefaultOptions);
+      return FoundationJsonSerializer.Serialize(schema, FoundationJsonSerializer.DefaultOptions);
     }
     
     /// <summary>
@@ -23,7 +23,7 @@ namespace Looplex.SCIMv2.Serialization
     {
       if (string.IsNullOrWhiteSpace(json))
         throw new ArgumentException("JSON string cannot be null or empty.", nameof(json));
-      return JsonSerializer.Deserialize<T>(json, JsonSerializer.DefaultOptions);
+      return FoundationJsonSerializer.Deserialize<T>(json, FoundationJsonSerializer.DefaultOptions);
     }
     
   }
