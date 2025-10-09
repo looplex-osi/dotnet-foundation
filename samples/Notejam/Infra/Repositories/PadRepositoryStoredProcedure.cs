@@ -67,10 +67,24 @@ public class PadRepositoryStoredProcedure : IPadRepository, IResourceRepository<
         string? filter = null,
         CancellationToken cancellationToken = default)
     {
+        return await QueryAsync(startIndex, count, filter, null, null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Query pads with SCIM v2.0 filtering and sorting using Foundation approach
+    /// </summary>
+    public async Task<(IList<Pad> Resources, int TotalCount)> QueryAsync(
+        int startIndex,
+        int count,
+        string? filter = null,
+        string? sortBy = null,
+        string? sortOrder = null,
+        CancellationToken cancellationToken = default)
+    {
         try
         {
-            _logger.LogInformation("🔍 Getting pads with Foundation approach: startIndex={StartIndex}, count={Count}, filter={Filter}",
-                startIndex, count, filter);
+            _logger.LogInformation("🔍 Getting pads with Foundation approach: startIndex={StartIndex}, count={Count}, filter={Filter}, sortBy={SortBy}, sortOrder={SortOrder}",
+                startIndex, count, filter, sortBy, sortOrder);
 
             var page = CalculatePage(startIndex, count);
             var pageSize = count;
@@ -81,7 +95,7 @@ public class PadRepositoryStoredProcedure : IPadRepository, IResourceRepository<
                 "meta.created", "meta.lastModified"
             };
 
-            // Pass attribute mapping for meta.created -> p.created_at
+            // Pass attribute mapping for meta.created -> p.created_at (with table alias for stored procedure)
             var attributeMapper = new Dictionary<string, string> {
                 { "meta.created", "p.created_at" },
                 { "meta.lastModified", "p.updated_at" },
@@ -100,10 +114,13 @@ public class PadRepositoryStoredProcedure : IPadRepository, IResourceRepository<
             command.CommandType = CommandType.StoredProcedure;
             command.CommandText = "USP_pads_pquery";
 
+            // Build ORDER BY clause based on sorting parameters
+            var orderByClause = BuildOrderByClause(sortBy, sortOrder);
+            
             command.Parameters.Add(Dbs.CreateParameter(command, "@page", page, DbType.Int32));
             command.Parameters.Add(Dbs.CreateParameter(command, "@page_size", pageSize, DbType.Int32));
             command.Parameters.Add(Dbs.CreateParameter(command, "@do_count", true, DbType.Boolean));
-            command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", "updated_at DESC", DbType.String));
+            command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", orderByClause, DbType.String));
 
             // Add filter using Foundation's approach (like Case Management)
             if (filters != null)
@@ -119,6 +136,39 @@ public class PadRepositoryStoredProcedure : IPadRepository, IResourceRepository<
             _logger.LogError(ex, "Error getting pads with Foundation approach");
             throw new InvalidOperationException($"Failed to get pads: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>
+    /// Builds ORDER BY clause based on sorting parameters
+    /// </summary>
+    private static string BuildOrderByClause(string? sortBy, string? sortOrder)
+    {
+        // Default sorting if no sortBy specified
+        if (string.IsNullOrWhiteSpace(sortBy))
+            return "updated_at DESC";
+
+        // Map SCIM field names to database column names (without table alias for ORDER BY)
+        var fieldMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "id", "uuid" },
+            { "externalId", "external_id" },
+            { "name", "name" },
+            { "active", "active" },
+            { "status", "status" },
+            { "meta.created", "created_at" },
+            { "meta.lastModified", "updated_at" },
+            { "created", "created_at" },
+            { "updated", "updated_at" }
+        };
+
+        // Get database column name, fallback to sortBy if not found
+        var dbColumn = fieldMapping.TryGetValue(sortBy, out var mappedColumn) ? mappedColumn : $"p.{sortBy}";
+
+        // Determine sort direction
+        var isDescending = string.Equals(sortOrder, "descending", StringComparison.OrdinalIgnoreCase);
+        var direction = isDescending ? "DESC" : "ASC";
+
+        return $"{dbColumn} {direction}";
     }
 
     /// <summary>

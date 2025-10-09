@@ -66,10 +66,24 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
         string? filter = null, 
         CancellationToken cancellationToken = default)
     {
+        return await QueryAsync(startIndex, count, filter, null, null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Query notes with SCIM v2.0 filtering and sorting using Foundation approach
+    /// </summary>
+    public async Task<(IList<Note> Resources, int TotalCount)> QueryAsync(
+        int startIndex, 
+        int count, 
+        string? filter = null, 
+        string? sortBy = null,
+        string? sortOrder = null,
+        CancellationToken cancellationToken = default)
+    {
         try
         {
-            _logger.LogInformation("🔍 Getting notes with Foundation approach: startIndex={StartIndex}, count={Count}, filter={Filter}", 
-                startIndex, count, filter);
+            _logger.LogInformation("🔍 Getting notes with Foundation approach: startIndex={StartIndex}, count={Count}, filter={Filter}, sortBy={SortBy}, sortOrder={SortOrder}", 
+                startIndex, count, filter, sortBy, sortOrder);
 
             var page = CalculatePage(startIndex, count);
             var pageSize = count;
@@ -77,15 +91,16 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
         // Use Foundation's approach like Case Management
         // Pass allowed attributes to enable filtering
         var allowedAttributes = new HashSet<string> { 
-            "id", "externalId", "text", "active", "status", 
+            "id", "externalId", "name", "text", "active", "status", 
             "meta.created", "meta.lastModified" 
         };
         
-        // Pass attribute mapping for meta.created -> n.created_at
+        // Pass attribute mapping for meta.created -> n.created_at (with table alias for stored procedure)
         var attributeMapper = new Dictionary<string, string> {
             { "meta.created", "n.created_at" },
             { "meta.lastModified", "n.updated_at" },
             { "active", "n.active" },
+            { "name", "n.name" },
             { "text", "n.markdown" },
             { "status", "n.status" },
             { "id", "n.id" },
@@ -100,15 +115,23 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
             command.CommandType = CommandType.StoredProcedure;
             command.CommandText = "USP_notes_pquery";
 
+            // Build ORDER BY clause based on sorting parameters
+            var orderByClause = BuildOrderByClause(sortBy, sortOrder);
+            
             // Add stored procedure parameters
             command.Parameters.Add(Dbs.CreateParameter(command, "@page", page, DbType.Int32));
             command.Parameters.Add(Dbs.CreateParameter(command, "@page_size", pageSize, DbType.Int32));
             command.Parameters.Add(Dbs.CreateParameter(command, "@do_count", true, DbType.Boolean));
-            command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", "updated_at DESC", DbType.String));
+            command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", orderByClause, DbType.String));
+            
+            _logger.LogInformation("🔍 ORDER BY: {OrderBy}", orderByClause);
             
             // Add filter using Foundation's approach (like Case Management)
             if (filters != null)
+            {
+                _logger.LogInformation("🔍 FILTER SQL: {FilterSql}", filters);
                 command.Parameters.Add(Dbs.CreateParameter(command, "@__dangerouslySetPredicate", filters, DbType.String));
+            }
 
             var (notes, totalCount) = await ExecuteStoredProcedureWithCount((SqlCommand)command, cancellationToken);
 
@@ -122,6 +145,39 @@ public class NoteRepositoryStoredProcedure : INoteRepository, IResourceRepositor
         }
     }
 
+    /// <summary>
+    /// Builds ORDER BY clause based on sorting parameters
+    /// </summary>
+    private static string BuildOrderByClause(string? sortBy, string? sortOrder)
+    {
+        // Default sorting if no sortBy specified
+        if (string.IsNullOrWhiteSpace(sortBy))
+            return "updated_at DESC";
+
+        // Map SCIM field names to database column names (without table alias for ORDER BY)
+        var fieldMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "id", "id" },
+            { "externalId", "external_id" },
+            { "name", "name" },
+            { "text", "markdown" },
+            { "active", "active" },
+            { "status", "status" },
+            { "meta.created", "created_at" },
+            { "meta.lastModified", "updated_at" },
+            { "created", "created_at" },
+            { "updated", "updated_at" }
+        };
+
+        // Get database column name, fallback to sortBy if not found
+        var dbColumn = fieldMapping.TryGetValue(sortBy, out var mappedColumn) ? mappedColumn : $"n.{sortBy}";
+
+        // Determine sort direction
+        var isDescending = string.Equals(sortOrder, "descending", StringComparison.OrdinalIgnoreCase);
+        var direction = isDescending ? "DESC" : "ASC";
+
+        return $"{dbColumn} {direction}";
+    }
 
     public async Task<Guid> CreateNoteAsync(Note note, CancellationToken cancellationToken = default)
     {

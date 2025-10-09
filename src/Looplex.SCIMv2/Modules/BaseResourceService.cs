@@ -70,7 +70,7 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        var result = await _repository.QueryAsync(startIndex, count, filter, cancellationToken);
+        var result = await _repository.QueryAsync(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
         return new ListResponse<T> { Resources = result.Resources, TotalResults = result.TotalCount };
     }
 

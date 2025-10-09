@@ -90,6 +90,11 @@ public class MockUserRepository : IResourceRepository<User>
 
     public Task<(IList<User> Resources, int TotalCount)> QueryAsync(int startIndex, int count, string? filter, CancellationToken cancellationToken = default)
     {
+        return QueryAsync(startIndex, count, filter, null, null, cancellationToken);
+    }
+
+    public Task<(IList<User> Resources, int TotalCount)> QueryAsync(int startIndex, int count, string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
+    {
         var users = _users.AsQueryable();
         
         if (!string.IsNullOrEmpty(filter))
@@ -99,6 +104,43 @@ public class MockUserRepository : IResourceRepository<User>
                 users = users.Where(u => u.Active);
             else if (filter.Contains("active eq false"))
                 users = users.Where(u => !u.Active);
+        }
+
+        // Apply sorting if provided
+        if (!string.IsNullOrEmpty(sortBy))
+        {
+            var isDescending = string.Equals(sortOrder, "descending", StringComparison.OrdinalIgnoreCase);
+            
+            switch (sortBy.ToLowerInvariant())
+            {
+                case "id":
+                    users = isDescending ? users.OrderByDescending(u => u.Id) : users.OrderBy(u => u.Id);
+                    break;
+                case "username":
+                    users = isDescending ? users.OrderByDescending(u => u.UserName) : users.OrderBy(u => u.UserName);
+                    break;
+                case "displayname":
+                    users = isDescending ? users.OrderByDescending(u => u.DisplayName) : users.OrderBy(u => u.DisplayName);
+                    break;
+                case "active":
+                    users = isDescending ? users.OrderByDescending(u => u.Active) : users.OrderBy(u => u.Active);
+                    break;
+                case "meta.created":
+                    users = isDescending ? users.OrderByDescending(u => u.Meta != null ? u.Meta.Created : DateTime.MinValue) : users.OrderBy(u => u.Meta != null ? u.Meta.Created : DateTime.MinValue);
+                    break;
+                case "meta.lastmodified":
+                    users = isDescending ? users.OrderByDescending(u => u.Meta != null ? u.Meta.LastModified : DateTime.MinValue) : users.OrderBy(u => u.Meta != null ? u.Meta.LastModified : DateTime.MinValue);
+                    break;
+                default:
+                    // Default sorting by ID
+                    users = users.OrderBy(u => u.Id);
+                    break;
+            }
+        }
+        else
+        {
+            // Default sorting by ID
+            users = users.OrderBy(u => u.Id);
         }
 
         var totalCount = users.Count();

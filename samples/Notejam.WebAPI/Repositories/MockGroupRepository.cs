@@ -98,6 +98,11 @@ public class MockGroupRepository : IResourceRepository<Group>
 
     public Task<(IList<Group> Resources, int TotalCount)> QueryAsync(int startIndex, int count, string? filter, CancellationToken cancellationToken = default)
     {
+        return QueryAsync(startIndex, count, filter, null, null, cancellationToken);
+    }
+
+    public Task<(IList<Group> Resources, int TotalCount)> QueryAsync(int startIndex, int count, string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
+    {
         var groups = _groups.AsQueryable();
         
         if (!string.IsNullOrEmpty(filter))
@@ -109,6 +114,37 @@ public class MockGroupRepository : IResourceRepository<Group>
                 if (!string.IsNullOrEmpty(displayNameValue))
                     groups = groups.Where(g => g.DisplayName.Contains(displayNameValue, StringComparison.OrdinalIgnoreCase));
             }
+        }
+
+        // Apply sorting if provided
+        if (!string.IsNullOrEmpty(sortBy))
+        {
+            var isDescending = string.Equals(sortOrder, "descending", StringComparison.OrdinalIgnoreCase);
+            
+            switch (sortBy.ToLowerInvariant())
+            {
+                case "id":
+                    groups = isDescending ? groups.OrderByDescending(g => g.Id) : groups.OrderBy(g => g.Id);
+                    break;
+                case "displayname":
+                    groups = isDescending ? groups.OrderByDescending(g => g.DisplayName) : groups.OrderBy(g => g.DisplayName);
+                    break;
+                case "meta.created":
+                    groups = isDescending ? groups.OrderByDescending(g => g.Meta != null ? g.Meta.Created : DateTime.MinValue) : groups.OrderBy(g => g.Meta != null ? g.Meta.Created : DateTime.MinValue);
+                    break;
+                case "meta.lastmodified":
+                    groups = isDescending ? groups.OrderByDescending(g => g.Meta != null ? g.Meta.LastModified : DateTime.MinValue) : groups.OrderBy(g => g.Meta != null ? g.Meta.LastModified : DateTime.MinValue);
+                    break;
+                default:
+                    // Default sorting by ID
+                    groups = groups.OrderBy(g => g.Id);
+                    break;
+            }
+        }
+        else
+        {
+            // Default sorting by ID
+            groups = groups.OrderBy(g => g.Id);
         }
 
         var totalCount = groups.Count();

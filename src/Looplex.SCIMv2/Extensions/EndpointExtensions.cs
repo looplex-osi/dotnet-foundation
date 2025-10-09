@@ -55,6 +55,8 @@ namespace Looplex.SCIMv2.Extensions
                         var startIndex = int.TryParse(context.Request.Query["startIndex"], out var si) ? si : 1;
                         var count = int.TryParse(context.Request.Query["count"], out var c) ? c : 100;
                         var filter = context.Request.Query["filter"].ToString();
+                        var sortBy = context.Request.Query["sortBy"].ToString();
+                        var sortOrder = context.Request.Query["sortOrder"].ToString();
                         var attributes = context.Request.Query["attributes"].ToString();
 
                         // Check if collection is registered
@@ -71,7 +73,7 @@ namespace Looplex.SCIMv2.Extensions
                         try
                         {
                             // Use the SCIMv2 service to query resources
-                            var scimResponse = await scimService.QueryAsync(collectionName, startIndex, count, filter, null, null, CancellationToken.None);
+                            var scimResponse = await scimService.QueryAsync(collectionName, startIndex, count, filter, sortBy, sortOrder, CancellationToken.None);
                             
                             // Return the SCIMv2 response with proper formatting
                             context.Response.StatusCode = scimResponse.StatusCode;
@@ -547,7 +549,7 @@ namespace Looplex.SCIMv2.Extensions
                         bulk = new { supported = false, maxOperations = 0, maxPayloadSize = 0 },
                         filter = new { supported = true, maxResults = 200 },
                         changePassword = new { supported = true },
-                        sort = new { supported = false },
+                        sort = new { supported = true },
                         etag = new { supported = true },
                         authenticationSchemes = new[]
                         {

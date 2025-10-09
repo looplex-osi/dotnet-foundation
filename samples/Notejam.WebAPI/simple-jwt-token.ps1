@@ -52,9 +52,9 @@ try {
 }
 
 # Teste 2: ServiceProviderConfig (protegido)
-Write-Host "2. Testando /scim/v2/ServiceProviderConfig (protegido)..." -ForegroundColor Green
+Write-Host "2. Testando /ServiceProviderConfig (protegido)..." -ForegroundColor Green
 try {
-    $response = Invoke-RestMethod -Uri "http://localhost:7065/scim/v2/ServiceProviderConfig" -Headers $headers
+    $response = Invoke-RestMethod -Uri "http://localhost:7065/ServiceProviderConfig" -Headers $headers
     Write-Host "OK - ServiceProviderConfig funcionando" -ForegroundColor Green
 } catch {
     Write-Host "ERRO: $($_.Exception.Message)" -ForegroundColor Red

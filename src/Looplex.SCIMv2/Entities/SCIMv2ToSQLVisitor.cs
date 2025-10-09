@@ -12,9 +12,9 @@ public class SCIMv2ToSQLVisitor : ScimFilterBaseVisitor<string>
   
   public override string VisitOperatorExp(ScimFilterParser.OperatorExpContext context)
   {
-    var attr = context.attrPath().GetText();
-    var op = context.COMPAREOPERATOR().GetText().ToLower();
-    var value = context.VALUE().GetText();
+    var attr = context.attrPath()?.GetText() ?? throw new InvalidOperationException("Attribute path is required");
+    var op = context.COMPAREOPERATOR()?.GetText()?.ToLower() ?? throw new InvalidOperationException("Comparison operator is required");
+    var value = context.VALUE()?.GetText() ?? throw new InvalidOperationException("Value is required");
 
     string sqlOp = op switch
     {
@@ -79,7 +79,7 @@ public class SCIMv2ToSQLVisitor : ScimFilterBaseVisitor<string>
 
   public override string VisitValPathExp(ScimFilterParser.ValPathExpContext context)
   {
-    var attr = context.attrPath().GetText();
+    var attr = context.attrPath()?.GetText() ?? throw new InvalidOperationException("Attribute path is required");
     var condition = this.Visit(context.valPathFilter());
     return $"EXISTS (SELECT 1 FROM {attr} x WHERE {condition})";
   }

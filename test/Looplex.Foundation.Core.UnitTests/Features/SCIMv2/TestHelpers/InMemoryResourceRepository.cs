@@ -108,6 +108,17 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.TestHelpers
             string? filter = null, 
             CancellationToken cancellationToken = default)
         {
+            return QueryAsync(startIndex, count, filter, null, null, cancellationToken);
+        }
+
+        public Task<(IList<T> Resources, int TotalCount)> QueryAsync(
+            int startIndex, 
+            int count, 
+            string? filter = null, 
+            string? sortBy = null,
+            string? sortOrder = null,
+            CancellationToken cancellationToken = default)
+        {
             lock (_lock)
             {
                 var query = _resources.AsQueryable();
@@ -119,6 +130,35 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.TestHelpers
                     query = query.Where(r => 
                         r.Id.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
                         (r.Meta != null && r.Meta.ResourceType != null && r.Meta.ResourceType.Contains(filter, StringComparison.OrdinalIgnoreCase)));
+                }
+
+                // Apply sorting if provided
+                if (!string.IsNullOrEmpty(sortBy))
+                {
+                    var isDescending = string.Equals(sortOrder, "descending", StringComparison.OrdinalIgnoreCase);
+                    
+                    // Simple sorting implementation for testing
+                    switch (sortBy.ToLowerInvariant())
+                    {
+                        case "id":
+                            query = isDescending ? query.OrderByDescending(r => r.Id) : query.OrderBy(r => r.Id);
+                            break;
+                        case "meta.created":
+                            query = isDescending ? query.OrderByDescending(r => r.Meta != null ? r.Meta.Created : DateTime.MinValue) : query.OrderBy(r => r.Meta != null ? r.Meta.Created : DateTime.MinValue);
+                            break;
+                        case "meta.lastmodified":
+                            query = isDescending ? query.OrderByDescending(r => r.Meta != null ? r.Meta.LastModified : DateTime.MinValue) : query.OrderBy(r => r.Meta != null ? r.Meta.LastModified : DateTime.MinValue);
+                            break;
+                        default:
+                            // Default sorting by ID
+                            query = query.OrderBy(r => r.Id);
+                            break;
+                    }
+                }
+                else
+                {
+                    // Default sorting by ID
+                    query = query.OrderBy(r => r.Id);
                 }
 
                 var totalCount = query.Count();
