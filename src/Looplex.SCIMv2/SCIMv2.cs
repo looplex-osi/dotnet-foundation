@@ -1866,7 +1866,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
             // Convert resources to JsonObject for processing using ActorJsonSerializer options
             var jsonResources = resourceList.Select(resource => 
             {
-                var json = JsonSerializer.SerializeToNode(resource, resource.GetType(), ActorJsonSerializer.DefaultOptions);
+                var json = JsonSerializer.SerializeToNode(resource, resource.GetType(), Looplex.Foundation.Serialization.JsonSerializer.DefaultOptions);
                 return json as JsonObject ?? new JsonObject();
             }).ToList();
 
@@ -1991,7 +1991,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         if (_httpContextAccessor?.HttpContext != null)
         {
             // Convert resource to JsonObject for processing using ActorJsonSerializer options
-            var jsonResource = JsonSerializer.SerializeToNode(resource, resource.GetType(), ActorJsonSerializer.DefaultOptions) as JsonObject ?? new JsonObject();
+            var jsonResource = JsonSerializer.SerializeToNode(resource, resource.GetType(), Looplex.Foundation.Serialization.JsonSerializer.DefaultOptions) as JsonObject ?? new JsonObject();
             
             // Apply attribute processing
             var processedResource = new[] { jsonResource }.ProcessAttributes(_httpContextAccessor.HttpContext).FirstOrDefault();

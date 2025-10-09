@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Xml.Serialization;
 
 namespace Looplex.Foundation.Serialization
@@ -51,15 +49,5 @@ namespace Looplex.Foundation.Serialization
             
             return result;
         }
-
-        /// <summary>
-        /// Gets the content type for XML
-        /// </summary>
-        public static string ContentType => "application/xml";
-
-        /// <summary>
-        /// Gets the file extension for XML
-        /// </summary>
-        public static string FileExtension => ".xml";
     }
 }
