@@ -48,7 +48,7 @@ public class ClientService
   /// Serialized as "client_secret" in JSON responses.
   /// </summary>
   [JsonPropertyName("client_secret")] public string? ClientSecret { get; set; }
-  
+
   /// <summary>
   /// Gets or sets the digest hash of the client secret for secure storage and verification.
   /// This property is excluded from JSON serialization for security purposes.
