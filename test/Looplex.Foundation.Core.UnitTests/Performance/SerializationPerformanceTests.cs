@@ -61,8 +61,8 @@ public class SerializationPerformanceTests
         // Act
         for (int i = 0; i < iterations; i++)
         {
-            var xml = Foundation.Serialization.FoundationXmlSerializer.Serialize(_testActor, Foundation.Serialization.FoundationXmlSerializer.DefaultNamespaces);
-            var deserialized = Foundation.Serialization.FoundationXmlSerializer.Deserialize<TestActor>(xml, Foundation.Serialization.FoundationXmlSerializer.DefaultNamespaces);
+            var xml = Foundation.Serialization.FoundationXmlSerializer.Serialize(_testActor);
+            var deserialized = Foundation.Serialization.FoundationXmlSerializer.Deserialize<TestActor>(xml);
         }
 
         stopwatch.Stop();

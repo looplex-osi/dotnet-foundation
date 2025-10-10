@@ -21,7 +21,9 @@
     <PackageReference Include="NSubstitute" Version="5.3.0" />
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
+    <PackageReference Include="Moq" Version="4.20.70" />
+    <PackageReference Include="System.Data.Common" Version="4.3.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,6 +43,9 @@
     <ProjectReference Include="..\Application\Application.csproj" />
     <ProjectReference Include="..\Domain\Domain.csproj" />
     <ProjectReference Include="..\Infra\Infra.csproj" />
+    <ProjectReference Include="..\..\..\src\Looplex.Foundation\Looplex.Foundation.csproj" />
+    <ProjectReference Include="..\..\..\src\Looplex.SCIMv2\Looplex.SCIMv2.csproj" />
+    <ProjectReference Include="..\..\Notejam.WebAPI\Notejam.WebAPI.csproj" />
   </ItemGroup>
 
 </Project>

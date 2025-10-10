@@ -10,12 +10,12 @@ namespace Looplex.Samples.Tests.Integration
     /// <summary>
     /// Testes específicos para mapeamento JSON → Entidade
     /// </summary>
-    public class JSONMappingTests : IClassFixture<WebApplicationFactory<Program>>
+    public class JSONMappingTests : IClassFixture<WebApplicationFactory<Looplex.Samples.WebAPI.TestProgram>>
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly WebApplicationFactory<Looplex.Samples.WebAPI.TestProgram> _factory;
         private readonly ITestOutputHelper _output;
 
-        public JSONMappingTests(WebApplicationFactory<Program> factory, ITestOutputHelper output)
+        public JSONMappingTests(WebApplicationFactory<Looplex.Samples.WebAPI.TestProgram> factory, ITestOutputHelper output)
         {
             _factory = factory;
             _output = output;

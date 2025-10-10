@@ -12,33 +12,25 @@ namespace Looplex.Foundation.Serialization
     /// </summary>
     public static class FoundationXmlSerializer
     {
-        /// <summary>
-        /// Default XML namespaces for serialization
-        /// </summary>
-        public static readonly XmlSerializerNamespaces DefaultNamespaces = new();
 
-        static FoundationXmlSerializer()
-        {
-            DefaultNamespaces.Add("", "");
-        }
 
         /// <summary>
         /// Serializes any object to XML
         /// </summary>
-        public static string Serialize(Actor actor, XmlSerializerNamespaces? namespaces = null)
+        public static string Serialize(Actor actor)
         {
             if (actor == null) throw new ArgumentNullException(nameof(actor));
             
             var serializer = new XmlSerializer(actor.GetType());
             using var writer = new StringWriter();
-            serializer.Serialize(writer, actor, namespaces ?? DefaultNamespaces);
+            serializer.Serialize(writer, actor);
             return writer.ToString();
         }
 
         /// <summary>
         /// Deserializes XML to any object
         /// </summary>
-        public static T Deserialize<T>(string xml, XmlSerializerNamespaces? namespaces = null) where T : Actor
+        public static T Deserialize<T>(string xml) where T : Actor
         {
             if (string.IsNullOrWhiteSpace(xml))
                 throw new ArgumentException("XML string cannot be null or empty.", nameof(xml));

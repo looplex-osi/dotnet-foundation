@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Threading;
 using Looplex.SCIMv2.Entities;
+using Microsoft.AspNetCore.Http;
 
 namespace Looplex.SCIMv2
 {
@@ -14,24 +15,45 @@ namespace Looplex.SCIMv2
     /// </summary>
     public static class ServiceCollectionExtensions
     {
-        /// <summary>
-        /// Adds SCIMv2 services with automatic schema discovery.
-        /// This method eliminates the need for manual schema configuration.
-        /// </summary>
-        /// <param name="services">Service collection</param>
-        /// <param name="assembly">Assembly to scan for IResource types (optional)</param>
-        /// <returns>Service collection for chaining</returns>
-        public static IServiceCollection AddSCIMv2WithAutoDiscovery(this IServiceCollection services, Assembly? assembly = null)
+    /// <summary>
+    /// Adds SCIMv2 service to the dependency injection container
+    /// </summary>
+    /// <param name="services">Service collection</param>
+    /// <returns>Service collection for chaining</returns>
+    public static IServiceCollection AddSCIMv2Service(this IServiceCollection services)
+    {
+        if (services == null)
+            throw new ArgumentNullException(nameof(services));
+
+        services.AddSingleton<ISCIMv2, SCIMv2>();
+        services.AddSingleton<IJsonSchemaProvider>(sp => sp.GetRequiredService<SCIMv2>());
+        return services;
+    }
+
+    /// <summary>
+    /// Adds SCIMv2 services with automatic discovery and configuration.
+    /// </summary>
+    /// <param name="services">Service collection</param>
+    /// <returns>Service collection for chaining</returns>
+    public static IServiceCollection AddSCIMv2WithAutoDiscovery(this IServiceCollection services)
+    {
+        if (services == null)
+            throw new ArgumentNullException(nameof(services));
+
+        // Register core SCIMv2 services with dependency injection
+        services.AddSingleton<ISCIMv2>(sp => 
         {
-            // Register auto-discovery service
-            services.AddSingleton<ISchemaAutoDiscovery, SchemaAutoDiscovery>();
-            
-            // Register SCIMv2 core services
-            services.AddSingleton<ISCIMv2, SCIMv2>();
-            services.AddSingleton<ISCIMv2Validation, SCIMv2>();
-            
-            return services;
-        }
+            var serviceNameProvider = sp.GetService<IServiceNameProvider>();
+            var httpContextAccessor = sp.GetService<IHttpContextAccessor>();
+            return new SCIMv2(serviceNameProvider, httpContextAccessor);
+        });
+        services.AddSingleton<IJsonSchemaProvider>(sp => sp.GetRequiredService<SCIMv2>());
+        
+        // Register default schemas
+        services.AddSingleton<IHostedService, SCIMv2DefaultSchemaService>();
+        
+        return services;
+    }
         
         /// <summary>
         /// Adds SCIMv2 services with automatic configuration for specific resource types.
@@ -63,7 +85,7 @@ namespace Looplex.SCIMv2
             services.AddSingleton<IHostedService, SCIMv2AutoConfigurationService>(sp =>
             {
                 var scimService = sp.GetRequiredService<ISCIMv2>();
-                return new SCIMv2AutoConfigurationService(scimService, resourceTypes);
+                return new SCIMv2AutoConfigurationService(scimService, resourceTypes, sp);
             });
             
             return services;
@@ -92,20 +114,26 @@ namespace Looplex.SCIMv2
     public class SCIMv2AutoConfigurationService<T> : IHostedService where T : IResource
     {
         private readonly ISCIMv2 _scimService;
+        private readonly IServiceProvider _serviceProvider;
         
-        public SCIMv2AutoConfigurationService(ISCIMv2 scimService)
+        public SCIMv2AutoConfigurationService(ISCIMv2 scimService, IServiceProvider serviceProvider)
         {
             _scimService = scimService;
+            _serviceProvider = serviceProvider;
         }
         
         public Task StartAsync(CancellationToken cancellationToken)
         {
             if (_scimService is SCIMv2 scimv2)
             {
-                // Auto-configure using SchemaAutoDiscovery
-                var autoDiscovery = new SchemaAutoDiscovery();
+                // Get ServiceNameProvider from DI container
+                var serviceNameProvider = _serviceProvider.GetService<IServiceNameProvider>();
+                var httpContextAccessor = _serviceProvider.GetService<IHttpContextAccessor>();
+                
+                
+                // Create SchemaAutoDiscovery with injected dependencies
+                var autoDiscovery = new SchemaAutoDiscovery(serviceNameProvider, null, httpContextAccessor);
                 autoDiscovery.AutoConfigureResourceType<T>();
-                Console.WriteLine($"✅ Auto-configured SCIMv2 for {typeof(T).Name}");
             }
             
             return Task.CompletedTask;
@@ -124,19 +152,26 @@ namespace Looplex.SCIMv2
     {
         private readonly ISCIMv2 _scimService;
         private readonly Type[] _resourceTypes;
+        private readonly IServiceProvider _serviceProvider;
         
-        public SCIMv2AutoConfigurationService(ISCIMv2 scimService, Type[] resourceTypes)
+        public SCIMv2AutoConfigurationService(ISCIMv2 scimService, Type[] resourceTypes, IServiceProvider serviceProvider)
         {
             _scimService = scimService;
             _resourceTypes = resourceTypes;
+            _serviceProvider = serviceProvider;
         }
         
         public Task StartAsync(CancellationToken cancellationToken)
         {
             if (_scimService is SCIMv2 scimv2)
             {
-                // Create and register schemas for each resource type
-                var autoDiscovery = new SchemaAutoDiscovery();
+                // Get dependencies from service provider
+                var serviceNameProvider = _serviceProvider.GetService<IServiceNameProvider>();
+                var httpContextAccessor = _serviceProvider.GetService<IHttpContextAccessor>();
+                
+                
+                // Create and register schemas for each resource type with injected dependencies
+                var autoDiscovery = new SchemaAutoDiscovery(serviceNameProvider, null, httpContextAccessor);
                 foreach (var resourceType in _resourceTypes)
                 {
                     if (typeof(IResource).IsAssignableFrom(resourceType))
@@ -152,21 +187,46 @@ namespace Looplex.SCIMv2
                     }
                 }
                 
-                // Auto-configure using SchemaAutoDiscovery
-                foreach (var resourceType in _resourceTypes)
-                {
-                    if (typeof(IResource).IsAssignableFrom(resourceType))
-                    {
-                        // Use reflection to call AutoConfigureResourceType<T>
-                        var method = typeof(SchemaAutoDiscovery).GetMethod(nameof(SchemaAutoDiscovery.AutoConfigureResourceType));
-                        var genericMethod = method?.MakeGenericMethod(resourceType);
-                        genericMethod?.Invoke(autoDiscovery, null);
-                    }
-                }
-                Console.WriteLine($"✅ Auto-configured SCIMv2 for {_resourceTypes.Length} resource types");
+                // SchemaAutoDiscovery is already handled by SCIMv2AutoConfigurationService<T> for each resource type
+                // No need to duplicate the work here
             }
             
             return Task.CompletedTask;
+        }
+        
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Background service for registering default SCIMv2 schemas.
+    /// </summary>
+    public class SCIMv2DefaultSchemaService : IHostedService
+    {
+        private readonly ISCIMv2 _scimService;
+        
+        public SCIMv2DefaultSchemaService(ISCIMv2 scimService)
+        {
+            _scimService = scimService;
+        }
+        
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            if (_scimService is SCIMv2 scimv2)
+            {
+                // Register default schemas manually
+                RegisterDefaultSchemas(scimv2);
+            }
+            
+            return Task.CompletedTask;
+        }
+        
+        private void RegisterDefaultSchemas(SCIMv2 scimv2)
+        {
+            // No default schemas needed - auto-discovery will handle User and Group
+            // This prevents duplication when User and Group are registered via auto-discovery
         }
         
         public Task StopAsync(CancellationToken cancellationToken)

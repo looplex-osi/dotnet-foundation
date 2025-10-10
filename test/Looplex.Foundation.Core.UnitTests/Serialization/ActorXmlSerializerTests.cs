@@ -19,7 +19,7 @@ public class ActorFoundationXmlSerializerTests
   public void XmlSerialize_ShouldConvertActorToXmlString()
   {
     // Act
-    string xml = FoundationXmlSerializer.Serialize(_actor, FoundationXmlSerializer.DefaultNamespaces);
+    string xml = FoundationXmlSerializer.Serialize(_actor);
 
     // Assert
     Assert.IsNotNull(xml);
@@ -30,10 +30,10 @@ public class ActorFoundationXmlSerializerTests
   public void XmlDeserialize_ShouldConvertXmlStringToActor()
   {
     // Arrange
-    string xml = FoundationXmlSerializer.Serialize(_actor, FoundationXmlSerializer.DefaultNamespaces);
+    string xml = FoundationXmlSerializer.Serialize(_actor);
 
     // Act
-    TestActor? deserializedActor = FoundationXmlSerializer.Deserialize<TestActor>(xml, FoundationXmlSerializer.DefaultNamespaces);
+    TestActor? deserializedActor = FoundationXmlSerializer.Deserialize<TestActor>(xml);
 
     // Assert
     Assert.IsNotNull(deserializedActor);
@@ -45,7 +45,7 @@ public class ActorFoundationXmlSerializerTests
   public void XmlDeserialize_ShouldThrowExceptionForEmptyXml()
   {
     // Act
-    FoundationXmlSerializer.Deserialize<TestActor>("", FoundationXmlSerializer.DefaultNamespaces);
+    FoundationXmlSerializer.Deserialize<TestActor>("");
   }
 
   [TestMethod]
@@ -54,7 +54,7 @@ public class ActorFoundationXmlSerializerTests
   {
     // Act
     Actor? nullActor = null;
-    FoundationXmlSerializer.Serialize(nullActor, FoundationXmlSerializer.DefaultNamespaces);
+    FoundationXmlSerializer.Serialize(nullActor);
   }
 
   public class TestActor : Actor

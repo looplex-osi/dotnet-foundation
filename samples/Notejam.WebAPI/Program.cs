@@ -140,7 +140,7 @@ public static class Program
     // Configure database settings for SQL Server database
     builder.Configuration["Database:UseProductionDatabase"] = "true";
     
-    // Register ServiceNameProvider for custom schema URIs
+    // Register ServiceNameProvider for custom schema URIs FIRST
     builder.Services.AddSingleton<IServiceNameProvider>(new ServiceNameProvider("notejam"));
     
     // Register SCIMv2 with automatic schema discovery - ZERO CONFIGURATION!
@@ -345,6 +345,11 @@ public static class Program
         retryAttempt =>
           TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))); // Retry 3 times with exponential backoff
   }
+}
 
-
+// Non-static Program class for integration testing
+public class TestProgram
+{
+    // This class is needed for WebApplicationFactory in integration tests
+    // The actual startup logic is in the static Program class above
 }

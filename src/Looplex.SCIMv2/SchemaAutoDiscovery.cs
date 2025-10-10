@@ -65,14 +65,26 @@ namespace Looplex.SCIMv2
         /// </summary>
         /// <param name="resourceType">Resource type implementing IResource</param>
         /// <returns>Schema definition for the resource type</returns>
-        public SchemaDefinition CreateSchemaFromType(Type resourceType)
+        public SchemaDefinition CreateSchemaFromType(Type resourceType, IServiceNameProvider? serviceNameProvider = null)
         {
             if (!typeof(IResource).IsAssignableFrom(resourceType))
                 throw new ArgumentException($"Type {resourceType.Name} does not implement IResource", nameof(resourceType));
                 
-            var serviceName = _serviceNameProvider?.GetServiceName() ?? "looplex";
-            var applicationName = _applicationNameProvider?.GetApplicationName() ?? "core";
-            var schemaId = SCIMv2Conventions.GenerateSchemaUri(resourceType.Name, serviceName, applicationName);
+            // Use provided serviceNameProvider or fallback to instance field
+            var provider = serviceNameProvider ?? _serviceNameProvider;
+            var serviceName = provider?.GetServiceName() ?? "looplex";
+            
+            // Use standard SCIMv2 URIs for User and Group, custom URIs for other resources
+            string schemaId;
+            if (resourceType.Name == "User" || resourceType.Name == "Group")
+            {
+                schemaId = $"urn:ietf:params:scim:schemas:core:2.0:{resourceType.Name}";
+            }
+            else
+            {
+                // Use "looplex" as service and serviceName as application for proper URI generation
+                schemaId = SCIMv2Conventions.GenerateSchemaUri(resourceType.Name, "looplex", serviceName);
+            }
             
             var attributes = ExtractAttributesFromType(resourceType);
             
@@ -86,7 +98,7 @@ namespace Looplex.SCIMv2
                 Meta = new SchemaMeta
                 {
                     ResourceType = "Schema",
-                    Location = $"{GetBaseUrl()}/Schemas/{schemaId}"
+                    Location = $"/Schemas/{schemaId}"
                 }
             };
         }
@@ -124,6 +136,16 @@ namespace Looplex.SCIMv2
             // Auto-configure attribute mappings
             var attributeMappings = ExtractAttributeMappings(resourceType);
             SCIMv2.ConfigureMapping(resourceName, attributeMappings);
+        }
+        
+        /// <summary>
+        /// Creates a schema definition from a specific Type (interface implementation).
+        /// </summary>
+        /// <param name="resourceType">Resource type implementing IResource</param>
+        /// <returns>Schema definition for the resource type</returns>
+        public SchemaDefinition CreateSchemaFromType(Type resourceType)
+        {
+            return CreateSchemaFromType(resourceType, null);
         }
         
         /// <summary>
