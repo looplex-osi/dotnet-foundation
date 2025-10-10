@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Looplex.SCIMv2.Entities;
 using Looplex.SCIMv2.Modules;
-using Looplex.SCIMv2.Serialization;
+using Looplex.Foundation.Serialization;
 using Looplex.Samples.Domain.Entities;
 using Looplex.Samples.Application;
 
@@ -56,7 +56,7 @@ public class SCIMv2NoteService : BaseResourceService<Note>
             _logger.LogInformation("🔄 Deserializing JSON to Note...");
             
             // Deserialize JSON to Note object using Foundation helper
-            var note = ActorJsonSerializer.DeserializeResource<Note>(json);
+            var note = FoundationJsonSerializer.Deserialize<Note>(json, FoundationJsonSerializer.DefaultOptions);
             
             if (note == null)
             {
@@ -103,7 +103,7 @@ public class SCIMv2NoteService : BaseResourceService<Note>
             _logger.LogInformation("🔄 Deserializing JSON to Note...");
             
             // Deserialize JSON to Note object using Foundation helper
-            var note = ActorJsonSerializer.DeserializeResource<Note>(json);
+            var note = FoundationJsonSerializer.Deserialize<Note>(json, FoundationJsonSerializer.DefaultOptions);
             
             if (note == null)
             {
@@ -211,7 +211,7 @@ public class SCIMv2NoteService : BaseResourceService<Note>
         try
         {
             _logger.LogInformation("🔄 Deserializing JSON to Note...");
-            var note = ActorJsonSerializer.DeserializeResource<Note>(json);
+            var note = FoundationJsonSerializer.Deserialize<Note>(json, FoundationJsonSerializer.DefaultOptions);
 
             if (note == null)
             {

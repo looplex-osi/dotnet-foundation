@@ -12,7 +12,6 @@ using Looplex.SCIMv2.Modules;
 using Looplex.SCIMv2.Extensions;
 using Looplex.Protocols.HTTP.Extensions;
 using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2.Serialization;
 
 using Looplex.Protocols.HTTP.Middlewares;
 

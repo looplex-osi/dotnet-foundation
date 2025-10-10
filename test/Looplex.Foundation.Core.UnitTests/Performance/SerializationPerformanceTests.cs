@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Looplex.Foundation.Entities;
 using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2.Serialization;
+using Looplex.Foundation.Serialization;
 
 namespace Looplex.Foundation.Core.UnitTests.Performance;
 

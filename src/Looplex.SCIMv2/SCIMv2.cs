@@ -9,7 +9,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
 using Looplex.SCIMv2.Modules;
-using Looplex.SCIMv2.Serialization;
 using Looplex.Foundation.Serialization;
 using Looplex.OpenForExtension.Abstractions.Contexts;
 using Looplex.SCIMv2.Antlr;
@@ -46,7 +45,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     }
     
     // Serialization is now centralized in Looplex.Foundation.Serialization
-    // All serialization operations use SCIMv2Serializer for consistency
+    // All serialization operations use ActorJsonSerializer for consistency
 
     
     // Hybrid Configuration System - Static configuration storage
@@ -987,7 +986,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
         {
             if (_schemas.TryGetValue(schemaId, out var schema))
             {
-                result.Add(SCIMv2Serializer.SerializeSchema(schema));
+                result.Add(FoundationJsonSerializer.Serialize(schema, FoundationJsonSerializer.DefaultOptions));
             }
         }
         
@@ -998,7 +997,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
     {
         if (_schemas.TryGetValue(schemaId, out var schema))
         {
-            return Task.FromResult(SCIMv2Serializer.SerializeSchema(schema));
+            return Task.FromResult(FoundationJsonSerializer.Serialize(schema, FoundationJsonSerializer.DefaultOptions));
         }
         
         return Task.FromResult(string.Empty);
