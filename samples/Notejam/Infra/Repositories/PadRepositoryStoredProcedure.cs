@@ -50,6 +50,8 @@ public class PadRepositoryStoredProcedure : BaseStoredProcedureRepository<Pad>, 
 
     public async Task<List<Pad>> GetPadsAsync(int page, int pageSize, CancellationToken cancellationToken = default)
     {
+        if (page < 1) throw new ArgumentOutOfRangeException(nameof(page));
+        if (pageSize < 1) throw new ArgumentOutOfRangeException(nameof(pageSize));
         var startIndex = (page - 1) * pageSize + 1;
         var (pads, _) = await QueryAsync(startIndex, pageSize, null, cancellationToken);
         return pads.ToList();
@@ -57,6 +59,8 @@ public class PadRepositoryStoredProcedure : BaseStoredProcedureRepository<Pad>, 
 
     public async Task<List<Pad>> GetPadsAsync(string? filter, int page, int pageSize, CancellationToken cancellationToken = default)
     {
+        if (page < 1) throw new ArgumentOutOfRangeException(nameof(page));
+        if (pageSize < 1) throw new ArgumentOutOfRangeException(nameof(pageSize));
         var startIndex = (page - 1) * pageSize + 1;
         var (pads, _) = await QueryAsync(startIndex, pageSize, filter, cancellationToken);
         return pads.ToList();
@@ -65,7 +69,9 @@ public class PadRepositoryStoredProcedure : BaseStoredProcedureRepository<Pad>, 
     public async Task<Guid> CreatePadAsync(Pad pad, CancellationToken cancellationToken = default)
     {
         var result = await CreateAsync(pad, cancellationToken);
-        return Guid.Parse(result.Id);
+        if (!Guid.TryParse(result.Id, out var guid))
+            throw new InvalidOperationException($"Invalid ID returned from CreateAsync: {result.Id}");
+        return guid;
     }
 
     public async Task<int> UpdatePadAsync(Guid id, Pad pad, CancellationToken cancellationToken = default)

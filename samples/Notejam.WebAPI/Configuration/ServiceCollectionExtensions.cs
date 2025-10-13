@@ -3,7 +3,7 @@ using Azure.Security.KeyVault.Secrets;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Polly;
-using Polly.Extensions.Http;
+// using Polly.Extensions.Http; // Removed - using built-in .NET 8 HTTP resilience
 
 using Looplex.Foundation.Adapters;
 using Looplex.Foundation.Helpers;
@@ -37,12 +37,12 @@ public static class ServiceCollectionExtensions
     #region HTTP Client and Health Checks Configuration
     
     /// <summary>
-    /// Configures HTTP clients with retry policies and health checks.
+    /// Configures HTTP clients with health checks.
+    /// Note: Using .NET 8 built-in HTTP resilience instead of Polly extensions.
     /// </summary>
     public static IServiceCollection ConfigureHttpClients(this IServiceCollection services)
     {
-        services.AddHttpClient("Default")
-            .AddPolicyHandler(GetRetryPolicy());
+        services.AddHttpClient("Default");
 
         services.AddTransient(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Default"));
 
@@ -280,19 +280,10 @@ public static class ServiceCollectionExtensions
     
     #endregion
 
-    #region HTTP Client Retry Policy Configuration
+    #region HTTP Client Configuration
     
-    /// <summary>
-    /// Creates HTTP retry policy for transient error handling.
-    /// </summary>
-    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError() // Handle transient errors (5xx, 408, etc.)
-            .WaitAndRetryAsync(3,
-                retryAttempt =>
-                    TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))); // Retry 3 times with exponential backoff
-    }
+    // Note: HTTP resilience is now handled by .NET 8 built-in features
+    // instead of Polly extensions for better compatibility with the framework.
     
     #endregion
 }

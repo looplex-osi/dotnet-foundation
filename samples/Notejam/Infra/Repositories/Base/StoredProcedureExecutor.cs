@@ -31,11 +31,17 @@ public class StoredProcedureExecutor : IStoredProcedureExecutor
     {
         await using var dbCommand = await _connections.CommandConnection();
         await using var command = dbCommand.CreateCommand();
+        
+        if (dbCommand.State != ConnectionState.Open)
+        {
+            await dbCommand.OpenAsync(cancellationToken);
+        }
 
         command.CommandType = CommandType.StoredProcedure;
         command.CommandText = procedureName;
 
         var page = CalculatePage(queryParams.StartIndex, queryParams.Count);
+        var pageSize = queryParams.Count > 0 ? queryParams.Count : 10;
         var orderByClause = BuildOrderByClause(queryParams.SortBy, queryParams.SortOrder, queryParams.Mapping);
         var mapping = queryParams.Mapping;
         var attributeMapper = ((dynamic)mapping).AttributeMapper;
@@ -56,7 +62,7 @@ public class StoredProcedureExecutor : IStoredProcedureExecutor
         }
 
         command.Parameters.Add(Dbs.CreateParameter(command, "@page", page, DbType.Int32));
-        command.Parameters.Add(Dbs.CreateParameter(command, "@page_size", queryParams.Count, DbType.Int32));
+        command.Parameters.Add(Dbs.CreateParameter(command, "@page_size", pageSize, DbType.Int32));
         command.Parameters.Add(Dbs.CreateParameter(command, "@do_count", true, DbType.Boolean));
         command.Parameters.Add(Dbs.CreateParameter(command, "@order_by", orderByClause, DbType.String));
 
@@ -76,6 +82,11 @@ public class StoredProcedureExecutor : IStoredProcedureExecutor
     {
         await using var dbCommand = await _connections.CommandConnection();
         await using var command = dbCommand.CreateCommand();
+        
+        if (dbCommand.State != ConnectionState.Open)
+        {
+            await dbCommand.OpenAsync(cancellationToken);
+        }
 
         command.CommandType = CommandType.StoredProcedure;
         command.CommandText = procedureName;
@@ -101,6 +112,11 @@ public class StoredProcedureExecutor : IStoredProcedureExecutor
     {
         await using var dbCommand = await _connections.CommandConnection();
         await using var command = dbCommand.CreateCommand();
+        
+        if (dbCommand.State != ConnectionState.Open)
+        {
+            await dbCommand.OpenAsync(cancellationToken);
+        }
 
         command.CommandType = CommandType.StoredProcedure;
         command.CommandText = procedureName;
@@ -120,6 +136,11 @@ public class StoredProcedureExecutor : IStoredProcedureExecutor
     {
         await using var dbCommand = await _connections.CommandConnection();
         await using var command = dbCommand.CreateCommand();
+        
+        if (dbCommand.State != ConnectionState.Open)
+        {
+            await dbCommand.OpenAsync(cancellationToken);
+        }
 
         command.CommandType = CommandType.StoredProcedure;
         command.CommandText = procedureName;
@@ -166,10 +187,9 @@ public class StoredProcedureExecutor : IStoredProcedureExecutor
         if (string.IsNullOrWhiteSpace(sortBy))
             return dynamicMapping.DefaultSortField;
 
-        string mappedColumn;
-        var dbColumn = dynamicMapping.SortFieldMapping.TryGetValue(sortBy, out mappedColumn) 
-            ? mappedColumn 
-            : $"{dynamicMapping.TableAlias}.{sortBy}";
+        if (!dynamicMapping.SortFieldMapping.TryGetValue(sortBy, out string mappedColumn))
+            throw new ArgumentException($"Invalid sortBy field: {sortBy}", nameof(sortBy));
+        var dbColumn = mappedColumn;
 
         var isDescending = string.Equals(sortOrder, "descending", StringComparison.OrdinalIgnoreCase);
         var direction = isDescending ? "DESC" : "ASC";
@@ -191,7 +211,9 @@ public class StoredProcedureExecutor : IStoredProcedureExecutor
 
     private static int CalculatePage(int startIndex, int count)
     {
-        return (int)Math.Ceiling((double)startIndex / count);
+        var safeCount = count > 0 ? count : 10;
+        var safeStart = startIndex > 0 ? startIndex : 1;
+        return ((safeStart - 1) / safeCount) + 1;
     }
 
     private static DbType GetDbType(object value)
