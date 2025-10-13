@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Looplex.Foundation.Ports;
-using Looplex.Samples.Application;
+using Looplex.Samples.Application.Abstraction;
 using Looplex.Samples.Domain.Entities;
 using Looplex.Samples.Infra.Repositories;
 using Looplex.Samples.Infra.Repositories.Base;

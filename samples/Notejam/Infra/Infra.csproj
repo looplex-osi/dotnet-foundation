@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Application\Application.csproj"/>
+    <ProjectReference Include="..\Application.Abstraction\Application.Abstraction.csproj"/>
     <ProjectReference Include="..\..\..\src\Looplex.Foundation\Looplex.Foundation.csproj"/>
     <ProjectReference Include="..\..\..\src\Looplex.SCIMv2\Looplex.SCIMv2.csproj"/>
   </ItemGroup>

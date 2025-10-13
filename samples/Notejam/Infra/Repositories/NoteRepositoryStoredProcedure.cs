@@ -1,5 +1,5 @@
 using Looplex.Samples.Domain.Entities;
-using Looplex.Samples.Application;
+using Looplex.Samples.Application.Abstraction;
 using Looplex.Samples.Infra.Repositories.Base;
 using Looplex.Samples.Infra.Repositories.Mappings;
 using Looplex.Samples.Infra.Repositories.Mappers;
@@ -20,7 +20,7 @@ namespace Looplex.Samples.Infra.Repositories;
 /// Maintains full compatibility with IResourceRepository<Note> interface from Looplex.Foundation.
 /// Supports hierarchical filtering by pad (padId filter).
 /// </summary>
-public class NoteRepositoryStoredProcedure : BaseStoredProcedureRepository<Note>, INoteRepository
+public class NoteRepositoryStoredProcedure : BaseStoredProcedureRepository<Note>, INoteRepositories
 {
     public NoteRepositoryStoredProcedure(
         IDbConnections connections,

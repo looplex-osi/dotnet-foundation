@@ -1,5 +1,5 @@
 using Looplex.Samples.Domain.Entities;
-using Looplex.Samples.Application;
+using Looplex.Samples.Application.Abstraction;
 using Looplex.Samples.Infra.Repositories.Base;
 using Looplex.Samples.Infra.Repositories.Mappings;
 using Looplex.Samples.Infra.Repositories.Mappers;
@@ -19,7 +19,7 @@ namespace Looplex.Samples.Infra.Repositories;
 /// 
 /// Maintains full compatibility with IResourceRepository<Pad> interface from Looplex.Foundation.
 /// </summary>
-public class PadRepositoryStoredProcedure : BaseStoredProcedureRepository<Pad>, IPadRepository
+public class PadRepositoryStoredProcedure : BaseStoredProcedureRepository<Pad>, IPadRepositories
 {
     public PadRepositoryStoredProcedure(
         IDbConnections connections,
@@ -34,7 +34,7 @@ public class PadRepositoryStoredProcedure : BaseStoredProcedureRepository<Pad>, 
     protected override string GetResourceName(Pad resource) => resource.Name ?? "Unknown";
     protected override void SetResourceId(Pad resource, string id) => resource.Id = id;
 
-    #region IPadRepository Implementation
+    #region IPadRepositories Implementation
 
     public async Task<List<Pad>> GetPadsAsync(CancellationToken cancellationToken = default)
     {

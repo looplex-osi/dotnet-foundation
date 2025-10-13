@@ -3,7 +3,7 @@ using System.Data.Common;
 using Microsoft.Data.SqlClient;
 using Looplex.Foundation.Helpers;
 using Looplex.SCIMv2.Helpers;
-using Looplex.Samples.Application;
+using Looplex.Samples.Application.Abstraction;
 using Microsoft.Extensions.Logging;
 
 namespace Looplex.Samples.Infra.Repositories.Base;

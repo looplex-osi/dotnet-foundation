@@ -17,6 +17,7 @@ using Looplex.SCIMv2.Entities;
 using Looplex.Protocols.HTTP.Middlewares;
 
 using Looplex.Samples.Application;
+using Looplex.Samples.Application.Abstraction;
 using Looplex.Samples.Application.Services;
 using Looplex.Samples.WebAPI.Repositories;
 using Looplex.Samples.Domain.Entities;
@@ -209,8 +210,8 @@ public static class ServiceCollectionExtensions
 
         // Register Repository Pattern as SINGLETON to match SCIMv2 services
         // Using stored procedure repositories directly for elegant Foundation approach
-        services.AddSingleton<INoteRepository, NoteRepositoryStoredProcedure>();
-        services.AddSingleton<IPadRepository, PadRepositoryStoredProcedure>();
+        services.AddSingleton<INoteRepositories, NoteRepositoryStoredProcedure>();
+        services.AddSingleton<IPadRepositories, PadRepositoryStoredProcedure>();
         
         // Register SCIMv2 Resource Repositories for stored procedure implementation
         services.AddSingleton<IResourceRepository<Note>, NoteRepositoryStoredProcedure>();

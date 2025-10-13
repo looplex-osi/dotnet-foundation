@@ -1,5 +1,5 @@
 using Looplex.Samples.Domain.Entities;
-using Looplex.Samples.Application;
+using Looplex.Samples.Application.Abstraction;
 using Looplex.SCIMv2.Modules;
 using Microsoft.Extensions.Logging;
 

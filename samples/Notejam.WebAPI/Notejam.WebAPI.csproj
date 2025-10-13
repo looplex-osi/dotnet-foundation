@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\Looplex.SCIMv2\Looplex.SCIMv2.csproj"/>
     <ProjectReference Include="..\..\src\Looplex.OAuth2\Looplex.OAuth2.csproj"/>
     <ProjectReference Include="..\Notejam\Notejam\Notejam.csproj"/>
+    <ProjectReference Include="..\Notejam\Application.Abstraction\Application.Abstraction.csproj"/>
   </ItemGroup>
 
   <ItemGroup>

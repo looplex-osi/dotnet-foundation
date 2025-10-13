@@ -1,6 +1,6 @@
 using System.Data.Common;
 
-using Looplex.Samples.Application;
+using Looplex.Samples.Application.Abstraction;
 
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
