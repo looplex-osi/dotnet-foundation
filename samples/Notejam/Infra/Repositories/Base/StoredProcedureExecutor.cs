@@ -223,6 +223,8 @@ public class StoredProcedureExecutor : IStoredProcedureExecutor
             Guid => DbType.Guid,
             int => DbType.Int32,
             long => DbType.Int64,
+            byte => DbType.Byte,
+            short => DbType.Int16,
             bool => DbType.Boolean,
             DateTime => DbType.DateTime,
             string => DbType.String,

@@ -97,7 +97,6 @@ public static class ServiceCollectionExtensions
             var logger = sp.GetRequiredService<ILogger<AzureSecretsService>>();
             return new AzureSecretsService(null!, Policy.NoOpAsync<string>(), logger);
         });
-        services.AddSingleton<IDbConnections, DbConnections>();
         
         return (services, newConfiguration);
     }

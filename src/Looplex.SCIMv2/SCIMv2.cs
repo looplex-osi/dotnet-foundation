@@ -618,7 +618,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
 
             // Use dynamic typing to call RetrieveAsync on the generic service
             dynamic dynamicService = validation.Service!;
-            var resource = await dynamicService.RetrieveAsync(validation.ResourceId!.Value, cancellationToken);
+            var resource = await dynamicService.RetrieveAsync(Guid.Parse(validation.ResourceId!), cancellationToken);
             
             if (resource == null)
             {
@@ -666,7 +666,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
             // Retrieve current resource using dynamic typing
             dynamic dynamicService = validation.Service!;
             
-            var currentResource = await dynamicService.RetrieveAsync(validation.ResourceId!.Value, cancellationToken);
+            var currentResource = await dynamicService.RetrieveAsync(Guid.Parse(validation.ResourceId!), cancellationToken);
             if (currentResource == null)
             {
                 return CreateErrorResponse(404, "Resource not found", $"Resource with ID '{id}' not found");
@@ -677,13 +677,13 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
             try
             {
                 // Try to call ModifyAsync first (if implemented by the service)
-                var modifyResult = await dynamicService.ModifyAsync(validation.ResourceId!.Value, patches, cancellationToken);
+                var modifyResult = await dynamicService.ModifyAsync(Guid.Parse(validation.ResourceId!), patches, cancellationToken);
                 success = modifyResult != null;
             }
             catch (Exception)
             {
                 // Fallback to UpdateAsync if ModifyAsync is not available
-                success = await dynamicService.UpdateAsync(validation.ResourceId!.Value, currentResource, patches, cancellationToken);
+                success = await dynamicService.UpdateAsync(Guid.Parse(validation.ResourceId!), currentResource, patches, cancellationToken);
             }
             
             if (!success)
@@ -692,7 +692,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
             }
 
             // Retrieve updated resource using dynamic typing
-            var updatedResource = await dynamicService.RetrieveAsync(validation.ResourceId!.Value, cancellationToken);
+            var updatedResource = await dynamicService.RetrieveAsync(Guid.Parse(validation.ResourceId!), cancellationToken);
             
             // Update meta.version with cryptographic hash
             if (updatedResource != null)
@@ -810,7 +810,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
 
             // Use dynamic typing to call ReplaceAsync on the generic service
             dynamic dynamicService = validation.Service!;
-            var success = await dynamicService.ReplaceAsync(validation.ResourceId!.Value, resource, cancellationToken);
+            var success = await dynamicService.ReplaceAsync(Guid.Parse(validation.ResourceId!), resource, cancellationToken);
             
             if (!success)
             {
@@ -854,7 +854,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
 
             // Use dynamic typing to call DeleteAsync on the generic service
             dynamic dynamicService = validation.Service!;
-            var success = await dynamicService.DeleteAsync(validation.ResourceId!.Value, cancellationToken);
+            var success = await dynamicService.DeleteAsync(Guid.Parse(validation.ResourceId!), cancellationToken);
             
             if (!success)
             {
@@ -1518,25 +1518,14 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     /// <returns>Cryptographic hash-based version string</returns>
     private static string GenerateResourceVersion(IResource resource)
     {
-       
-        // Create comprehensive content hash including all resource data
-        var content = $"{resource}";
+        // Serialize resource to JSON for comprehensive content hashing
+        // This ensures the ETag reflects actual resource content changes
+        var jsonContent = FoundationJsonSerializer.Serialize(resource, FoundationJsonSerializer.DefaultOptions);
         
-        // Include resource-specific data for more unique hashing
-        if (resource.Schemas != null && resource.Schemas.Length > 0)
-        {
-            content += $"|{string.Join(",", resource.Schemas)}";
-        }
-        
-        // Generate SHA-256 hash
+        // Generate SHA-256 hash of the serialized content
         using var sha256 = System.Security.Cryptography.SHA256.Create();
-        var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(content));
-        var hexHash = string.Concat(hashBytes.Select(b => b.ToString("x2")));
-        var hash = hexHash;
-        
-
-        
-        return $"{hash}";
+        var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(jsonContent));
+        return string.Concat(hashBytes.Select(b => b.ToString("x2")));
     }
 
     /// <summary>
@@ -1817,7 +1806,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     /// <param name="collection">Collection name to validate</param>
     /// <param name="id">Optional resource ID to validate</param>
     /// <returns>Validation result with error response if invalid, or service and resource ID if valid</returns>
-    private (bool IsValid, SCIMv2Response? Error, IResourceService? Service, Guid? ResourceId) 
+    private (bool IsValid, SCIMv2Response? Error, IResourceService? Service, string? ResourceId) 
         ValidateRequest(string collection, string? id = null)
     {
         // Validate collection name
@@ -1832,14 +1821,14 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
             return (false, CreateErrorResponse(404, $"Collection '{collection}' is not registered"), null, null);
         }
         
-        // Validate resource ID if provided
+        // Validate resource ID if provided - SCIM IDs are opaque strings per RFC 7643
         if (id != null)
         {
-            if (!Guid.TryParse(id, out var resourceId))
+            if (string.IsNullOrWhiteSpace(id))
             {
-                return (false, CreateErrorResponse(400, "Invalid ID", "Resource ID must be a valid GUID"), null, null);
+                return (false, CreateErrorResponse(400, "Invalid ID", "Resource ID cannot be empty"), null, null);
             }
-            return (true, null, service, resourceId);
+            return (true, null, service, id);
         }
         
         return (true, null, service, null);
