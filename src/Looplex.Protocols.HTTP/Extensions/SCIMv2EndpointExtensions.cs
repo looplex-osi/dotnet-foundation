@@ -42,7 +42,7 @@ public static class SCIMv2EndpointExtensions
                 {
                     // Use real SCIMv2 service via reflection
                     var queryMethod = scimv2Type.GetMethod("QueryAsync");
-                    var realResult = await (Task<object>)queryMethod.Invoke(realScimService, new object[] { collectionName, startIndex, count, filter, attributes, excludedAttributes });
+                    var realResult = await (Task<object>)queryMethod.Invoke(realScimService, new object[] { collectionName, startIndex, count, filter, null, null, CancellationToken.None });
                     return Results.Ok(realResult);
                 }
             }
@@ -86,7 +86,7 @@ public static class SCIMv2EndpointExtensions
                 {
                     // Use real SCIMv2 service via reflection
                     var retrieveMethod = scimv2Type.GetMethod("RetrieveAsync");
-                    var realResult = await (Task<object>)retrieveMethod.Invoke(realScimService, new object[] { collectionName, id });
+                    var realResult = await (Task<object>)retrieveMethod.Invoke(realScimService, new object[] { collectionName, id, CancellationToken.None });
                     return Results.Ok(realResult);
                 }
             }
@@ -130,8 +130,8 @@ public static class SCIMv2EndpointExtensions
                     // Use real SCIMv2 service via reflection
                     using var reader = new StreamReader(context.Request.Body);
                     var requestBody = await reader.ReadToEndAsync();
-                    var createMethod = scimv2Type.GetMethod("CreateAsync");
-                    var realResult = await (Task<object>)createMethod.Invoke(realScimService, new object[] { collectionName, requestBody });
+                    var createMethod = scimv2Type.GetMethod("CreateAsync", new Type[] { typeof(string), typeof(string), typeof(CancellationToken) });
+                    var realResult = await (Task<object>)createMethod.Invoke(realScimService, new object[] { collectionName, requestBody, CancellationToken.None });
                     return Results.Ok(realResult);
                 }
             }
@@ -179,8 +179,8 @@ public static class SCIMv2EndpointExtensions
                     // Use real SCIMv2 service via reflection
                     using var reader = new StreamReader(context.Request.Body);
                     var requestBody = await reader.ReadToEndAsync();
-                    var replaceMethod = scimv2Type.GetMethod("ReplaceAsync");
-                    var realResult = await (Task<object>)replaceMethod.Invoke(realScimService, new object[] { collectionName, id, requestBody });
+                    var replaceMethod = scimv2Type.GetMethod("ReplaceAsync", new Type[] { typeof(string), typeof(string), typeof(string), typeof(CancellationToken) });
+                    var realResult = await (Task<object>)replaceMethod.Invoke(realScimService, new object[] { collectionName, id, requestBody, CancellationToken.None });
                     return Results.Ok(realResult);
                 }
             }
@@ -231,7 +231,7 @@ public static class SCIMv2EndpointExtensions
                     var patchOpsType = Type.GetType("Looplex.SCIMv2.Entities.PatchOperation, Looplex.SCIMv2");
                     var patchOps = System.Text.Json.JsonSerializer.Deserialize(requestBody, patchOpsType.MakeArrayType());
                     var modifyMethod = scimv2Type.GetMethod("ModifyAsync");
-                    var realResult = await (Task<object>)modifyMethod.Invoke(realScimService, new object[] { collectionName, id, patchOps });
+                    var realResult = await (Task<object>)modifyMethod.Invoke(realScimService, new object[] { collectionName, id, patchOps, CancellationToken.None });
                     return Results.Ok(realResult);
                 }
             }
@@ -256,7 +256,7 @@ public static class SCIMv2EndpointExtensions
                 {
                     // Use real SCIMv2 service via reflection
                     var deleteMethod = scimv2Type.GetMethod("DeleteAsync");
-                    var realResult = await (Task<object>)deleteMethod.Invoke(realScimService, new object[] { collectionName, id });
+                    var realResult = await (Task<object>)deleteMethod.Invoke(realScimService, new object[] { collectionName, id, CancellationToken.None });
                     return Results.Ok(realResult);
                 }
             }
