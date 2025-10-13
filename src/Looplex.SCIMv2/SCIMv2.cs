@@ -1525,7 +1525,162 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
         // Generate SHA-256 hash of the serialized content
         using var sha256 = System.Security.Cryptography.SHA256.Create();
         var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(jsonContent));
-        return string.Concat(hashBytes.Select(b => b.ToString("x2")));
+        // Use optimized hex conversion for better performance than string.Concat
+        // Use StringBuilder for better performance with large hashes
+        var sb = new System.Text.StringBuilder(64); // Pre-allocate for SHA-256 (32 bytes * 2)
+        foreach (var b in hashBytes)
+        {
+            sb.Append(b.ToString("x2"));
+        }
+        return sb.ToString();
+    }
+    
+    
+    /// <summary>
+    /// Processes a single resource for attribute filtering (optimized for retrieve operations)
+    /// Lightweight optimization with minimal overhead
+    /// </summary>
+    private JsonObject? ProcessSingleResource(JsonObject resource, HttpContext context)
+    {
+        var query = context.Request.Query;
+        
+        // Lightweight early validation - avoid unnecessary processing
+        if (!query.ContainsKey("attributes") && !query.ContainsKey("excludedAttributes"))
+        {
+            return resource; // No processing needed
+        }
+        
+        var attrs = new string[0];
+        if (context.Request.Query.ContainsKey("attributes"))
+        {
+            attrs = context.Request.Query["attributes"].ToString().Split([','], StringSplitOptions.RemoveEmptyEntries);                                                        
+        }
+
+        var xattrs = query.ContainsKey("excludedAttributes")
+            ? query["excludedAttributes"].ToString().Split([','], StringSplitOptions.RemoveEmptyEntries)                                                                       
+            : [];
+
+        // If no attribute processing needed after parsing, return original
+        if (attrs.Length == 0 && xattrs.Length == 0)
+        {
+            return resource;
+        }
+
+        var processedResource = new JsonObject(resource);
+
+        // Apply attribute filtering
+        if (attrs.Length > 0)
+        {
+            var newObj = new JsonObject();
+            foreach (var attr in attrs)
+            {
+                var value = GetJsonValue(processedResource, attr);
+                if (value != null)
+                {
+                    SetJsonValue(newObj, attr, value.DeepClone());
+                }
+            }
+            processedResource = newObj;
+        }
+
+        // Apply excluded attributes
+        if (xattrs.Length > 0)
+        {
+            foreach (var xattr in xattrs)
+            {
+                DeleteJsonValue(processedResource, xattr);
+            }
+        }
+
+        return processedResource;
+    }
+    
+    /// <summary>
+    /// Helper method to get JSON value by path
+    /// </summary>
+    private static JsonNode? GetJsonValue(JsonObject obj, string path)
+    {
+        var parts = path.Split('.');
+        JsonNode? current = obj;
+        
+        foreach (var part in parts)
+        {
+            if (current is JsonObject jsonObj && jsonObj.TryGetPropertyValue(part, out var value))
+            {
+                current = value;
+            }
+            else if (current is JsonArray jsonArray && int.TryParse(part, out var index) && index < jsonArray.Count)
+            {
+                current = jsonArray[index];
+            }
+            else
+            {
+                return null;
+            }
+        }
+        
+        return current;
+    }
+    
+    /// <summary>
+    /// Helper method to set JSON value by path
+    /// </summary>
+    private static void SetJsonValue(JsonObject obj, string path, JsonNode? value)
+    {
+        var parts = path.Split('.');
+        JsonNode? current = obj;
+        
+        for (int i = 0; i < parts.Length - 1; i++)
+        {
+            var part = parts[i];
+            
+            if (current is JsonObject jsonObj)
+            {
+                if (!jsonObj.TryGetPropertyValue(part, out var next))
+                {
+                    next = new JsonObject();
+                    jsonObj[part] = next;
+                }
+                current = next;
+            }
+            else
+            {
+                return; // Invalid path
+            }
+        }
+        
+        if (current is JsonObject finalObj)
+        {
+            finalObj[parts[^1]] = value;
+        }
+    }
+    
+    /// <summary>
+    /// Helper method to delete JSON value by path
+    /// </summary>
+    private static void DeleteJsonValue(JsonObject obj, string path)
+    {
+        var parts = path.Split('.');
+        JsonNode? current = obj;
+        
+        for (int i = 0; i < parts.Length - 1; i++)
+        {
+            var part = parts[i];
+            
+            if (current is JsonObject jsonObj && jsonObj.TryGetPropertyValue(part, out var next))
+            {
+                current = next;
+            }
+            else
+            {
+                return; // Path not found
+            }
+        }
+        
+        if (current is JsonObject finalObj)
+        {
+            finalObj.Remove(parts[^1]);
+        }
     }
 
     /// <summary>
@@ -1575,8 +1730,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
             // Convert resource to JsonObject for processing using ActorJsonSerializer options
             var jsonResource = JsonSerializer.SerializeToNode(resource, resource.GetType(), FoundationJsonSerializer.DefaultOptions) as JsonObject ?? new JsonObject();
             
-            // Apply attribute processing
-            var processedResource = new[] { jsonResource }.ProcessAttributes(_httpContextAccessor.HttpContext).FirstOrDefault();
+            // Apply attribute processing directly (avoid unnecessary array conversion)
+            var processedResource = ProcessSingleResource(jsonResource, _httpContextAccessor.HttpContext);
             
             if (processedResource != null)
             {
@@ -1912,8 +2067,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                 Operations = new List<BulkResponseOperation>()
             };
             
-            // Process each operation individually with basic validation
-            foreach (var operation in bulkRequest.Operations)
+            // Process operations with lightweight parallel processing
+            var operationTasks = bulkRequest.Operations.Select(async operation =>
             {
                 var responseOp = new BulkResponseOperation
                 {
@@ -1922,16 +2077,11 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                     Status = 200
                 };
                 
-                
-                // Execute the actual operation using the registered service
-                
                 // Basic validation - check if collection is registered
                 if (!string.IsNullOrEmpty(operation.Path))
                 {
                     var pathSegments = operation.Path.TrimStart('/').Split('/');
                     var collectionName = pathSegments[0];
-                    
-                    // Execute the actual operation using the registered service
                     
                     if (!IsCollectionRegistered(collectionName))
                     {
@@ -1967,8 +2117,12 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                     }
                 }
                 
-                bulkResponse.Operations.Add(responseOp);
-            }
+                return responseOp;
+            });
+            
+            // Wait for all operations to complete in parallel
+            var completedOperations = await Task.WhenAll(operationTasks);
+            bulkResponse.Operations.AddRange(completedOperations);
 
             // Convert BulkResponse to SCIMv2Response
             return new SCIMv2Response

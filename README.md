@@ -49,6 +49,13 @@ erDiagram
 
 SCIM (System for Cross-domain Identity Management) is considered an industry standard for identity management and user provisioning across multiple applications and domains. It has been widely adopted by cloud service providers, SaaS applications, and enterprise solutions due to its interoperability, scalability, and ease of integration.
 
+## 📊 Performance Documentation
+
+For detailed performance characteristics, benchmarks, and optimization guidelines, see:
+- **[SCIMv2 Performance Guide](docs/SCIMv2_Performance_Guide.md)** - Comprehensive performance documentation
+- **Performance Targets**: ETag Generation < 0,100ms, JSON Serialization < 0,080ms, Bulk Operations < 0,030ms per resource
+- **Optimization Features**: StringBuilder pre-allocation, parallel processing, early validation, memory efficiency
+
 Many major tech companies, including Microsoft, Amazon, Google and others, have implemented SCIM in their identity and access management services. The protocol can be resumed by the following er-diagram, operations and discovery mechanism:
 
 ```mermaid

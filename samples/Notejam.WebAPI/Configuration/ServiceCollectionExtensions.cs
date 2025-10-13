@@ -241,11 +241,27 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection ConfigureAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        // Debug: Check if JWT configuration is loaded
+        // ⚠️ SECURITY WARNING: JWT Configuration Validation
+        // This application requires proper JWT configuration for production deployment.
+        // Hardcoded fallback values are for DEVELOPMENT ONLY and must be replaced in production.
+        // 
+        // Required Environment Variables for Production:
+        // - JWT__Issuer: The JWT issuer (e.g., "https://your-domain.com")
+        // - JWT__Audience: The JWT audience (e.g., "your-api-name")
+        // - JWT__Key: A secure 256-bit secret key (minimum 32 characters)
+        //
+        // Example production configuration:
+        // JWT__Issuer=https://api.yourcompany.com
+        // JWT__Audience=notejam-api
+        // JWT__Key=your-secure-256-bit-secret-key-here-minimum-32-chars
+        //
+        // 🚨 CRITICAL: Never use default values in production environments!
+        
         var jwtIssuer = configuration["JWT__Issuer"];
         var jwtAudience = configuration["JWT__Audience"];
         var jwtKey = configuration["JWT__Key"];
         
+        // Debug: Check if JWT configuration is loaded (development only)
         Console.WriteLine($"🔍 JWT Debug - Issuer: {jwtIssuer ?? "NULL"}");
         Console.WriteLine($"🔍 JWT Debug - Audience: {jwtAudience ?? "NULL"}");
         Console.WriteLine($"🔍 JWT Debug - Key: {(string.IsNullOrEmpty(jwtKey) ? "NULL" : "LOADED")}");
@@ -260,10 +276,21 @@ public static class ServiceCollectionExtensions
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtIssuer ?? "https://localhost:7065",
-                    ValidAudience = jwtAudience ?? "notejam-api",
+                    // ⚠️ SECURITY: Fail fast if JWT configuration is missing
+                    // This prevents accidental deployment with hardcoded development values
+                    ValidIssuer = jwtIssuer ?? throw new InvalidOperationException(
+                        "JWT__Issuer configuration is required. " +
+                        "Set JWT__Issuer environment variable or configuration value. " +
+                        "Example: JWT__Issuer=https://your-domain.com"),
+                    ValidAudience = jwtAudience ?? throw new InvalidOperationException(
+                        "JWT__Audience configuration is required. " +
+                        "Set JWT__Audience environment variable or configuration value. " +
+                        "Example: JWT__Audience=notejam-api"),
                     IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-                        System.Text.Encoding.UTF8.GetBytes(jwtKey ?? "your-256-bit-secret-key-for-notejam-development"))
+                        System.Text.Encoding.UTF8.GetBytes(jwtKey ?? throw new InvalidOperationException(
+                            "JWT__Key configuration is required. " +
+                            "Set JWT__Key environment variable with a secure 256-bit secret key. " +
+                            "Example: JWT__Key=your-secure-256-bit-secret-key-here-minimum-32-chars")))
                 };
             });
 
