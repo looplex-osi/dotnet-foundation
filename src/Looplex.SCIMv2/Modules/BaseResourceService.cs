@@ -50,12 +50,12 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
 
     #endregion
 
-    #region Common CRUD Operations
+    #region IResourceService<T> Implementation - Unified Methods
 
     /// <summary>
     /// Queries resources with pagination, filtering, and sorting support.
-    /// Implements RFC 7644 Section 3.4.2 - Query Resources
-    /// [RFC 7644 Section 3.4.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2)
+    /// Implements IResourceService<T>.QueryAsync with SCIM v2.0 compliance.
+    /// Eliminates indirection by implementing interface directly.
     /// </summary>
     /// <param name="startIndex">Starting index for pagination (1-based)</param>
     /// <param name="count">Maximum number of resources to return</param>
@@ -63,26 +63,25 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     /// <param name="sortBy">Field name for sorting (optional)</param>
     /// <param name="sortOrder">Sort order: "ascending" or "descending" (optional)</param>
     /// <param name="cancellationToken">Cancellation token for async operation</param>
-    /// <returns>ListResponse containing resources and pagination metadata</returns>
-    public virtual async Task<ListResponse<T>> Query(int startIndex, int count,
-        string? filter, string? sortBy, string? sortOrder,
-        CancellationToken cancellationToken)
+    /// <returns>Tuple containing list of resources and total count for pagination</returns>
+    public virtual async Task<(IList<T> Resources, int TotalCount)> QueryAsync(int startIndex, int count, 
+        string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         
         var result = await _repository.QueryAsync(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
-        return new ListResponse<T> { Resources = result.Resources, TotalResults = result.TotalCount };
+        return (result.Resources, result.TotalCount);
     }
 
     /// <summary>
-    /// Creates a new resource in the data store.
-    /// Implements RFC 7644 Section 3.4.1 - Create Resource
-    /// [RFC 7644 Section 3.4.1](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.1)
+    /// Creates a new resource in the specified collection.
+    /// Implements IResourceService<T>.CreateAsync with SCIM v2.0 compliance.
+    /// Eliminates indirection by implementing interface directly.
     /// </summary>
     /// <param name="resource">Resource instance to create</param>
     /// <param name="cancellationToken">Cancellation token for async operation</param>
     /// <returns>Unique identifier of the created resource</returns>
-    public virtual async Task<Guid> Create(T resource, CancellationToken cancellationToken)
+    public virtual async Task<Guid> CreateAsync(T resource, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         
@@ -92,13 +91,13 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
 
     /// <summary>
     /// Retrieves a specific resource by its unique identifier.
-    /// Implements RFC 7644 Section 3.4.3 - Retrieve Resource
-    /// [RFC 7644 Section 3.4.3](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.3)
+    /// Implements IResourceService<T>.RetrieveAsync with SCIM v2.0 compliance.
+    /// Eliminates indirection by implementing interface directly.
     /// </summary>
     /// <param name="id">Unique identifier of the resource to retrieve</param>
     /// <param name="cancellationToken">Cancellation token for async operation</param>
     /// <returns>Resource instance or null if not found</returns>
-    public virtual async Task<T?> Retrieve(Guid id, CancellationToken cancellationToken)
+    public virtual async Task<T?> RetrieveAsync(Guid id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         
@@ -107,14 +106,14 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
 
     /// <summary>
     /// Replaces a resource completely using PUT semantics.
-    /// Implements RFC 7644 Section 3.4.4 - Update Resource (PUT)
-    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
+    /// Implements IResourceService<T>.ReplaceAsync with SCIM v2.0 compliance.
+    /// Eliminates indirection by implementing interface directly.
     /// </summary>
     /// <param name="id">Unique identifier of the resource to replace</param>
     /// <param name="resource">Complete resource instance for replacement</param>
     /// <param name="cancellationToken">Cancellation token for async operation</param>
     /// <returns>True if resource was successfully replaced, false otherwise</returns>
-    public virtual async Task<bool> Replace(Guid id, T resource, CancellationToken cancellationToken)
+    public virtual async Task<bool> ReplaceAsync(Guid id, T resource, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         
@@ -123,34 +122,42 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     }
 
     /// <summary>
-    /// Updates a resource using JSON Patch operations for partial updates.
-    /// Implements RFC 7644 Section 3.4.4 - Update Resource (PATCH)
-    /// [RFC 7644 Section 3.4.4](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.4)
-    /// Uses RFC 6902 (JSON Patch) Section 4 - Operations
-    /// [RFC 6902 Section 4](https://datatracker.ietf.org/doc/html/rfc6902#section-4)
+    /// Replaces a resource completely using non-generic interface (polymorphic version).
+    /// Implements IResourceService<T>.ReplaceAsync with polymorphic resource support.
+    /// Eliminates indirection by implementing interface directly.
+    /// </summary>
+    /// <param name="id">Unique identifier of the resource to replace</param>
+    /// <param name="resource">Complete resource instance for replacement</param>
+    /// <param name="cancellationToken">Cancellation token for async operation</param>
+    /// <returns>True if resource was successfully replaced, false otherwise</returns>
+    /// <exception cref="ArgumentException">Thrown when resource type does not match expected type</exception>
+    public virtual async Task<bool> ReplaceAsync(Guid id, IResource resource, CancellationToken cancellationToken = default)
+    {
+        if (resource is T typedResource)
+        {
+            return await ReplaceAsync(id, typedResource, cancellationToken);
+        }
+        throw new ArgumentException($"Resource must be of type {typeof(T).Name}", nameof(resource));
+    }
+
+    /// <summary>
+    /// Updates a resource using SCIM PATCH operations for partial updates.
+    /// Implements IResourceService<T>.UpdateAsync with SCIM v2.0 PATCH compliance.
+    /// Eliminates indirection by implementing interface directly.
     /// </summary>
     /// <param name="id">Unique identifier of the resource to update</param>
     /// <param name="resource">Current resource instance</param>
-    /// <param name="patches">JSON Patch operations as JArray</param>
+    /// <param name="patches">Array of JSON Patch operations to apply</param>
     /// <param name="cancellationToken">Cancellation token for async operation</param>
     /// <returns>True if patches were successfully applied, false otherwise</returns>
-    public virtual async Task<bool> Update(Guid id, T resource, JsonElement patches, CancellationToken cancellationToken)
+    public virtual async Task<bool> UpdateAsync(Guid id, T resource, PatchOperation[] patches, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        // Convert JsonElement to PatchOperation[]
-        var patchOperations = new List<PatchOperation>();
-        if (patches.ValueKind == JsonValueKind.Array)
+        // Apply patches to the resource
+        foreach (var patch in patches)
         {
-            foreach (var patch in patches.EnumerateArray())
-            {
-                patchOperations.Add(new PatchOperation
-                {
-                    Op = patch.GetProperty("op").GetString() ?? "replace",
-                    Path = patch.GetProperty("path").GetString() ?? "",
-                    Value = patch.TryGetProperty("value", out var valueProp) ? valueProp : null
-                });
-            }
+            ApplyPatch(resource, patch);
         }
         
         var updatedResource = await _repository.UpdateAsync(id.ToString(), resource, cancellationToken);
@@ -158,14 +165,14 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     }
 
     /// <summary>
-    /// Permanently deletes a resource from the data store.
-    /// Implements RFC 7644 Section 3.4.5 - Delete Resource
-    /// [RFC 7644 Section 3.4.5](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.5)
+    /// Permanently deletes a resource from the specified collection.
+    /// Implements IResourceService<T>.DeleteAsync with SCIM v2.0 compliance.
+    /// Eliminates indirection by implementing interface directly.
     /// </summary>
     /// <param name="id">Unique identifier of the resource to delete</param>
     /// <param name="cancellationToken">Cancellation token for async operation</param>
     /// <returns>True if resource was successfully deleted, false otherwise</returns>
-    public virtual async Task<bool> Delete(Guid id, CancellationToken cancellationToken)
+    public virtual async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         
@@ -174,7 +181,28 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
 
     #endregion
 
-    #region IResourceService<T> Implementation
+    #region Helper Methods
+
+    /// <summary>
+    /// Applies a single patch operation to a resource.
+    /// Can be overridden by derived classes for custom patch handling.
+    /// </summary>
+    /// <param name="resource">Resource to apply patch to</param>
+    /// <param name="patch">Patch operation to apply</param>
+    protected virtual void ApplyPatch(T resource, PatchOperation patch)
+    {
+        // Base implementation - can be overridden by derived classes
+        // This provides a hook for custom patch logic without breaking the interface
+        if (patch.Op == "replace")
+        {
+            // Default implementation - derived classes should override for specific logic
+            // This is intentionally minimal to allow maximum flexibility
+        }
+    }
+
+    #endregion
+
+    #region IResourceService Implementation
 
     /// <summary>
     /// Gets the collection name for this service instance.
@@ -183,120 +211,6 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     /// </summary>
     /// <value>Collection name string (e.g., "Users", "Groups", "Notes")</value>
     public abstract string CollectionName { get; }
-
-    /// <summary>
-    /// Queries resources with pagination, filtering, and sorting support.
-    /// Implements IResourceService<T>.QueryAsync with SCIM v2.0 compliance.
-    /// </summary>
-    /// <param name="startIndex">Starting index for pagination (1-based)</param>
-    /// <param name="count">Maximum number of resources to return</param>
-    /// <param name="filter">SCIM filter expression (optional)</param>
-    /// <param name="sortBy">Field name for sorting (optional)</param>
-    /// <param name="sortOrder">Sort order: "ascending" or "descending" (optional)</param>
-    /// <param name="cancellationToken">Cancellation token for async operation</param>
-    /// <returns>Tuple containing list of resources and total count for pagination</returns>
-    public async Task<(IList<T> Resources, int TotalCount)> QueryAsync(int startIndex, int count, 
-        string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
-    {
-        var result = await Query(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
-        return (result.Resources, (int)result.TotalResults);
-    }
-
-    /// <summary>
-    /// Creates a new resource in the specified collection.
-    /// Implements IResourceService<T>.CreateAsync with SCIM v2.0 compliance.
-    /// </summary>
-    /// <param name="resource">Resource instance to create</param>
-    /// <param name="cancellationToken">Cancellation token for async operation</param>
-    /// <returns>Unique identifier of the created resource</returns>
-    public async Task<Guid> CreateAsync(T resource, CancellationToken cancellationToken = default)
-    {
-        return await Create(resource, cancellationToken);
-    }
-
-    /// <summary>
-    /// Retrieves a specific resource by its unique identifier.
-    /// Implements IResourceService<T>.RetrieveAsync with SCIM v2.0 compliance.
-    /// </summary>
-    /// <param name="id">Unique identifier of the resource to retrieve</param>
-    /// <param name="cancellationToken">Cancellation token for async operation</param>
-    /// <returns>Resource instance or null if not found</returns>
-    public async Task<T?> RetrieveAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await Retrieve(id, cancellationToken);
-    }
-
-    /// <summary>
-    /// Replaces a resource completely using PUT semantics.
-    /// Implements IResourceService<T>.ReplaceAsync with SCIM v2.0 compliance.
-    /// </summary>
-    /// <param name="id">Unique identifier of the resource to replace</param>
-    /// <param name="resource">Complete resource instance for replacement</param>
-    /// <param name="cancellationToken">Cancellation token for async operation</param>
-    /// <returns>True if resource was successfully replaced, false otherwise</returns>
-    public async Task<bool> ReplaceAsync(Guid id, T resource, CancellationToken cancellationToken = default)
-    {
-        return await Replace(id, resource, cancellationToken);
-    }
-
-    /// <summary>
-    /// Replaces a resource completely using non-generic interface (polymorphic version).
-    /// Implements IResourceService<T>.ReplaceAsync with polymorphic resource support.
-    /// </summary>
-    /// <param name="id">Unique identifier of the resource to replace</param>
-    /// <param name="resource">Complete resource instance for replacement</param>
-    /// <param name="cancellationToken">Cancellation token for async operation</param>
-    /// <returns>True if resource was successfully replaced, false otherwise</returns>
-    /// <exception cref="ArgumentException">Thrown when resource type does not match expected type</exception>
-    public async Task<bool> ReplaceAsync(Guid id, IResource resource, CancellationToken cancellationToken = default)
-    {
-        if (resource is T typedResource)
-        {
-            return await Replace(id, typedResource, cancellationToken);
-        }
-        throw new ArgumentException($"Resource must be of type {typeof(T).Name}", nameof(resource));
-    }
-
-    /// <summary>
-    /// Updates a resource using JSON Patch operations for partial updates.
-    /// Implements IResourceService<T>.UpdateAsync with SCIM v2.0 PATCH compliance.
-    /// </summary>
-    /// <param name="id">Unique identifier of the resource to update</param>
-    /// <param name="resource">Current resource instance</param>
-    /// <param name="patches">Array of JSON Patch operations to apply</param>
-    /// <param name="cancellationToken">Cancellation token for async operation</param>
-    /// <returns>True if patches were successfully applied, false otherwise</returns>
-    public async Task<bool> UpdateAsync(Guid id, T resource, PatchOperation[] patches, CancellationToken cancellationToken = default)
-    {
-        // Convert PatchOperation[] to JsonElement manually to avoid circular reference issues
-        var patchArray = new List<object>();
-        foreach (var patch in patches)
-        {
-            var patchObj = new Dictionary<string, object?>
-            {
-                ["op"] = patch.Op,
-                ["path"] = patch.Path,
-                ["value"] = patch.Value
-            };
-            patchArray.Add(patchObj);
-        }
-        var jsonString = System.Text.Json.JsonSerializer.Serialize(patchArray);
-        var jsonElement = JsonDocument.Parse(jsonString).RootElement;
-        return await Update(id, resource, jsonElement, cancellationToken);
-    }
-
-    /// <summary>
-    /// Permanently deletes a resource from the specified collection.
-    /// Implements IResourceService<T>.DeleteAsync with SCIM v2.0 compliance.
-    /// </summary>
-    /// <param name="id">Unique identifier of the resource to delete</param>
-    /// <param name="cancellationToken">Cancellation token for async operation</param>
-    /// <returns>True if resource was successfully deleted, false otherwise</returns>
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await Delete(id, cancellationToken);
-    }
-
 
     #endregion
 }

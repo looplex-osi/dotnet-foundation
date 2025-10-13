@@ -196,7 +196,7 @@ public class SCIMv2Tests
     // Arrange
     User user = new() { UserName = "TestUser" };
     _users
-      .Create(Arg.Any<User>(), Arg.Any<CancellationToken>())
+      .CreateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(Guid.NewGuid()));
 
     StringContent content = new(JsonSerializer.Serialize(user), Encoding.UTF8, "application/json");
@@ -217,9 +217,9 @@ public class SCIMv2Tests
   public async Task QueryUsers_ValidRequest_ReturnsOk()
   {
     // Arrange
-    _users.Query(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+    _users.QueryAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
         Arg.Any<CancellationToken>())
-      .Returns(Task.FromResult(new ListResponse<User>()));
+      .Returns(Task.FromResult(((IList<User>)new List<User>(), 0)));
 
     // Act
     HttpResponseMessage response = await _client.GetAsync("/users?page=1&pageSize=10");
@@ -843,7 +843,7 @@ public class SCIMv2Tests
     // Arrange
     Group group = new() { DisplayName = "TestGroup" };
     _groups
-      .Create(Arg.Any<Group>(), Arg.Any<CancellationToken>())
+      .CreateAsync(Arg.Any<Group>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult(Guid.NewGuid()));
 
     StringContent content = new(JsonSerializer.Serialize(group), Encoding.UTF8, "application/json");
@@ -864,9 +864,9 @@ public class SCIMv2Tests
   public async Task QueryGroups_ValidRequest_ReturnsOk()
   {
     // Arrange
-    _groups.Query(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+    _groups.QueryAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
         Arg.Any<CancellationToken>())
-      .Returns(Task.FromResult(new ListResponse<Group>()));
+      .Returns(Task.FromResult(((IList<Group>)new List<Group>(), 0)));
 
     // Act
     HttpResponseMessage response = await _client.GetAsync("/Groups?page=1&pageSize=10");

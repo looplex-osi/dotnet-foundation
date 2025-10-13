@@ -42,12 +42,12 @@ namespace Looplex.Foundation.Core.UnitTests.SCIMv2.Entities
         .Returns((expectedGroups, expectedTotal));
 
       // Act
-      var response = await _groups.Query(1, 10, "filter", "name", "ascending", cancellationToken);
+      var (resources, totalCount) = await _groups.QueryAsync(1, 10, "filter", "name", "ascending", cancellationToken);
 
       // Assert
-      Assert.IsNotNull(response);
-      Assert.AreEqual(1, response.TotalResults);
-      Assert.AreEqual(1, response.Resources.Count);
+      Assert.IsNotNull(resources);
+      Assert.AreEqual(1, totalCount);
+      Assert.AreEqual(1, resources.Count);
     }
 
     [TestMethod]
@@ -63,7 +63,7 @@ namespace Looplex.Foundation.Core.UnitTests.SCIMv2.Entities
         .Returns(expectedGroup);
 
       // Act
-      var result = await _groups.Create(group, cancellationToken);
+      var result = await _groups.CreateAsync(group, cancellationToken);
 
       // Assert
       Assert.AreEqual(Guid.Parse(expectedGroup.Id), result);
@@ -82,7 +82,7 @@ namespace Looplex.Foundation.Core.UnitTests.SCIMv2.Entities
         .Returns(expectedGroup);
 
       // Act
-      var result = await _groups.Retrieve(Guid.Parse(id), cancellationToken);
+      var result = await _groups.RetrieveAsync(Guid.Parse(id), cancellationToken);
 
       // Assert
       Assert.IsNotNull(result);
@@ -102,7 +102,7 @@ namespace Looplex.Foundation.Core.UnitTests.SCIMv2.Entities
         .Returns(true);
 
       // Act
-      var result = await _groups.Delete(Guid.Parse(id), cancellationToken);
+      var result = await _groups.DeleteAsync(Guid.Parse(id), cancellationToken);
 
       // Assert
       Assert.IsTrue(result);

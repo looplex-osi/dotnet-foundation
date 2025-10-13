@@ -44,8 +44,8 @@ public class SCIMv2PadService : BaseResourceService<Pad>
             
             _logger.LogInformation("✅ JSON deserialized successfully: Name='{Name}', Active={Active}", pad.Name, pad.Active);
             
-            // Call the base Create method
-            var result = await base.Create(pad, cancellationToken);
+            // Call the base CreateAsync method
+            var result = await base.CreateAsync(pad, cancellationToken);
             
             _logger.LogInformation("✅ SCIMv2PadService.CreateAsync completed successfully with ID: {Id}", result);
             return result;
@@ -146,8 +146,8 @@ public class SCIMv2PadService : BaseResourceService<Pad>
             // Update the resource
             _logger.LogInformation("🔄 Calling base.Update...");
             
-            // Use empty JArray to avoid circular reference issues
-            var success = await base.Update(id, currentResource, JsonDocument.Parse("[]").RootElement, cancellationToken);
+            // Use empty PatchOperation array to avoid circular reference issues
+            var success = await base.UpdateAsync(id, currentResource, new PatchOperation[0], cancellationToken);
             var updatedResource = success ? currentResource : null;
             
             if (updatedResource != null)
@@ -191,8 +191,8 @@ public class SCIMv2PadService : BaseResourceService<Pad>
             
             _logger.LogInformation("✅ JSON deserialized successfully: Name='{Name}', Active={Active}", pad.Name, pad.Active);
             
-            // Call the base Update method
-            var success = await base.Update(Guid.Parse(id), pad, JsonDocument.Parse("[]").RootElement, cancellationToken);
+            // Call the base UpdateAsync method
+            var success = await base.UpdateAsync(Guid.Parse(id), pad, new PatchOperation[0], cancellationToken);
             
             if (success)
             {

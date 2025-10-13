@@ -23,21 +23,21 @@ public class SCIMv2NoteService : BaseResourceService<Note>
     public override string CollectionName => "notes";
 
 
-    public override async Task<Guid> Create(Note resource, CancellationToken cancellationToken)
+    public override async Task<Guid> CreateAsync(Note resource, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("🎬 SCIMv2NoteService.Create called with Note: Name='{Name}', Text='{Text}', Active={Active}, Status={Status}", 
+        _logger.LogInformation("🎬 SCIMv2NoteService.CreateAsync called with Note: Name='{Name}', Text='{Text}', Active={Active}, Status={Status}", 
             resource.Name, resource.Text, resource.Active, resource.Status);
         
         try
         {
-            _logger.LogInformation("🔄 Calling base Create method...");
-            var result = await base.Create(resource, cancellationToken);
-            _logger.LogInformation("✅ SCIMv2NoteService.Create completed successfully with ID: {Id}", result);
+            _logger.LogInformation("🔄 Calling base CreateAsync method...");
+            var result = await base.CreateAsync(resource, cancellationToken);
+            _logger.LogInformation("✅ SCIMv2NoteService.CreateAsync completed successfully with ID: {Id}", result);
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "💥 SCIMv2NoteService.Create failed: {ExceptionType}: {ExceptionMessage}", 
+            _logger.LogError(ex, "💥 SCIMv2NoteService.CreateAsync failed: {ExceptionType}: {ExceptionMessage}", 
                 ex.GetType().Name, ex.Message);
             throw;
         }
@@ -76,8 +76,8 @@ public class SCIMv2NoteService : BaseResourceService<Note>
             _logger.LogInformation("🔄 SCIM Note created with fields: Name='{Name}', Text='{Text}', Active={Active}, Status={Status}", 
                 note.Name, note.Text, note.Active, note.Status);
             
-            // Call the base Create method
-            var result = await Create(note, cancellationToken);
+            // Call the base CreateAsync method
+            var result = await CreateAsync(note, cancellationToken);
             
             _logger.LogInformation("✅ SCIMv2NoteService.CreateAsync completed successfully with ID: {Id}", result);
             return result;
@@ -119,9 +119,9 @@ public class SCIMv2NoteService : BaseResourceService<Note>
             var guidId = Guid.Parse(id);
             _logger.LogInformation("✅ ID parsed successfully: {GuidId}", guidId);
             
-            // Call the base Update method
-            _logger.LogInformation("🔄 Calling base.Update with Guid: {GuidId}, Note: {NoteName}", guidId, note.Name);
-            var success = await base.Update(guidId, note, JsonDocument.Parse("[]").RootElement, cancellationToken);
+            // Call the base UpdateAsync method
+            _logger.LogInformation("🔄 Calling base.UpdateAsync with Guid: {GuidId}, Note: {NoteName}", guidId, note.Name);
+            var success = await base.UpdateAsync(guidId, note, new PatchOperation[0], cancellationToken);
             _logger.LogInformation("🔍 Base.Update returned: {Success}", success);
             
             if (success)
@@ -176,9 +176,9 @@ public class SCIMv2NoteService : BaseResourceService<Note>
             
             _logger.LogInformation("✅ Patches applied successfully. Updated resource: Name='{Name}', Text='{Text}'", resource.Name, resource.Text);
             
-            // Call the base Update method with the patched resource
-            _logger.LogInformation("🔄 Calling base.Update with Guid: {GuidId}, Note: {NoteName}", id, resource?.Name);
-            var success = await base.Update(id, resource, JsonDocument.Parse("[]").RootElement, cancellationToken);
+            // Call the base UpdateAsync method with the patched resource
+            _logger.LogInformation("🔄 Calling base.UpdateAsync with Guid: {GuidId}, Note: {NoteName}", id, resource?.Name);
+            var success = await base.UpdateAsync(id, resource, new PatchOperation[0], cancellationToken);
             _logger.LogInformation("🔍 Base.Update returned: {Success}", success);
             
             if (success)
@@ -288,8 +288,8 @@ public class SCIMv2NoteService : BaseResourceService<Note>
             // Update the resource
             _logger.LogInformation("🔄 Calling base.Update...");
             
-            // Use empty JArray to avoid circular reference issues
-            var success = await base.Update(id, currentResource, JsonDocument.Parse("[]").RootElement, cancellationToken);
+            // Use empty PatchOperation array to avoid circular reference issues
+            var success = await base.UpdateAsync(id, currentResource, new PatchOperation[0], cancellationToken);
             var updatedResource = success ? currentResource : null;
             
             if (updatedResource != null)
