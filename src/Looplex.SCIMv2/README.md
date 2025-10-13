@@ -15,7 +15,7 @@ The new architecture separates concerns between:
 #### `SCIMv2`
 Main consolidated service implementation
 ```csharp
-public class SCIMv2 : ISCIMv2, IJsonSchemaProvider
+public class SCIMv2 : ISCIMv2, IJsonSchemaService
 {
     // Implements all SCIMv2 operations and schema management
     // Combines SCIMv2Service + SCIMv2SchemaProvider in a single file

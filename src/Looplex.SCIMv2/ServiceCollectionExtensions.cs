@@ -26,7 +26,7 @@ namespace Looplex.SCIMv2
             throw new ArgumentNullException(nameof(services));
 
         services.AddSingleton<ISCIMv2, SCIMv2>();
-        services.AddSingleton<IJsonSchemaProvider>(sp => sp.GetRequiredService<SCIMv2>());
+        services.AddSingleton<IJsonSchemaService>(sp => sp.GetRequiredService<SCIMv2>());
         return services;
     }
 
@@ -47,7 +47,7 @@ namespace Looplex.SCIMv2
             var httpContextAccessor = sp.GetService<IHttpContextAccessor>();
             return new SCIMv2(serviceNameProvider, httpContextAccessor);
         });
-        services.AddSingleton<IJsonSchemaProvider>(sp => sp.GetRequiredService<SCIMv2>());
+        services.AddSingleton<IJsonSchemaService>(sp => sp.GetRequiredService<SCIMv2>());
         
         // Register default schemas
         services.AddSingleton<IHostedService, SCIMv2DefaultSchemaService>();

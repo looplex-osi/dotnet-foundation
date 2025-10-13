@@ -25,7 +25,7 @@ namespace Looplex.SCIMv2;
 /// 
 /// This is the main entry point for all SCIMv2 operations in Looplex.Foundation
 /// </summary>
-public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
+public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
 {
     private readonly Dictionary<string, IResourceService> _registeredResource = new();
     private readonly Dictionary<string, SchemaDefinition> _schemas;
@@ -950,7 +950,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaProvider, ISCIMv2Validation
 
     #endregion
 
-    #region IJsonSchemaProvider Implementation
+    #region IJsonSchemaService Implementation
 
     /// <summary>
     /// Registers a custom schema definition for SCIM operations.
