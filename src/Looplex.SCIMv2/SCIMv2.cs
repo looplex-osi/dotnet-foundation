@@ -28,7 +28,7 @@ namespace Looplex.SCIMv2;
 /// </summary>
 public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
 {
-    private readonly Dictionary<string, IResourceService> _registeredResource = new();
+    private readonly Dictionary<string, IResourceService> resources = new();
     private readonly Dictionary<string, SchemaDefinition> _schemas;
     private readonly IServiceNameProvider? _serviceNameProvider;
     private readonly IHttpContextAccessor? _httpContextAccessor;
@@ -366,7 +366,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
             throw new ArgumentNullException(nameof(service));
 
         // Store the service
-        _registeredResource[collectionName] = service;
+        resources[collectionName] = service;
     }
 
 
@@ -486,7 +486,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
             }
 
             // Get the registered service for this collection
-            if (!_registeredResource.TryGetValue(collection, out var service))
+            if (!resources.TryGetValue(collection, out var service))
             {
                 return CreateErrorResponse(404, "Collection not found", $"Collection '{collection}' is not registered");
             }
@@ -743,7 +743,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
             }
 
             // Get the registered service for this collection
-            if (!_registeredResource.TryGetValue(collection, out var service))
+            if (!resources.TryGetValue(collection, out var service))
             {
                 return CreateErrorResponse(404, "Collection not found", $"Collection '{collection}' is not registered");
             }
@@ -881,7 +881,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     /// <returns>Collection of registered collection names</returns>
     public IEnumerable<string> GetRegisteredCollections()
     {
-        return _registeredResource.Keys;
+        return resources.Keys;
     }
 
     /// <summary>
@@ -891,7 +891,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     /// <returns>True if collection is registered, false otherwise</returns>
     public bool IsCollectionRegistered(string collection)
     {
-        return _registeredResource.ContainsKey(collection);
+        return resources.ContainsKey(collection);
     }
 
     /// <summary>
@@ -905,11 +905,11 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
         if (string.IsNullOrEmpty(collectionName))
             throw new ArgumentException("Collection name cannot be null or empty", nameof(collectionName));
 
-        var wasRegistered = _registeredResource.ContainsKey(collectionName);
+        var wasRegistered = resources.ContainsKey(collectionName);
         
         if (wasRegistered)
         {
-            _registeredResource.Remove(collectionName);
+            resources.Remove(collectionName);
             
         }
         
@@ -923,8 +923,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     /// <returns>Number of collections that were deregistered</returns>
     public int DeregisterAll()
     {
-        var count = _registeredResource.Count;
-        _registeredResource.Clear();
+        var count = resources.Count;
+        resources.Clear();
         
         
         return count;
@@ -1827,7 +1827,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
         }
         
         // Validate service registration
-        if (!_registeredResource.TryGetValue(collection, out var service))
+        if (!resources.TryGetValue(collection, out var service))
         {
             return (false, CreateErrorResponse(404, $"Collection '{collection}' is not registered"), null, null);
         }
@@ -1958,7 +1958,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                         // Execute the actual operation using the registered service
                         try
                         {
-                            var service = _registeredResource[collectionName];
+                            var service = resources[collectionName];
                             var result = await ExecuteBulkOperation(service, operation, collectionName, cancellationToken);
                             
                             responseOp.Status = result.StatusCode;
