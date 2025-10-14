@@ -297,14 +297,14 @@ public static class SCIMv2EndpointExtensions
     public static IEndpointRouteBuilder MapSCIMv2DiscoveryEndpoints(this IEndpointRouteBuilder endpoints)
     {
         // GET /ResourceTypes - List resource types
-        endpoints.MapGet("/ResourceTypes", async (HttpContext context) =>
+        endpoints.MapGet("/ResourceTypes", (HttpContext context) =>
         {
             // Return a simple resource types response
             var result = new
             {
                 schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:ResourceType" },
                 totalResults = 2,
-                items = new[]
+                Resources = new[]
                 {
                     new
                     {
@@ -334,14 +334,14 @@ public static class SCIMv2EndpointExtensions
         .WithDescription("RFC 7644 compliant resource types discovery endpoint");
 
         // GET /Schemas - List schemas
-        endpoints.MapGet("/Schemas", async (HttpContext context) =>
+        endpoints.MapGet("/Schemas", (HttpContext context) =>
         {
             // Return a simple schemas response
             var result = new
             {
                 schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:Schema" },
                 totalResults = 2,
-                items = new[]
+                Resources = new[]
                 {
                     new
                     {
