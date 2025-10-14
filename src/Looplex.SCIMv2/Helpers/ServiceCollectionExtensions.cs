@@ -1,7 +1,6 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.Reflection;
 using System.Threading.Tasks;
 using System.Threading;
 using Looplex.SCIMv2.Entities;

@@ -1,4 +1,3 @@
-using System;
 using Looplex.SCIMv2.Entities;
 
 namespace Looplex.SCIMv2.Ports;

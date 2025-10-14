@@ -1,9 +1,8 @@
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2;
 
 namespace Looplex.SCIMv2.Ports;
 

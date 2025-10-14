@@ -6,9 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
-using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2.Ports;
 using Looplex.Foundation.Serialization;
 
 namespace Looplex.SCIMv2.Extensions
