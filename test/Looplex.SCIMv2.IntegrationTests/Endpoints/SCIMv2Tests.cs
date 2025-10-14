@@ -393,7 +393,7 @@ public class SCIMv2Tests
     };
     
     _users.QueryAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
-        Arg.Any<CancellationToken>())
+        Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult((testUsers as IList<User>, testUsers.Count)));
 
     // Act
@@ -1003,7 +1003,7 @@ public class SCIMv2Tests
   {
     // Arrange
     _groups.QueryAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
-        Arg.Any<CancellationToken>())
+        Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
       .Returns(Task.FromResult((new List<Group>() as IList<Group>, 0)));
 
     // Act

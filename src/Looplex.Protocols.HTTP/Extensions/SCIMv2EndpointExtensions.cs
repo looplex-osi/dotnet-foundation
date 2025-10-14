@@ -81,7 +81,7 @@ public static class SCIMv2EndpointExtensions
             return await ExecuteSCIMOperation(
                 context,
                 collectionName,
-                service => service.QueryAsync(collectionName, startIndex, count, filter, null, null, context.RequestAborted),
+                service => service.QueryAsync(collectionName, startIndex, count, filter, null, null, attributes, excludedAttributes, context.RequestAborted),
                 "Query");
         })
         .WithName($"SCIMv2{collectionName}List")

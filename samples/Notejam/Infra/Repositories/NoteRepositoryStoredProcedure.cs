@@ -1,9 +1,11 @@
+using System.Data;
 using Looplex.Samples.Domain.Entities;
 using Looplex.Samples.Application.Abstraction;
 using Looplex.Samples.Infra.Repositories.Base;
 using Looplex.Samples.Infra.Repositories.Mappings;
 using Looplex.Samples.Infra.Repositories.Mappers;
 using Microsoft.Extensions.Logging;
+using Looplex.Foundation.Helpers;
 
 namespace Looplex.Samples.Infra.Repositories;
 

@@ -63,7 +63,7 @@ public class MockGrantTypeService : IGrantTypeService
 
 public class MockSCIMv2Service : ISCIMv2Service
 {
-    public Task<object> QueryAsync(string collection, int startIndex, int count, string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
+    public Task<object> QueryAsync(string collection, int startIndex, int count, string? filter, string? sortBy, string? sortOrder, string? attributes, string? excludedAttributes, CancellationToken cancellationToken = default)
     {
         return Task.FromResult<object>(new { totalResults = 0, Resources = new object[0] });
     }

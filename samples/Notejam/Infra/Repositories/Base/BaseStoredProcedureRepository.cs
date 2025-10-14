@@ -36,17 +36,17 @@ public abstract class BaseStoredProcedureRepository<T> : IResourceRepository<T>
     public virtual async Task<(IList<T> Resources, int TotalCount)> QueryAsync(
         int startIndex, int count, string? filter, CancellationToken cancellationToken = default)
     {
-        return await QueryAsync(startIndex, count, filter, null, null, cancellationToken);
+        return await QueryAsync(startIndex, count, filter, null, null, null, null, cancellationToken);
     }
 
     public virtual async Task<(IList<T> Resources, int TotalCount)> QueryAsync(
         int startIndex, int count, string? filter, string? sortBy, string? sortOrder, 
-        CancellationToken cancellationToken = default)
+        string? attributes, string? excludedAttributes, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("🔍 Getting {EntityName} with Foundation approach: startIndex={StartIndex}, count={Count}, filter={Filter}, sortBy={SortBy}, sortOrder={SortOrder}", 
-                _mapping.EntityName, startIndex, count, filter, sortBy, sortOrder);
+            _logger.LogInformation("🔍 Getting {EntityName} with Foundation approach: startIndex={StartIndex}, count={Count}, filter={Filter}, sortBy={SortBy}, sortOrder={SortOrder}, attributes={Attributes}, excludedAttributes={ExcludedAttributes}", 
+                _mapping.EntityName, startIndex, count, filter, sortBy, sortOrder, attributes, excludedAttributes);
 
             var queryParams = new StoredProcedureQueryParams
             {

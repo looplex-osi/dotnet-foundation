@@ -59,14 +59,14 @@ public class SCIMv2ServiceAdapter : ISCIMv2Service
         }
     }
 
-    public async Task<object> QueryAsync(string collection, int startIndex, int count, string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
+    public async Task<object> QueryAsync(string collection, int startIndex, int count, string? filter, string? sortBy, string? sortOrder, string? attributes, string? excludedAttributes, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Querying collection {Collection} with startIndex={StartIndex}, count={Count}, filter={Filter}", 
-                collection, startIndex, count, filter);
+            _logger.LogDebug("Querying collection {Collection} with startIndex={StartIndex}, count={Count}, filter={Filter}, attributes={Attributes}, excludedAttributes={ExcludedAttributes}", 
+                collection, startIndex, count, filter, attributes, excludedAttributes);
 
-            var response = await _scimv2Service.QueryAsync(collection, startIndex, count, filter, sortBy, sortOrder, cancellationToken);
+            var response = await _scimv2Service.QueryAsync(collection, startIndex, count, filter, sortBy, sortOrder, attributes, excludedAttributes, cancellationToken);
             return response;
         }
         catch (Exception ex)

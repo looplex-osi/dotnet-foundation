@@ -27,11 +27,11 @@ public class UsersTests
     };
 
     _userService.QueryAsync(Arg.Any<int>(), Arg.Any<int>(), 
-      Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+      Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
       .Returns((users, 2));
 
     // Act
-    var (result, totalCount) = await _userService.QueryAsync(1, 10, "", "", "", CancellationToken.None);
+    var (result, totalCount) = await _userService.QueryAsync(1, 10, "", "", "", "", "", CancellationToken.None);
 
     // Assert
     Assert.IsNotNull(result);

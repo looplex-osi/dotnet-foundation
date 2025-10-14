@@ -71,10 +71,12 @@ public interface ISCIMv2
     /// <param name="filter">SCIM filter expression</param>
     /// <param name="sortBy">Sort field</param>
     /// <param name="sortOrder">Sort order (ascending/descending)</param>
+    /// <param name="attributes">Comma-separated list of attributes to return</param>
+    /// <param name="excludedAttributes">Comma-separated list of attributes to exclude</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>SCIMv2 ListResponse</returns>
     Task<SCIMv2Response> QueryAsync(string collection, int startIndex, int count, 
-        string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default);
+        string? filter, string? sortBy, string? sortOrder, string? attributes, string? excludedAttributes, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Create a new resource from JSON (POST /collection)

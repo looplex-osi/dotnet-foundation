@@ -13,6 +13,10 @@ Looplex.Protocols.HTTP is a comprehensive ASP.NET Core web application that impl
 - **Plugin System**: Extensible architecture for custom authentication providers
 - **CORS Support**: Cross-origin resource sharing for web applications
 - **Swagger Documentation**: Interactive API documentation in development mode
+- **Performance Optimized**: Memory-efficient operations with optimized reflection
+- **Query Filtering**: Support for attributes and excludedAttributes parameters
+- **Automatic Headers**: Location and ETag headers applied automatically
+- **RFC 7644 Compliant**: Complete implementation of SCIM v2.0 specification
 
 ## Quick Start
 
@@ -43,6 +47,23 @@ Looplex.Protocols.HTTP is a comprehensive ASP.NET Core web application that impl
    - HTTP: `http://localhost:54075`
    - HTTPS: `https://localhost:54074`
    - Swagger UI: `https://localhost:54074/swagger`
+
+## Performance Features
+
+### Memory Optimization
+- **Reflection-based Headers**: Efficient header application using direct property access
+- **Reduced JSON Serialization**: Minimal overhead for header extraction
+- **Memory Leak Prevention**: Proper resource disposal and garbage collection
+
+### Query Filtering
+- **Attributes Parameter**: Specify which attributes to return in responses
+- **ExcludedAttributes Parameter**: Specify which attributes to exclude from responses
+- **Performance Benefits**: Reduced payload size and improved response times
+
+### Automatic Headers
+- **Location Headers**: Automatically set for POST/PUT/PATCH operations with resource IDs
+- **ETag Headers**: Automatically generated for resource versioning and conditional requests
+- **Content-Type**: Automatically set to `application/scim+json` for all SCIMv2 responses
 
 ## Configuration
 
@@ -156,6 +177,17 @@ builder.Services.AddSingleton<IResourceService<User>, UserService>();
 #### List Users
 ```bash
 curl -X GET "http://localhost:54075/Users?startIndex=1&count=10" \
+  -H "Accept: application/scim+json"
+```
+
+#### List Users with Attribute Filtering
+```bash
+# Return only specific attributes
+curl -X GET "http://localhost:54075/Users?startIndex=1&count=10&attributes=userName,emails,name" \
+  -H "Accept: application/scim+json"
+
+# Exclude specific attributes
+curl -X GET "http://localhost:54075/Users?startIndex=1&count=10&excludedAttributes=password,secret" \
   -H "Accept: application/scim+json"
 ```
 
@@ -379,6 +411,36 @@ Include the JWT token in the Authorization header:
 Authorization: Bearer your-jwt-token
 ```
 
+### RFC 7644 Compliance
+
+This implementation provides complete compliance with the SCIM v2.0 specification (RFC 7644):
+
+#### HTTP Status Codes
+- **POST**: Returns `201 Created` with Location header for resource creation
+- **PUT**: Returns `200 OK` with updated resource
+- **PATCH**: Returns `200 OK` with modified resource
+- **DELETE**: Returns `204 No Content` for successful deletion
+- **GET**: Returns `200 OK` with resource data
+
+#### Query Parameters (Section 3.4.2.3)
+- **attributes**: Comma-separated list of attributes to return
+- **excludedAttributes**: Comma-separated list of attributes to exclude
+- **filter**: SCIM filter expression for resource filtering
+- **startIndex**: Starting index for pagination (1-based)
+- **count**: Number of results to return
+
+#### Automatic Headers
+- **Location**: Set automatically for POST/PUT/PATCH operations
+- **ETag**: Generated automatically for resource versioning
+- **Content-Type**: `application/scim+json` for all SCIMv2 responses
+- **Accept**: `application/scim+json` for SCIMv2 requests
+
+#### Error Response Format (Section 3.12)
+- **scimType**: SCIM-specific error type
+- **detail**: Human-readable error message
+- **status**: HTTP status code
+- **schemas**: Array containing `urn:ietf:params:scim:api:messages:2.0:Error`
+
 ### Required Headers
 
 For SCIMv2 requests:
@@ -474,6 +536,14 @@ Before integrating OAuth2 functionality, ensure your consumer application has:
 - **400 Bad Request**: Check that request body follows SCIMv2 schema format
 - **401 Unauthorized**: Verify authentication headers and token validity
 - **Content-Type Errors**: Ensure `application/scim+json` headers are set correctly
+- **Attribute Filtering Issues**: Verify `attributes` and `excludedAttributes` parameters are properly formatted
+- **Memory Issues**: Ensure proper resource disposal in long-running applications
+- **Header Issues**: Verify Location and ETag headers are being set correctly for conditional requests
+
+#### Performance Issues
+- **Slow Queries**: Use `attributes` parameter to reduce payload size
+- **Memory Usage**: Monitor reflection-based header application for memory leaks
+- **Response Times**: Use `excludedAttributes` to exclude unnecessary data
 
 #### OAuth2 Issues
 - **401 Unauthorized**: Verify client credentials and grant type

@@ -149,7 +149,7 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
             scimService.Deregister("Users");
 
             // Act & Assert - Query should fail for deregistered collection
-            var queryTask = scimService.QueryAsync("Users", 1, 10, null, null, null);
+            var queryTask = scimService.QueryAsync("Users", 1, 10, null, null, null, null, null);
             var result = queryTask.Result;
             
             Assert.AreEqual(404, result.StatusCode, "Query should return 404 for deregistered collection");

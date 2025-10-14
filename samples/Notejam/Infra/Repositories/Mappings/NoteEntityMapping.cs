@@ -22,31 +22,31 @@ public class NoteEntityMapping : IEntityMapping<Note>
 
     public Dictionary<string, string> AttributeMapper => new()
     {
-        { "meta.created", "created_at" },
-        { "meta.lastModified", "updated_at" },
-        { "active", "active" },
-        { "name", "markdown" },  // Notes usam 'markdown' como conteúdo
-        { "text", "markdown" },
-        { "status", "status" },
-        { "id", "uuid" },
-        { "externalId", "external_id" }
+        { "meta.created", "n.created_at" },  // Qualificado com alias da tabela
+        { "meta.lastModified", "n.updated_at" },  // Qualificado com alias da tabela
+        { "active", "n.active" },  // Qualificado com alias da tabela
+        { "name", "n.markdown" },  // Notes usam 'markdown' como conteúdo, qualificado
+        { "text", "n.markdown" },  // Qualificado
+        { "status", "n.status" },  // Qualificado
+        { "id", "n.uuid" },  // Qualificado
+        { "externalId", "n.external_id" }  // Qualificado
     };
 
     public Dictionary<string, string> SortFieldMapping => new()
     {
-        { "id", "uuid" },
-        { "externalId", "external_id" },
-        { "name", "markdown" },  // Notes usam 'markdown' como conteúdo
-        { "text", "markdown" },
-        { "active", "active" },
-        { "status", "status" },
-        { "meta.created", "created_at" },
-        { "meta.lastModified", "updated_at" },
-        { "created", "created_at" },
-        { "updated", "updated_at" }
+        { "id", "uuid" },  // Sem alias para stored procedure
+        { "externalId", "external_id" },  // Sem alias
+        { "name", "markdown" },  // Notes usam 'markdown' como conteúdo, sem alias
+        { "text", "markdown" },  // Sem alias
+        { "active", "active" },  // Sem alias
+        { "status", "status" },  // Sem alias
+        { "meta.created", "created_at" },  // Sem alias para stored procedure
+        { "meta.lastModified", "updated_at" },  // Sem alias
+        { "created", "created_at" },  // Sem alias
+        { "updated", "updated_at" }  // Sem alias
     };
 
-    public string DefaultSortField => "updated_at DESC";
+    public string DefaultSortField => "updated_at DESC";  // Sem alias para que a stored procedure reconheça
     
     public string GetQueryProcedureName() => "USP_notes_pquery";
     public string GetCreateProcedureName() => "USP_notes_create";

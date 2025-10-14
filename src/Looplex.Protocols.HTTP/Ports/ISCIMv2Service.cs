@@ -14,7 +14,7 @@ public interface ISCIMv2Service
     /// <summary>
     /// Query resources from a collection (GET /collection)
     /// </summary>
-    Task<object> QueryAsync(string collection, int startIndex, int count, string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default);
+    Task<object> QueryAsync(string collection, int startIndex, int count, string? filter, string? sortBy, string? sortOrder, string? attributes, string? excludedAttributes, CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Retrieve a specific resource (GET /collection/:id)

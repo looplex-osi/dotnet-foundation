@@ -203,7 +203,7 @@ public class StoredProcedureExecutor : IStoredProcedureExecutor
             !orderBy.Contains("updated_at") && 
             !defaultSortField.Contains("updated_at"))
         {
-            orderBy += ", updated_at DESC";
+            orderBy += ", updated_at DESC";  // Sem alias para que a stored procedure reconheça
         }
 
         return orderBy;

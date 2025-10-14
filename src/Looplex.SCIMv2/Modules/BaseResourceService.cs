@@ -53,7 +53,7 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     #region IResourceService<T> Implementation - Unified Methods
 
     /// <summary>
-    /// Queries resources with pagination, filtering, and sorting support.
+    /// Queries resources with pagination, filtering, sorting, and attribute filtering support.
     /// Implements IResourceService<T>.QueryAsync with SCIM v2.0 compliance.
     /// Eliminates indirection by implementing interface directly.
     /// </summary>
@@ -62,14 +62,16 @@ public abstract class BaseResourceService<T> : IResourceService<T> where T : Res
     /// <param name="filter">SCIM filter expression (optional)</param>
     /// <param name="sortBy">Field name for sorting (optional)</param>
     /// <param name="sortOrder">Sort order: "ascending" or "descending" (optional)</param>
+    /// <param name="attributes">Comma-separated list of attributes to return (optional)</param>
+    /// <param name="excludedAttributes">Comma-separated list of attributes to exclude (optional)</param>
     /// <param name="cancellationToken">Cancellation token for async operation</param>
     /// <returns>Tuple containing list of resources and total count for pagination</returns>
     public virtual async Task<(IList<T> Resources, int TotalCount)> QueryAsync(int startIndex, int count, 
-        string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
+        string? filter, string? sortBy, string? sortOrder, string? attributes, string? excludedAttributes, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         
-        var result = await _repository.QueryAsync(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
+        var result = await _repository.QueryAsync(startIndex, count, filter, sortBy, sortOrder, attributes, excludedAttributes, cancellationToken);
         return (result.Resources, result.TotalCount);
     }
 

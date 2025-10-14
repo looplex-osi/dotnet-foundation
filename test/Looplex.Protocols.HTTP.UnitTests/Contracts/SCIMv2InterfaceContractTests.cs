@@ -3,15 +3,15 @@ using Looplex.SCIMv2;
 using Looplex.SCIMv2.Entities;
 using Looplex.SCIMv2.Modules;
 
-namespace Looplex.Protocols.HTTP.UnitTests.Reflection;
+namespace Looplex.Protocols.HTTP.UnitTests.Contracts;
 
 /// <summary>
-/// Integration tests for reflection calls in SCIMv2EndpointExtensions.cs
-/// These tests ensure that HTTP endpoint reflection calls work correctly
-/// and prevent TargetParameterCountException bugs
+/// Contract validation tests for SCIMv2 interface methods
+/// These tests ensure that SCIMv2 interface contracts are properly implemented
+/// and prevent TargetParameterCountException bugs in method calls
 /// </summary>
 [TestClass]
-public class SCIMv2EndpointExtensionsReflectionTests
+public class SCIMv2InterfaceContractTests
 {
     private Type _scimv2Type = null!;
     private object _realScimService = null!;
@@ -31,7 +31,7 @@ public class SCIMv2EndpointExtensionsReflectionTests
 
     /// <summary>
     /// Tests that ISCIMv2 interface methods have the expected signatures
-    /// This test validates the interface contract for HTTP endpoints
+    /// This test validates the interface contract to ensure compatibility
     /// </summary>
     [TestMethod]
     public void ISCIMv2Interface_MethodSignatures_ShouldMatchExpected()
@@ -43,9 +43,9 @@ public class SCIMv2EndpointExtensionsReflectionTests
         
         // QueryAsync: (string collection, int startIndex, int count, string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken)
         var queryMethod = _scimv2Type.GetMethod("QueryAsync", new Type[] { 
-            typeof(string), typeof(int), typeof(int), typeof(string), typeof(string), typeof(string), typeof(CancellationToken) 
+            typeof(string), typeof(int), typeof(int), typeof(string), typeof(string), typeof(string), typeof(string), typeof(string), typeof(CancellationToken) 
         });
-        Assert.IsNotNull(queryMethod, "QueryAsync should have 7 parameters: collection, startIndex, count, filter, sortBy, sortOrder, cancellationToken");
+        Assert.IsNotNull(queryMethod, "QueryAsync should have 9 parameters: collection, startIndex, count, filter, sortBy, sortOrder, attributes, excludedAttributes, cancellationToken");
 
         // RetrieveAsync: (string collection, string id, CancellationToken cancellationToken)
         var retrieveMethod = _scimv2Type.GetMethod("RetrieveAsync", new Type[] { 
@@ -83,11 +83,11 @@ public class SCIMv2EndpointExtensionsReflectionTests
     #region Reflection Call Tests
 
     /// <summary>
-    /// Tests that reflection calls with CORRECT parameters work
-    /// This test verifies the fix is working for HTTP endpoints
+    /// Tests that SCIMv2 interface method calls with CORRECT parameters work
+    /// This test verifies the interface contract is working properly
     /// </summary>
     [TestMethod]
-    public async Task SCIMv2EndpointExtensionsReflection_CorrectParameters_ShouldNotThrow()
+    public async Task SCIMv2InterfaceContract_CorrectParameters_ShouldNotThrow()
     {
         // Act & Assert - Test each method with correct parameters
         
@@ -96,7 +96,7 @@ public class SCIMv2EndpointExtensionsReflectionTests
         Assert.IsNotNull(queryMethod, "QueryAsync method should exist");
         
         var queryTask = (Task<SCIMv2Response>)queryMethod.Invoke(_realScimService, new object[] { 
-            "Users", 1, 100, null, null, null, CancellationToken.None 
+            "Users", 1, 100, null, null, null, null, null, CancellationToken.None 
         });
         var queryResult = await queryTask;
         Assert.IsNotNull(queryResult, "QueryAsync should succeed with correct parameters");
@@ -160,11 +160,11 @@ public class SCIMv2EndpointExtensionsReflectionTests
     }
 
     /// <summary>
-    /// Tests that reflection calls with INCORRECT parameters throw TargetParameterCountException
+    /// Tests that SCIMv2 interface method calls with INCORRECT parameters throw TargetParameterCountException
     /// This test simulates the original bug to ensure it would be detected
     /// </summary>
     [TestMethod]
-    public void SCIMv2EndpointExtensionsReflection_IncorrectParameters_ShouldThrowTargetParameterCountException()
+    public void SCIMv2InterfaceContract_IncorrectParameters_ShouldThrowTargetParameterCountException()
     {
         // Act & Assert - Test each method with INCORRECT parameters (simulating the original bug)
         
@@ -254,18 +254,18 @@ public class SCIMv2EndpointExtensionsReflectionTests
     #region Bug Prevention Tests
 
     /// <summary>
-    /// Tests that ensure the reflection bug cannot be reintroduced
-    /// This test validates that the fix is permanent for HTTP endpoints
+    /// Tests that ensure the interface contract bug cannot be reintroduced
+    /// This test validates that the fix is permanent for SCIMv2 interface contracts
     /// </summary>
     [TestMethod]
-    public void SCIMv2EndpointExtensionsReflectionBug_Prevention_ShouldBePermanent()
+    public void SCIMv2InterfaceContractBug_Prevention_ShouldBePermanent()
     {
         // This test ensures that the reflection bug cannot be reintroduced
         // by validating that all method calls use the correct parameter counts
         
         var methods = new[]
         {
-            new { Name = "QueryAsync", ExpectedParamCount = 7, Description = "collection, startIndex, count, filter, sortBy, sortOrder, cancellationToken" },
+            new { Name = "QueryAsync", ExpectedParamCount = 9, Description = "collection, startIndex, count, filter, sortBy, sortOrder, attributes, excludedAttributes, cancellationToken" },
             new { Name = "RetrieveAsync", ExpectedParamCount = 3, Description = "collection, id, cancellationToken" },
             new { Name = "DeleteAsync", ExpectedParamCount = 3, Description = "collection, id, cancellationToken" }
         };
@@ -311,7 +311,7 @@ public class SCIMv2EndpointExtensionsReflectionTests
 public class MockSCIMv2Service : ISCIMv2
 {
     public Task<SCIMv2Response> QueryAsync(string collection, int startIndex, int count, 
-        string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
+        string? filter, string? sortBy, string? sortOrder, string? attributes, string? excludedAttributes, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(new SCIMv2Response { StatusCode = 200 });
     }

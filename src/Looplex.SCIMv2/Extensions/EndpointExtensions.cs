@@ -74,7 +74,7 @@ namespace Looplex.SCIMv2.Extensions
                         try
                         {
                             // Use the SCIMv2 service to query resources
-                            var scimResponse = await scimService.QueryAsync(collectionName, startIndex, count, filter, sortBy, sortOrder, CancellationToken.None);
+                            var scimResponse = await scimService.QueryAsync(collectionName, startIndex, count, filter, sortBy, sortOrder, null, null, CancellationToken.None);
                             
                             // Return the SCIMv2 response with proper formatting
                             context.Response.StatusCode = scimResponse.StatusCode;

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace Looplex.SCIMv2.Entities;
@@ -110,7 +111,9 @@ public static class AttributesProcessor
             var value = GetJsonValue(record, attr);
             if (value != null)
             {
-              SetJsonValue(newObj, attr, value.DeepClone());
+              // Create a deep copy using JSON serialization to avoid parent issues
+              var clonedValue = JsonNode.Parse(JsonSerializer.Serialize(value));
+              SetJsonValue(newObj, attr, clonedValue);
             }
           }
 

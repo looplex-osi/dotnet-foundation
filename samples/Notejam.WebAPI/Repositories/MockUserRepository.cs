@@ -90,10 +90,10 @@ public class MockUserRepository : IResourceRepository<User>
 
     public Task<(IList<User> Resources, int TotalCount)> QueryAsync(int startIndex, int count, string? filter, CancellationToken cancellationToken = default)
     {
-        return QueryAsync(startIndex, count, filter, null, null, cancellationToken);
+        return QueryAsync(startIndex, count, filter, null, null, null, null, cancellationToken);
     }
 
-    public Task<(IList<User> Resources, int TotalCount)> QueryAsync(int startIndex, int count, string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
+    public Task<(IList<User> Resources, int TotalCount)> QueryAsync(int startIndex, int count, string? filter, string? sortBy, string? sortOrder, string? attributes, string? excludedAttributes, CancellationToken cancellationToken = default)
     {
         var users = _users.AsQueryable();
         

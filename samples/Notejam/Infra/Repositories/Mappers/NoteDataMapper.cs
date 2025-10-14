@@ -59,9 +59,11 @@ public class NoteDataMapper : IDataMapper<Note>
 
     public Dictionary<string, object> MapToUpdateParameters(string id, Note note)
     {
+        // Normalize UUID to uppercase to match database storage format
+        var normalizedId = id.ToUpperInvariant();
         return new Dictionary<string, object>
         {
-            { "@note_guid", Guid.Parse(id) },
+            { "@note_guid", Guid.Parse(normalizedId) },
             { "@name", note.Name },
             { "@text", note.Text },
             { "@active", note.Active },
@@ -71,18 +73,22 @@ public class NoteDataMapper : IDataMapper<Note>
 
     public Dictionary<string, object> MapToDeleteParameters(string id)
     {
+        // Normalize UUID to uppercase to match database storage format
+        var normalizedId = id.ToUpperInvariant();
         return new Dictionary<string, object>
         {
-            { "@note_guid", Guid.Parse(id) },
+            { "@note_guid", Guid.Parse(normalizedId) },
             { "@active", false }
         };
     }
 
     public Dictionary<string, object> MapToRetrieveParameters(string id)
     {
+        // Normalize UUID to uppercase to match database storage format
+        var normalizedId = id.ToUpperInvariant();
         return new Dictionary<string, object>
         {
-            { "@filter_uuid", Guid.Parse(id) }
+            { "@filter_uuid", Guid.Parse(normalizedId) }
         };
     }
 }

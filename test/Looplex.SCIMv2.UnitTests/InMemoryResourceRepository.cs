@@ -108,7 +108,7 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.TestHelpers
             string? filter = null, 
             CancellationToken cancellationToken = default)
         {
-            return QueryAsync(startIndex, count, filter, null, null, cancellationToken);
+            return QueryAsync(startIndex, count, filter, null, null, null, null, cancellationToken);
         }
 
         public Task<(IList<T> Resources, int TotalCount)> QueryAsync(
@@ -117,6 +117,8 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.TestHelpers
             string? filter = null, 
             string? sortBy = null,
             string? sortOrder = null,
+            string? attributes = null,
+            string? excludedAttributes = null,
             CancellationToken cancellationToken = default)
         {
             lock (_lock)
@@ -164,10 +166,30 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.TestHelpers
                 var totalCount = query.Count();
                 var resources = query.Skip(startIndex - 1).Take(count).ToList();
 
+                // Apply attribute filtering if provided
+                if (!string.IsNullOrEmpty(attributes) || !string.IsNullOrEmpty(excludedAttributes))
+                {
+                    // For testing purposes, we'll implement a simple attribute filtering
+                    // In a real implementation, this would use JSON serialization/deserialization
+                    // and the AttributesProcessor from the main project
+                    resources = ApplyAttributeFiltering(resources, attributes, excludedAttributes);
+                }
+
                 return Task.FromResult(((IList<T>)resources, totalCount));
             }
         }
 
+        /// <summary>
+        /// Applies attribute filtering to resources for testing purposes
+        /// </summary>
+        private List<T> ApplyAttributeFiltering(List<T> resources, string? attributes, string? excludedAttributes)
+        {
+            // For testing purposes, we'll return the resources as-is
+            // In a real implementation, this would use JSON serialization/deserialization
+            // and the AttributesProcessor from the main project
+            // TODO: Implement proper attribute filtering using AttributesProcessor
+            return resources;
+        }
 
         /// <summary>
         /// Helper method to add resources for testing

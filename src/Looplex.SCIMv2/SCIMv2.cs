@@ -383,10 +383,12 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     /// <param name="filter">SCIM filter expression (optional)</param>
     /// <param name="sortBy">Field name for sorting (optional)</param>
     /// <param name="sortOrder">Sort order: "ascending" or "descending" (optional)</param>
+    /// <param name="attributes">Comma-separated list of attributes to return (optional)</param>
+    /// <param name="excludedAttributes">Comma-separated list of attributes to exclude (optional)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>SCIMv2 ListResponse with resources and pagination metadata</returns>
     public async Task<SCIMv2Response> QueryAsync(string collection, int startIndex, int count, 
-        string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
+        string? filter, string? sortBy, string? sortOrder, string? attributes, string? excludedAttributes, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -409,7 +411,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
 
             // Use dynamic typing to call QueryAsync on the generic service
             dynamic dynamicService = validation.Service!;
-            var result = await dynamicService.QueryAsync(startIndex, count, filter, sortBy, sortOrder, cancellationToken);
+            var result = await dynamicService.QueryAsync(startIndex, count, filter, sortBy, sortOrder, attributes, excludedAttributes, cancellationToken);
             
             // Extract resources and totalCount from tuple
             var resources = result.Item1;
@@ -1566,33 +1568,36 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
             return resource;
         }
 
-        var processedResource = new JsonObject(resource);
-
         // Apply attribute filtering
         if (attrs.Length > 0)
         {
-            var newObj = new JsonObject();
+            var filteredResource = new JsonObject();
             foreach (var attr in attrs)
             {
-                var value = GetJsonValue(processedResource, attr);
+                var value = GetJsonValue(resource, attr);
                 if (value != null)
                 {
-                    SetJsonValue(newObj, attr, value.DeepClone());
+                    // Create a deep copy using JSON serialization to avoid parent issues
+                    var clonedValue = JsonNode.Parse(JsonSerializer.Serialize(value));
+                    SetJsonValue(filteredResource, attr, clonedValue);
                 }
             }
-            processedResource = newObj;
+            return filteredResource;
         }
 
         // Apply excluded attributes
         if (xattrs.Length > 0)
         {
+            // Create a deep copy using JSON serialization to avoid "node already has a parent" error
+            var filteredResource = JsonNode.Parse(JsonSerializer.Serialize(resource))!.AsObject();
             foreach (var xattr in xattrs)
             {
-                DeleteJsonValue(processedResource, xattr);
+                DeleteJsonValue(filteredResource, xattr);
             }
+            return filteredResource;
         }
 
-        return processedResource;
+        return resource;
     }
     
     /// <summary>

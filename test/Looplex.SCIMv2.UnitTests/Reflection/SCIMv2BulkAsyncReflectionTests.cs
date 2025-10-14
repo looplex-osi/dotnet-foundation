@@ -347,7 +347,7 @@ public class MockUserServiceForBulkAsync : IResourceService<User>
     }
 
     public Task<(IList<User> Resources, int TotalCount)> QueryAsync(int startIndex, int count, 
-        string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
+        string? filter, string? sortBy, string? sortOrder, string? attributes, string? excludedAttributes, CancellationToken cancellationToken = default)
     {
         return QueryAsync(startIndex, count, filter, cancellationToken);
     }

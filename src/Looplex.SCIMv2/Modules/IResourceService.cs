@@ -31,21 +31,25 @@ public interface IResourceService
 public interface IResourceService<T> : IResourceService where T : IResource
 {
     /// <summary>
-    /// Queries resources with pagination, filtering, and sorting support.
+    /// Queries resources with pagination, filtering, sorting, and attribute filtering support.
     /// Implements RFC 7644 Section 3.4.2 - Query Resources
     /// [RFC 7644 Section 3.4.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2)
     /// Supports SCIM filter expressions per RFC 7644 Section 3.4.2.2
     /// [RFC 7644 Section 3.4.2.2](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2)
+    /// Supports attribute filtering per RFC 7644 Section 3.4.2.3
+    /// [RFC 7644 Section 3.4.2.3](https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.3)
     /// </summary>
     /// <param name="startIndex">Starting index for pagination (1-based)</param>
     /// <param name="count">Maximum number of resources to return</param>
     /// <param name="filter">SCIM filter expression (optional)</param>
     /// <param name="sortBy">Field name for sorting (optional)</param>
     /// <param name="sortOrder">Sort order: "ascending" or "descending" (optional)</param>
+    /// <param name="attributes">Comma-separated list of attributes to return (optional)</param>
+    /// <param name="excludedAttributes">Comma-separated list of attributes to exclude (optional)</param>
     /// <param name="cancellationToken">Cancellation token for async operation</param>
     /// <returns>Tuple containing list of resources and total count for pagination</returns>
     Task<(IList<T> Resources, int TotalCount)> QueryAsync(int startIndex, int count, 
-        string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default);
+        string? filter, string? sortBy, string? sortOrder, string? attributes, string? excludedAttributes, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Creates a new resource in the specified collection.

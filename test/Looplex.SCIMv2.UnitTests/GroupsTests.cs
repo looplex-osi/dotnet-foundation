@@ -38,11 +38,11 @@ namespace Looplex.Foundation.Core.UnitTests.SCIMv2.Entities
       int expectedTotal = 1;
 
       // Configure mock repository to return expected data
-      _mockRepository.QueryAsync(1, 10, "filter", "name", "ascending", cancellationToken)
+      _mockRepository.QueryAsync(1, 10, "filter", "name", "ascending", "", "", cancellationToken)
         .Returns((expectedGroups, expectedTotal));
 
       // Act
-      var (resources, totalCount) = await _groups.QueryAsync(1, 10, "filter", "name", "ascending", cancellationToken);
+      var (resources, totalCount) = await _groups.QueryAsync(1, 10, "filter", "name", "ascending", "", "", cancellationToken);
 
       // Assert
       Assert.IsNotNull(resources);
