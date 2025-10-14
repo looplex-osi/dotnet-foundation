@@ -20,7 +20,8 @@ public static class SCIMv2EndpointExtensions
         HttpContext context,
         string collectionName,
         Func<ISCIMv2Service, Task<T>> operation,
-        string operationName)
+        string operationName,
+        Func<T, IResult>? resultBuilder = null)
     {
         try
         {
@@ -31,7 +32,7 @@ public static class SCIMv2EndpointExtensions
             }
 
             var result = await operation(scimService);
-            return Results.Ok(result);
+            return resultBuilder != null ? resultBuilder(result) : Results.Ok(result);
         }
         catch (ArgumentException ex)
         {
@@ -78,7 +79,7 @@ public static class SCIMv2EndpointExtensions
             return await ExecuteSCIMOperation(
                 context,
                 collectionName,
-                service => service.QueryAsync(collectionName, startIndex, count, filter, null, null, CancellationToken.None),
+                service => service.QueryAsync(collectionName, startIndex, count, filter, null, null, context.RequestAborted),
                 "Query");
         })
         .WithName($"SCIMv2{collectionName}List")
@@ -92,7 +93,7 @@ public static class SCIMv2EndpointExtensions
             return await ExecuteSCIMOperation(
                 context,
                 collectionName,
-                service => service.RetrieveAsync(collectionName, id, CancellationToken.None),
+                service => service.RetrieveAsync(collectionName, id, context.RequestAborted),
                 "Retrieve");
         })
         .WithName($"SCIMv2{collectionName}Get")
@@ -114,8 +115,15 @@ public static class SCIMv2EndpointExtensions
             return await ExecuteSCIMOperation(
                 context,
                 collectionName,
-                service => service.CreateAsync(collectionName, requestBody, CancellationToken.None),
-                "Create");
+                service => service.CreateAsync(collectionName, requestBody, context.RequestAborted),
+                "Create",
+                result => 
+                {
+                    // RFC 7644 Section 3.3: POST must return 201 Created with Location header
+                    var locationUri = $"{context.Request.Scheme}://{context.Request.Host}{path}";
+                    context.Response.Headers["Location"] = locationUri;
+                    return Results.Created(locationUri, result);
+                });
         })
         .WithName($"SCIMv2{collectionName}Create")
         .WithTags("SCIMv2")
@@ -136,7 +144,7 @@ public static class SCIMv2EndpointExtensions
             return await ExecuteSCIMOperation(
                 context,
                 collectionName,
-                service => service.ReplaceAsync(collectionName, id, requestBody, CancellationToken.None),
+                service => service.ReplaceAsync(collectionName, id, requestBody, context.RequestAborted),
                 "Replace");
         })
         .WithName($"SCIMv2{collectionName}Replace")
@@ -166,7 +174,7 @@ public static class SCIMv2EndpointExtensions
                 return await ExecuteSCIMOperation(
                     context,
                     collectionName,
-                    service => service.ModifyAsync(collectionName, id, patchOps, CancellationToken.None),
+                    service => service.ModifyAsync(collectionName, id, patchOps, context.RequestAborted),
                     "Modify");
             }
             catch (JsonException ex)
@@ -185,8 +193,9 @@ public static class SCIMv2EndpointExtensions
             return await ExecuteSCIMOperation(
                 context,
                 collectionName,
-                service => service.DeleteAsync(collectionName, id, CancellationToken.None),
-                "Delete");
+                service => service.DeleteAsync(collectionName, id, context.RequestAborted),
+                "Delete",
+                _ => Results.NoContent());
         })
         .WithName($"SCIMv2{collectionName}Delete")
         .WithTags("SCIMv2")
