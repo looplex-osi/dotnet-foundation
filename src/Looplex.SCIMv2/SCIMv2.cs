@@ -105,33 +105,6 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
         
     }
 
-    /// <summary>
-    /// Loads JSON configuration for a resource type as fallback.
-    /// This method allows applications to provide static JSON configuration.
-    /// Priority: Dynamic configuration overrides JSON static configuration.
-    /// </summary>
-    /// <param name="resourceType">Resource type (e.g., 'user', 'group', 'custom')</param>
-    /// <param name="jsonConfig">JSON configuration string</param>
-    /// <remarks>
-    /// This method provides compatibility with existing JSON-based configurations
-    /// while allowing dynamic overrides for specific attributes.
-    /// </remarks>
-    public static void LoadJsonConfiguration(string resourceType, string jsonConfig)
-    {
-        if (string.IsNullOrEmpty(resourceType))
-            throw new ArgumentException("Resource type cannot be null or empty", nameof(resourceType));
-        
-        if (string.IsNullOrEmpty(jsonConfig))
-            throw new ArgumentException("JSON configuration cannot be null or empty", nameof(jsonConfig));
-        
-        _jsonConfigurations[resourceType.ToLower()] = new Dictionary<string, string>();
-        
-        // TODO: Parse JSON configuration and populate _jsonConfigurations
-        // This would parse the JSON and extract attribute mappings
-        
-    }
-    
-    
 
     /// <summary>
     /// Gets default allowed attributes for standard SCIM resource types.
