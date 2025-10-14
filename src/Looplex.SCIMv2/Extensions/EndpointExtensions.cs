@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Ports;
 using Looplex.Foundation.Serialization;
 
 namespace Looplex.SCIMv2.Extensions
@@ -44,7 +45,7 @@ namespace Looplex.SCIMv2.Extensions
                     try
                     {
                         // Get SCIMv2 service from DI
-                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.Ports.ISCIMv2>();
                         if (scimService == null)
                         {
                             context.Response.StatusCode = 500;
@@ -109,7 +110,7 @@ namespace Looplex.SCIMv2.Extensions
                 {
                     try
                     {
-                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.Ports.ISCIMv2>();
                         if (scimService == null)
                         {
                             context.Response.StatusCode = 500;
@@ -176,7 +177,7 @@ namespace Looplex.SCIMv2.Extensions
                 {
                     try
                     {
-                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.Ports.ISCIMv2>();
                         if (scimService == null)
                         {
                             context.Response.StatusCode = 500;
@@ -244,7 +245,7 @@ namespace Looplex.SCIMv2.Extensions
                 {
                     try
                     {
-                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.Ports.ISCIMv2>();
                         if (scimService == null)
                         {
                             context.Response.StatusCode = 500;
@@ -320,7 +321,7 @@ namespace Looplex.SCIMv2.Extensions
                 {
                     try
                     {
-                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.Ports.ISCIMv2>();
                         if (scimService == null)
                         {
                             context.Response.StatusCode = 500;
@@ -455,7 +456,7 @@ namespace Looplex.SCIMv2.Extensions
                 {
                     try
                     {
-                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.Ports.ISCIMv2>();
                         if (scimService == null)
                         {
                             context.Response.StatusCode = 500;
@@ -601,7 +602,7 @@ namespace Looplex.SCIMv2.Extensions
                 {
                     try
                     {
-                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.Ports.ISCIMv2>();
                         if (scimService == null)
                         {
                             context.Response.StatusCode = 500;
@@ -633,7 +634,7 @@ namespace Looplex.SCIMv2.Extensions
                 {
                     try
                     {
-                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.Ports.ISCIMv2>();
                         if (scimService == null)
                         {
                             context.Response.StatusCode = 500;
@@ -665,7 +666,7 @@ namespace Looplex.SCIMv2.Extensions
                 {
                     try
                     {
-                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.Ports.ISCIMv2>();
                         if (scimService == null)
                         {
                             context.Response.StatusCode = 500;
@@ -706,7 +707,7 @@ namespace Looplex.SCIMv2.Extensions
                 {
                     try
                     {
-                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.ISCIMv2>();
+                        var scimService = context.RequestServices.GetService<Looplex.SCIMv2.Ports.ISCIMv2>();
                         if (scimService == null)
                         {
                             context.Response.StatusCode = 500;

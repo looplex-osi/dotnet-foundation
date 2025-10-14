@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
 
-namespace Looplex.SCIMv2
+namespace Looplex.SCIMv2.Ports
 {
     /// <summary>
     /// Interface for automatic schema discovery from IResource types.

@@ -1,6 +1,6 @@
 using Looplex.SCIMv2.Entities;
 
-namespace Looplex.SCIMv2;
+namespace Looplex.SCIMv2.Ports;
 
 /// <summary>
 /// Interface for SCIMv2 validation and parsing operations

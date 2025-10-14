@@ -7,6 +7,8 @@ using Xunit.Abstractions;
 using Looplex.Samples.Domain.Entities;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
+using Looplex.SCIMv2;
+using Looplex.SCIMv2.Ports;
 
 namespace Looplex.Samples.Tests.Integration
 {
@@ -263,8 +265,8 @@ namespace Looplex.Samples.Tests.Integration
             try
             {
                 // Verificar se os serviços estão registrados
-                var noteService = services.GetService<Looplex.SCIMv2.IResourceService<Note>>();
-                var padService = services.GetService<Looplex.SCIMv2.IResourceService<Pad>>();
+                var noteService = services.GetService<Looplex.SCIMv2.Ports.IResourceService<Note>>();
+                var padService = services.GetService<Looplex.SCIMv2.Ports.IResourceService<Pad>>();
                 
                 _output.WriteLine($"Note Service: {(noteService != null ? "✅ Registrado" : "❌ Não registrado")}");
                 _output.WriteLine($"Pad Service: {(padService != null ? "✅ Registrado" : "❌ Não registrado")}");

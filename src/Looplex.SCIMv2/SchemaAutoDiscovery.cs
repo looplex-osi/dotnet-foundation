@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Ports;
+using Looplex.SCIMv2.Helpers;
 
 namespace Looplex.SCIMv2
 {
@@ -15,13 +17,11 @@ namespace Looplex.SCIMv2
     public class SchemaAutoDiscovery : ISchemaAutoDiscovery
     {
         private readonly IServiceNameProvider? _serviceNameProvider;
-        private readonly IApplicationNameProvider? _applicationNameProvider;
         private readonly IHttpContextAccessor? _httpContextAccessor;
         
-        public SchemaAutoDiscovery(IServiceNameProvider? serviceNameProvider = null, IApplicationNameProvider? applicationNameProvider = null, IHttpContextAccessor? httpContextAccessor = null)
+        public SchemaAutoDiscovery(IServiceNameProvider? serviceNameProvider = null, IHttpContextAccessor? httpContextAccessor = null)
         {
             _serviceNameProvider = serviceNameProvider;
-            _applicationNameProvider = applicationNameProvider;
             _httpContextAccessor = httpContextAccessor;
         }
         

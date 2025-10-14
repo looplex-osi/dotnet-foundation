@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Looplex.Protocols.HTTP.Ports;
 using Looplex.SCIMv2;
 using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Ports;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 

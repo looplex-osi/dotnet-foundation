@@ -5,7 +5,9 @@ using System.Collections.Concurrent;
 
 using Looplex.OAuth2.Entities;
 using Looplex.SCIMv2;
+using Looplex.SCIMv2.Helpers;
 using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Ports;
 using Looplex.SCIMv2.Extensions;
 using Looplex.Protocols.HTTP.Middlewares;
 

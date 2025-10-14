@@ -1,6 +1,7 @@
 using System.Reflection;
 using Looplex.SCIMv2;
 using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Ports;
 
 namespace Looplex.Protocols.HTTP.UnitTests.Contracts;
 
@@ -19,7 +20,7 @@ public class SCIMv2InterfaceContractTests
     public void Setup()
     {
         // Get the real ISCIMv2 service for reflection testing
-        _scimv2Type = Type.GetType("Looplex.SCIMv2.ISCIMv2, Looplex.SCIMv2");
+        _scimv2Type = Type.GetType("Looplex.SCIMv2.Ports.ISCIMv2, Looplex.SCIMv2");
         Assert.IsNotNull(_scimv2Type, "ISCIMv2 type should be available");
         
         // Create a mock service that implements ISCIMv2

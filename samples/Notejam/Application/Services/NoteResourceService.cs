@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
 using Looplex.SCIMv2;
+using Looplex.SCIMv2.Ports;
 using Looplex.SCIMv2.Queries;
 using Looplex.Samples.Application.Commands;
 using Looplex.Samples.Domain.Entities;

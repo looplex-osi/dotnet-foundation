@@ -1,6 +1,7 @@
 using System;
 
 using Looplex.Foundation.Entities;
+using Looplex.SCIMv2.Ports;
 
 using PropertyChanged;
 

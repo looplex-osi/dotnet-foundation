@@ -2,7 +2,7 @@ using System;
 using System.Reflection;
 using System.Linq;
 
-namespace Looplex.SCIMv2
+namespace Looplex.SCIMv2.Helpers
 {
     /// <summary>
     /// SCIMv2 naming and mapping conventions for automatic schema generation.

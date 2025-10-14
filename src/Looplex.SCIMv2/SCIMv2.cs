@@ -8,6 +8,8 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Ports;
+using Looplex.SCIMv2.Helpers;
 using Looplex.SCIMv2;
 using Looplex.Foundation.Serialization;
 using Looplex.Foundation.Ports;
@@ -356,17 +358,17 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     /// </summary>
     /// <typeparam name="T">Resource type implementing IResource interface</typeparam>
     /// <param name="service">Resource service implementation for CRUD operations</param>
-    /// <param name="collectionName">Collection name (e.g., "Users", "Groups", "Notes")</param>
-    public void Register<T>(IResourceService<T> service, string collectionName) where T : IResource
+    /// <param name="collection">Collection name (e.g., "Users", "Groups", "Notes")</param>
+    public void Register<T>(IResourceService<T> service, string collection) where T : IResource
     {
-        if (string.IsNullOrEmpty(collectionName))
-            throw new ArgumentException("Collection name cannot be null or empty", nameof(collectionName));
+        if (string.IsNullOrEmpty(collection))
+            throw new ArgumentException("Collection name cannot be null or empty", nameof(collection));
 
         if (service == null)
             throw new ArgumentNullException(nameof(service));
 
         // Store the service
-        resources[collectionName] = service;
+        resources[collection] = service;
     }
 
 
@@ -900,18 +902,18 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     /// Deregisters a resource service for a specific collection.
     /// Removes the collection from SCIM operations.
     /// </summary>
-    /// <param name="collectionName">Collection name to deregister</param>
+    /// <param name="collection">Collection name to deregister</param>
     /// <returns>True if collection was deregistered, false if not found</returns>
-    public bool Deregister(string collectionName)
+    public bool Deregister(string collection)
     {
-        if (string.IsNullOrEmpty(collectionName))
-            throw new ArgumentException("Collection name cannot be null or empty", nameof(collectionName));
+        if (string.IsNullOrEmpty(collection))
+            throw new ArgumentException("Collection name cannot be null or empty", nameof(collection));
 
-        var wasRegistered = resources.ContainsKey(collectionName);
+        var wasRegistered = resources.ContainsKey(collection);
         
         if (wasRegistered)
         {
-            resources.Remove(collectionName);
+            resources.Remove(collection);
             
         }
         
@@ -2030,19 +2032,19 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     /// <summary>
     /// Validates collection name for SCIMv2 operations
     /// </summary>
-    /// <param name="collectionName">Collection name to validate</param>
+    /// <param name="collection">Collection name to validate</param>
     /// <returns>Validation result with error message if invalid</returns>
-    public (bool IsValid, string ErrorMessage) ValidateCollection(string collectionName)
+    public (bool IsValid, string ErrorMessage) ValidateCollection(string collection)
     {
-        if (string.IsNullOrWhiteSpace(collectionName))
+        if (string.IsNullOrWhiteSpace(collection))
         {
             return (false, "Collection name is required");
         }
 
         var supportedCollections = new[] { "Users", "Groups" };
-        if (!supportedCollections.Any(c => c.Equals(collectionName, StringComparison.OrdinalIgnoreCase)))
+        if (!supportedCollections.Any(c => c.Equals(collection, StringComparison.OrdinalIgnoreCase)))
         {
-            return (false, $"Unsupported collection: {collectionName}");
+            return (false, $"Unsupported collection: {collection}");
         }
 
         return (true, string.Empty);
@@ -2086,15 +2088,15 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                 if (!string.IsNullOrEmpty(operation.Path))
                 {
                     var pathSegments = operation.Path.TrimStart('/').Split('/');
-                    var collectionName = pathSegments[0];
+                    var collection = pathSegments[0];
                     
-                    if (!IsCollectionRegistered(collectionName))
+                    if (!IsCollectionRegistered(collection))
                     {
                         responseOp.Status = 404;
                         responseOp.Response = System.Text.Json.JsonSerializer.SerializeToElement(new
                         {
                             status = "404",
-                            detail = $"Collection '{collectionName}' not found"
+                            detail = $"Collection '{collection}' not found"
                         });
                     }
                     else
@@ -2102,8 +2104,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                         // Execute the actual operation using the registered service
                         try
                         {
-                            var service = resources[collectionName];
-                            var result = await ExecuteBulkOperation(service, operation, collectionName, cancellationToken);
+                            var service = resources[collection];
+                            var result = await ExecuteBulkOperation(service, operation, collection, cancellationToken);
                             
                             responseOp.Status = result.StatusCode;
                             responseOp.Location = result.Location;
@@ -2146,7 +2148,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     /// <summary>
     /// Executes a single bulk operation using the registered service
     /// </summary>
-    private async Task<BulkOperationResult> ExecuteBulkOperation(IResourceService service, BulkRequestOperation operation, string collectionName, CancellationToken cancellationToken)
+    private async Task<BulkOperationResult> ExecuteBulkOperation(IResourceService service, BulkRequestOperation operation, string collection, CancellationToken cancellationToken)
     {
         var result = new BulkOperationResult();
         
@@ -2177,7 +2179,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                         var createdId = await createTask;
                         
                         result.StatusCode = 201;
-                        result.Location = $"/{collectionName}/{createdId}";
+                        result.Location = $"/{collection}/{createdId}";
                         result.Data = operation.Data;
                     }
                     else
@@ -2215,7 +2217,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                             if (success)
                             {
                                 result.StatusCode = 200;
-                                result.Location = $"/{collectionName}/{resourceId}";
+                                result.Location = $"/{collection}/{resourceId}";
                                 result.Data = operation.Data;
                             }
                             else
@@ -2260,7 +2262,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                             if (success)
                             {
                                 result.StatusCode = 200;
-                                result.Location = $"/{collectionName}/{resourceId}";
+                                result.Location = $"/{collection}/{resourceId}";
                                 result.Data = operation.Data;
                             }
                             else
@@ -2296,7 +2298,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                             if (success)
                             {
                                 result.StatusCode = 204;
-                                result.Location = $"/{collectionName}/{resourceId}";
+                                result.Location = $"/{collection}/{resourceId}";
                             }
                             else
                             {

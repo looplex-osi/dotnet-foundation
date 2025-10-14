@@ -5,10 +5,11 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Threading;
 using Looplex.SCIMv2.Entities;
+using Looplex.SCIMv2.Ports;
 using Looplex.Foundation.Ports;
 using Microsoft.AspNetCore.Http;
 
-namespace Looplex.SCIMv2
+namespace Looplex.SCIMv2.Helpers
 {
     /// <summary>
     /// Extension methods for registering SCIMv2 services with automatic schema discovery.
@@ -93,16 +94,14 @@ namespace Looplex.SCIMv2
         }
         
         /// <summary>
-        /// Configures SCIMv2 with custom service and application names.
+        /// Configures SCIMv2 with custom service name.
         /// </summary>
         /// <param name="services">Service collection</param>
-        /// <param name="serviceName">Service name (e.g., "looplex")</param>
-        /// <param name="applicationName">Application name (e.g., "notejam", "case-management")</param>
+        /// <param name="serviceName">Service name (e.g., "notejam", "case-management")</param>
         /// <returns>Service collection for chaining</returns>
-        public static IServiceCollection ConfigureSCIMv2Names(this IServiceCollection services, string serviceName, string applicationName)
+        public static IServiceCollection ConfigureSCIMv2Names(this IServiceCollection services, string serviceName)
         {
             services.AddSingleton<IServiceNameProvider>(new ServiceNameProvider(serviceName));
-            services.AddSingleton<IApplicationNameProvider>(new ApplicationNameProvider(applicationName));
             return services;
         }
     }
@@ -133,7 +132,7 @@ namespace Looplex.SCIMv2
                 
                 
                 // Create SchemaAutoDiscovery with injected dependencies
-                var autoDiscovery = new SchemaAutoDiscovery(serviceNameProvider, null, httpContextAccessor);
+                var autoDiscovery = new SchemaAutoDiscovery(serviceNameProvider, httpContextAccessor);
                 autoDiscovery.AutoConfigureResourceType<T>();
             }
             
@@ -172,7 +171,7 @@ namespace Looplex.SCIMv2
                 
                 
                 // Create and register schemas for each resource type with injected dependencies
-                var autoDiscovery = new SchemaAutoDiscovery(serviceNameProvider, null, httpContextAccessor);
+                var autoDiscovery = new SchemaAutoDiscovery(serviceNameProvider, httpContextAccessor);
                 foreach (var resourceType in _resourceTypes)
                 {
                     if (typeof(IResource).IsAssignableFrom(resourceType))

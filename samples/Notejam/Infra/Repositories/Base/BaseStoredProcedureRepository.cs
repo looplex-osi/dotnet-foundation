@@ -1,6 +1,7 @@
 using Looplex.Samples.Domain.Entities;
 using Looplex.Samples.Application.Abstraction;
 using Looplex.SCIMv2;
+using Looplex.SCIMv2.Ports;
 using Microsoft.Extensions.Logging;
 
 namespace Looplex.Samples.Infra.Repositories.Base;

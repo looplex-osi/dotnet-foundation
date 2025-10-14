@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
 
-namespace Looplex.SCIMv2;
+namespace Looplex.SCIMv2.Ports;
 
 /// <summary>
 /// Base interface for SCIM resource services providing collection identification.

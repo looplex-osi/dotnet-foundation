@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
 using Looplex.SCIMv2;
 
-namespace Looplex.SCIMv2;
+namespace Looplex.SCIMv2.Ports;
 
 /// <summary>
 /// Core SCIMv2 Interface - Provides SCIMv2 protocol operations
@@ -20,8 +20,8 @@ public interface ISCIMv2
     /// </summary>
     /// <typeparam name="T">Resource type implementing IResource</typeparam>
     /// <param name="service">Resource service implementation</param>
-    /// <param name="collectionName">Collection name (e.g., "Users", "Groups")</param>
-    void Register<T>(IResourceService<T> service, string collectionName) where T : IResource;
+    /// <param name="collection">Collection name (e.g., "Users", "Groups")</param>
+    void Register<T>(IResourceService<T> service, string collection) where T : IResource;
 
     /// <summary>
     /// Gets all registered collections
@@ -39,9 +39,9 @@ public interface ISCIMv2
     /// <summary>
     /// Deregisters a resource service for a specific collection
     /// </summary>
-    /// <param name="collectionName">Collection name to deregister</param>
+    /// <param name="collection">Collection name to deregister</param>
     /// <returns>True if collection was deregistered, false if not found</returns>
-    bool Deregister(string collectionName);
+    bool Deregister(string collection);
 
     /// <summary>
     /// Deregisters all resource services

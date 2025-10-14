@@ -1,4 +1,4 @@
-namespace Looplex.SCIMv2.Entities;
+namespace Looplex.SCIMv2.Ports;
 
 /// <summary>
 /// Provides the service name for SCIM schema generation.
