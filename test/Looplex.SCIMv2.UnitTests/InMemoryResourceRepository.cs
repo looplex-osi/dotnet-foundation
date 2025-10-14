@@ -1,5 +1,5 @@
 using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2.Modules;
+using Looplex.SCIMv2;
 using System;
 using System.Collections.Generic;
 using System.Linq;

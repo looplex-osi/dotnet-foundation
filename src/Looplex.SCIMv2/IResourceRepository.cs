@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Looplex.SCIMv2.Modules;
+namespace Looplex.SCIMv2;
 
 /// <summary>
 /// Generic repository interface for SCIM resource data persistence operations.

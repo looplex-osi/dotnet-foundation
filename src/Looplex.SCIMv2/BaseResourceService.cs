@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
 using System.Text.Json;
 
-namespace Looplex.SCIMv2.Modules;
+namespace Looplex.SCIMv2;
 
 /// <summary>
 /// Generic base class implementing SCIM v2.0 resource service operations with Template Method Pattern.

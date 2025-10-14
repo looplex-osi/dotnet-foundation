@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Looplex.SCIMv2;
 using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2.Modules;
 using Looplex.Foundation.Core.UnitTests.Features.SCIMv2.TestHelpers;
 using System;
 using System.Linq;
@@ -28,8 +27,8 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
             // Register services manually (since auto-registration was removed)
             var userRepository = new Looplex.Foundation.Core.UnitTests.Features.SCIMv2.TestHelpers.InMemoryResourceRepository<User>();
             var groupRepository = new Looplex.Foundation.Core.UnitTests.Features.SCIMv2.TestHelpers.InMemoryResourceRepository<Group>();
-            var userService = new Looplex.SCIMv2.Modules.UserService(userRepository);
-            var groupService = new Looplex.SCIMv2.Modules.GroupService(groupRepository);
+            var userService = new Looplex.SCIMv2.UserService(userRepository);
+            var groupService = new Looplex.SCIMv2.GroupService(groupRepository);
             
             scimService.Register(userService, "Users");
             scimService.Register(groupService, "Groups");

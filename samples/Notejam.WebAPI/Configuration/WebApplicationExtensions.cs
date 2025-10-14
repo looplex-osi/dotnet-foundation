@@ -3,7 +3,6 @@ using Microsoft.Extensions.Options;
 using System.Text.Json;
 
 using Looplex.SCIMv2;
-using Looplex.SCIMv2.Modules;
 using Looplex.SCIMv2.Extensions;
 using Looplex.SCIMv2.Entities;
 using Looplex.Samples.Domain.Entities;

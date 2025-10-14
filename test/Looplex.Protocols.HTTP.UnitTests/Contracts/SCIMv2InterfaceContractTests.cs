@@ -1,7 +1,6 @@
 using System.Reflection;
 using Looplex.SCIMv2;
 using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2.Modules;
 
 namespace Looplex.Protocols.HTTP.UnitTests.Contracts;
 

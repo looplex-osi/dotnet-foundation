@@ -263,8 +263,8 @@ namespace Looplex.Samples.Tests.Integration
             try
             {
                 // Verificar se os serviços estão registrados
-                var noteService = services.GetService<Looplex.SCIMv2.Modules.IResourceService<Note>>();
-                var padService = services.GetService<Looplex.SCIMv2.Modules.IResourceService<Pad>>();
+                var noteService = services.GetService<Looplex.SCIMv2.IResourceService<Note>>();
+                var padService = services.GetService<Looplex.SCIMv2.IResourceService<Pad>>();
                 
                 _output.WriteLine($"Note Service: {(noteService != null ? "✅ Registrado" : "❌ Não registrado")}");
                 _output.WriteLine($"Pad Service: {(padService != null ? "✅ Registrado" : "❌ Não registrado")}");

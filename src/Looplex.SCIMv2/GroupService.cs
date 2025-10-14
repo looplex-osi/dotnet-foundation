@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 using Looplex.SCIMv2.Entities;
 
-namespace Looplex.SCIMv2.Modules;
+namespace Looplex.SCIMv2;
 
 /// <summary>
 /// SCIM v2.0 Group resource management service implementation.

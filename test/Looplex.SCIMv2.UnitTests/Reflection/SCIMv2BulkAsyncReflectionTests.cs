@@ -1,6 +1,6 @@
 using System.Reflection;
 using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2.Modules;
+using Looplex.SCIMv2;
 
 namespace Looplex.SCIMv2.UnitTests.Reflection;
 

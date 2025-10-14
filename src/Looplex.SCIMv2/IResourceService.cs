@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
 
-namespace Looplex.SCIMv2.Modules;
+namespace Looplex.SCIMv2;
 
 /// <summary>
 /// Base interface for SCIM resource services providing collection identification.
@@ -117,5 +117,3 @@ public interface IResourceService<T> : IResourceService where T : IResource
     /// <returns>True if resource was successfully deleted, false otherwise</returns>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }
-
-

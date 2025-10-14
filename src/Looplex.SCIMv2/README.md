@@ -190,11 +190,11 @@ Looplex.Foundation.SCIMv2/
 │   ├── PatchOperation.cs         // PATCH operations support
 │   ├── ServiceNameProvider.cs    // Service name provider
 │   └── ServiceProviderConfiguration.cs  // Service provider configuration
-├── Modules/
-│   ├── IResourceService.cs       // Resource service interface
-│   ├── BaseResourceService.cs   // Base implementation
-│   ├── UserService.cs            // User-specific service
-│   └── GroupService.cs           // Group-specific service
+├── IResourceService.cs           // Resource service interface
+├── IResourceRepository.cs       // Resource repository interface
+├── BaseResourceService.cs       // Base implementation
+├── UserService.cs               // User-specific service
+└── GroupService.cs              // Group-specific service
 ├── ISCIMv2.cs                    // Main service interface
 ├── ISCIMv2Validation.cs          // Validation interface
 ├── SCIMv2.cs                     // Main consolidated service

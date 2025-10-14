@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2.Modules;
+using Looplex.SCIMv2;
 using Looplex.SCIMv2.Queries;
 using Looplex.Samples.Application.Commands;
 using Looplex.Samples.Domain.Entities;

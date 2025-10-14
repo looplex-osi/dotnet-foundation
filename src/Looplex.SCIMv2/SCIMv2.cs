@@ -8,7 +8,7 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2.Modules;
+using Looplex.SCIMv2;
 using Looplex.Foundation.Serialization;
 using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Contexts;

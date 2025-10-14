@@ -3,7 +3,7 @@ using System.Security.Claims;
 using Looplex.Foundation.Ports;
 using Looplex.SCIMv2.Commands;
 using Looplex.SCIMv2.Entities;
-using Looplex.SCIMv2.Modules;
+using Looplex.SCIMv2;
 using Looplex.SCIMv2.Queries;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 
