@@ -1,0 +1,7 @@
+p, alice, resource, read
+p, alice, resource, write
+p, alice, resource, delete
+p, bob.rivest@email.com, looplex, resource, read
+p, bob.rivest@email.com, looplex, resource, write
+p, bob.rivest@email.com, looplex, resource, delete
+g, bob.rivest@email.com, alice

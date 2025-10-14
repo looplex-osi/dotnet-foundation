@@ -17,9 +17,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Looplex.Protocols.HTTP\Looplex.Protocols.HTTP.csproj" />
     <ProjectReference Include="..\..\src\Looplex.SCIMv2\Looplex.SCIMv2.csproj" />
     <ProjectReference Include="..\..\src\Looplex.Foundation\Looplex.Foundation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NSubstitute" Version="5.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.2.2" />
   </ItemGroup>
 
 </Project>
