@@ -103,7 +103,7 @@ public class SCIMv2ServiceProviderConfigTests
 
         // Verify etag configuration
         Assert.IsTrue(etag.TryGetProperty("supported", out var etagSupported));
-        Assert.IsFalse(etagSupported.GetBoolean());
+        Assert.IsTrue(etagSupported.GetBoolean());
 
         // Verify authentication schemes
         Assert.IsTrue(authSchemes.ValueKind == JsonValueKind.Array);

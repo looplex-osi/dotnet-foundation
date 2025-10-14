@@ -40,5 +40,20 @@ public interface ISCIMv2Service
     /// Delete a resource (DELETE /collection/:id)
     /// </summary>
     Task<object> DeleteAsync(string collection, string id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the service provider configuration
+    /// </summary>
+    Task<object> GetServiceProviderConfigAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Performs bulk operations
+    /// </summary>
+    Task<object> BulkAsync(string json, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a specific schema by ID
+    /// </summary>
+    Task<object> GetSchemaAsync(string schemaId, CancellationToken cancellationToken = default);
 }
 

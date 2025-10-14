@@ -13,8 +13,10 @@ namespace Looplex.Protocols.HTTP.Extensions;
 /// </summary>
 public static class SCIMv2EndpointExtensions
 {
+
     /// <summary>
     /// Executes a SCIM operation with proper error handling
+    /// RFC 7644 compliance is handled by the underlying Looplex.SCIMv2 service
     /// </summary>
     private static async Task<IResult> ExecuteSCIMOperation<T>(
         HttpContext context,
@@ -295,6 +297,68 @@ public static class SCIMv2EndpointExtensions
         .WithTags("SCIMv2")
         .WithSummary("List schemas")
         .WithDescription("RFC 7644 compliant schemas discovery endpoint");
+
+        return endpoints;
+    }
+
+    /// <summary>
+    /// Maps SCIMv2 ServiceProviderConfig endpoint
+    /// </summary>
+    /// <param name="endpoints">Endpoint route builder</param>
+    public static IEndpointRouteBuilder MapSCIMv2ServiceProviderConfigEndpoint(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapGet("/ServiceProviderConfig", async (HttpContext context) =>
+        {
+            return await ExecuteSCIMOperation(
+                context,
+                "ServiceProviderConfig",
+                service => service.GetServiceProviderConfigAsync(context.RequestAborted),
+                "GetServiceProviderConfig");
+        })
+        .WithName("SCIMv2ServiceProviderConfig")
+        .WithDescription("RFC 7644 compliant service provider configuration endpoint");
+
+        return endpoints;
+    }
+
+    /// <summary>
+    /// Maps SCIMv2 Bulk operations endpoint
+    /// </summary>
+    /// <param name="endpoints">Endpoint route builder</param>
+    public static IEndpointRouteBuilder MapSCIMv2BulkEndpoint(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapPost("/Bulk", async (HttpContext context) =>
+        {
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBody = await reader.ReadToEndAsync();
+            return await ExecuteSCIMOperation(
+                context,
+                "Bulk",
+                service => service.BulkAsync(requestBody, context.RequestAborted),
+                "Bulk");
+        })
+        .WithName("SCIMv2Bulk")
+        .WithDescription("RFC 7644 compliant bulk operations endpoint");
+
+        return endpoints;
+    }
+
+    /// <summary>
+    /// Maps SCIMv2 individual Schema endpoint
+    /// </summary>
+    /// <param name="endpoints">Endpoint route builder</param>
+    public static IEndpointRouteBuilder MapSCIMv2SchemaEndpoint(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapGet("/Schemas/{id}", async (HttpContext context, string id) =>
+        {
+            return await ExecuteSCIMOperation(
+                context,
+                "Schemas",
+                service => service.GetSchemaAsync(id, context.RequestAborted),
+                "GetSchema");
+        })
+        .WithName("SCIMv2Schema")
+        .WithDescription("RFC 7644 compliant individual schema endpoint");
 
         return endpoints;
     }

@@ -92,4 +92,36 @@ public class MockSCIMv2Service : ISCIMv2Service
     {
         return Task.FromResult<object>(new { success = true });
     }
+
+    public Task<object> GetServiceProviderConfigAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<object>(new { 
+            schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig" },
+            patch = new { supported = true },
+            bulk = new { supported = false, maxOperations = 0, maxPayloadSize = 0 },
+            filter = new { supported = true, maxResults = 200 },
+            changePassword = new { supported = false },
+            sort = new { supported = false },
+            etag = new { supported = true },
+            authenticationSchemes = new object[0]
+        });
+    }
+
+    public Task<object> BulkAsync(string json, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<object>(new { 
+            schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:BulkResponse" },
+            Operations = new object[0]
+        });
+    }
+
+    public Task<object> GetSchemaAsync(string schemaId, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<object>(new { 
+            id = schemaId,
+            name = $"Mock Schema {schemaId}",
+            description = "Mock schema for testing",
+            attributes = new object[0]
+        });
+    }
 }

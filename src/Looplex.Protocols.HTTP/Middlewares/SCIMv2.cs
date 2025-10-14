@@ -102,7 +102,7 @@ public static class SCIMv2
                 filter = new { supported = true, maxResults = 200 },
                 changePassword = new { supported = false },
                 sort = new { supported = false },
-                etag = new { supported = false },
+                etag = new { supported = true },
                 authenticationSchemes = new[]
                 {
                     new
