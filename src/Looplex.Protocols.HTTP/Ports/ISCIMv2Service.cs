@@ -1,20 +1,44 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
+using Looplex.SCIMv2.Entities;
 
 namespace Looplex.Protocols.HTTP.Ports;
 
+/// <summary>
+/// Unified SCIMv2 service interface for HTTP endpoints
+/// Eliminates reflection by providing direct method access to ISCIMv2
+/// </summary>
 public interface ISCIMv2Service
 {
-    Task<object> CreateUserAsync(object user);
-    Task<object> GetUserAsync(string id);
-    Task<object> UpdateUserAsync(string id, object user);
-    Task DeleteUserAsync(string id);
-    Task<object> QueryUsersAsync(string filter, int startIndex, int count);
+    /// <summary>
+    /// Query resources from a collection (GET /collection)
+    /// </summary>
+    Task<object> QueryAsync(string collection, int startIndex, int count, string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default);
     
-    Task<object> CreateGroupAsync(object group);
-    Task<object> GetGroupAsync(string id);
-    Task<object> UpdateGroupAsync(string id, object group);
-    Task DeleteGroupAsync(string id);
-    Task<object> QueryGroupsAsync(string filter, int startIndex, int count);
+    /// <summary>
+    /// Retrieve a specific resource (GET /collection/:id)
+    /// </summary>
+    Task<object> RetrieveAsync(string collection, string id, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Create a new resource from JSON (POST /collection)
+    /// </summary>
+    Task<object> CreateAsync(string collection, string json, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Replace a resource completely from JSON (PUT /collection/:id)
+    /// </summary>
+    Task<object> ReplaceAsync(string collection, string id, string json, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Modify a resource using PATCH (PATCH /collection/:id)
+    /// </summary>
+    Task<object> ModifyAsync(string collection, string id, PatchOperation[] patches, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Delete a resource (DELETE /collection/:id)
+    /// </summary>
+    Task<object> DeleteAsync(string collection, string id, CancellationToken cancellationToken = default);
 }
 

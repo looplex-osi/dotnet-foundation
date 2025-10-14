@@ -1,412 +1,122 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Looplex.Protocols.HTTP.Ports;
-using Microsoft.Extensions.DependencyInjection;
+using Looplex.SCIMv2;
+using Looplex.SCIMv2.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace Looplex.Protocols.HTTP.Adapters;
 
+/// <summary>
+/// SCIMv2 Service Adapter that connects HTTP endpoints to the real ISCIMv2 service
+/// Eliminates reflection by providing direct interface access
+/// </summary>
 public class SCIMv2ServiceAdapter : ISCIMv2Service
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly ISCIMv2 _scimv2Service;
+    private readonly ILogger<SCIMv2ServiceAdapter> _logger;
 
-    public SCIMv2ServiceAdapter(IServiceProvider serviceProvider)
+    public SCIMv2ServiceAdapter(ISCIMv2 scimv2Service, ILogger<SCIMv2ServiceAdapter> logger)
     {
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _scimv2Service = scimv2Service ?? throw new ArgumentNullException(nameof(scimv2Service));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    public async Task<object> CreateUserAsync(object user)
+
+    public async Task<object> QueryAsync(string collection, int startIndex, int count, string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
     {
         try
         {
-            if (user == null)
-                throw new ArgumentNullException(nameof(user));
+            _logger.LogDebug("Querying collection {Collection} with startIndex={StartIndex}, count={Count}, filter={Filter}", 
+                collection, startIndex, count, filter);
 
-            // Validate user object has required properties
-            var userType = user.GetType();
-            var userNameProperty = userType.GetProperty("userName");
-            var nameProperty = userType.GetProperty("name");
-
-            if (userNameProperty?.GetValue(user) == null)
-                throw new ArgumentException("User name is required", nameof(user));
-
-            // Create user response with proper SCIMv2 format
-            var response = new
-            {
-                schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:User" },
-                id = Guid.NewGuid().ToString(),
-                userName = userNameProperty.GetValue(user),
-                name = nameProperty?.GetValue(user) ?? new { formatted = "User Name" },
-                emails = new[] { new { value = userNameProperty.GetValue(user), primary = true } },
-                active = true,
-                meta = new
-                {
-                    resourceType = "User",
-                    created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    lastModified = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    version = "1"
-                }
-            };
-
-            return await Task.FromResult(response);
-        }
-        catch (ArgumentException)
-        {
-            throw;
+            var response = await _scimv2Service.QueryAsync(collection, startIndex, count, filter, sortBy, sortOrder, cancellationToken);
+            return response;
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to create user: {ex.Message}", ex);
+            _logger.LogError(ex, "Error in QueryAsync for collection {Collection}", collection);
+            throw;
         }
     }
 
-    public async Task<object> GetUserAsync(string id)
+    public async Task<object> RetrieveAsync(string collection, string id, CancellationToken cancellationToken = default)
     {
         try
         {
-            if (string.IsNullOrEmpty(id))
-                throw new ArgumentException("User ID cannot be null or empty", nameof(id));
+            _logger.LogDebug("Retrieving resource {Id} from collection {Collection}", id, collection);
 
-            if (!Guid.TryParse(id, out var userId))
-                throw new ArgumentException("Invalid user ID format", nameof(id));
-
-            // Create user response with proper SCIMv2 format
-            var response = new
-            {
-                schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:User" },
-                id = id,
-                userName = "user@example.com",
-                name = new { formatted = "User Name" },
-                emails = new[] { new { value = "user@example.com", primary = true } },
-                active = true,
-                meta = new
-                {
-                    resourceType = "User",
-                    created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    lastModified = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    version = "1"
-                }
-            };
-
-            return await Task.FromResult(response);
-        }
-        catch (ArgumentException)
-        {
-            throw;
+            var response = await _scimv2Service.RetrieveAsync(collection, id, cancellationToken);
+            return response;
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to retrieve user: {ex.Message}", ex);
+            _logger.LogError(ex, "Error in RetrieveAsync for collection {Collection}, id {Id}", collection, id);
+            throw;
         }
     }
 
-    public async Task<object> UpdateUserAsync(string id, object user)
+    public async Task<object> CreateAsync(string collection, string json, CancellationToken cancellationToken = default)
     {
         try
         {
-            if (string.IsNullOrEmpty(id))
-                throw new ArgumentException("User ID cannot be null or empty", nameof(id));
+            _logger.LogDebug("Creating resource in collection {Collection}", collection);
 
-            if (!Guid.TryParse(id, out var userId))
-                throw new ArgumentException("Invalid user ID format", nameof(id));
-
-            if (user == null)
-                throw new ArgumentNullException(nameof(user));
-
-            // Return updated user (simplified implementation)
-            return await GetUserAsync(id);
-        }
-        catch (ArgumentException)
-        {
-            throw;
+            var response = await _scimv2Service.CreateAsync(collection, json, cancellationToken);
+            return response;
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to update user: {ex.Message}", ex);
+            _logger.LogError(ex, "Error in CreateAsync for collection {Collection}", collection);
+            throw;
         }
     }
 
-    public async Task DeleteUserAsync(string id)
+    public async Task<object> ReplaceAsync(string collection, string id, string json, CancellationToken cancellationToken = default)
     {
         try
         {
-            if (string.IsNullOrEmpty(id))
-                throw new ArgumentException("User ID cannot be null or empty", nameof(id));
+            _logger.LogDebug("Replacing resource {Id} in collection {Collection}", id, collection);
 
-            if (!Guid.TryParse(id, out var userId))
-                throw new ArgumentException("Invalid user ID format", nameof(id));
-
-            // Simplified delete implementation
-            await Task.CompletedTask;
-        }
-        catch (ArgumentException)
-        {
-            throw;
+            var response = await _scimv2Service.ReplaceAsync(collection, id, json, cancellationToken);
+            return response;
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to delete user: {ex.Message}", ex);
+            _logger.LogError(ex, "Error in ReplaceAsync for collection {Collection}, id {Id}", collection, id);
+            throw;
         }
     }
 
-    public async Task<object> QueryUsersAsync(string filter, int startIndex, int count)
+    public async Task<object> ModifyAsync(string collection, string id, PatchOperation[] patches, CancellationToken cancellationToken = default)
     {
         try
         {
-            if (startIndex < 1)
-                throw new ArgumentException("Start index must be greater than 0", nameof(startIndex));
+            _logger.LogDebug("Modifying resource {Id} in collection {Collection} with {PatchCount} patches", id, collection, patches.Length);
 
-            if (count < 0)
-                throw new ArgumentException("Count cannot be negative", nameof(count));
-
-            // For now, return mock data that simulates real SCIMv2 response
-            // TODO: Connect to real SCIMv2 service through proper abstraction
-            var mockUsers = new[]
-            {
-                new
-                {
-                    schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:User" },
-                    id = "user-1",
-                    userName = "john.doe",
-                    name = new { formatted = "John Doe" },
-                    emails = new[] { new { value = "john.doe@example.com", primary = true } },
-                    active = true,
-                    meta = new
-                    {
-                        resourceType = "User",
-                        created = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                        lastModified = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                        version = "1"
-                    }
-                },
-                new
-                {
-                    schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:User" },
-                    id = "user-2",
-                    userName = "jane.smith",
-                    name = new { formatted = "Jane Smith" },
-                    emails = new[] { new { value = "jane.smith@example.com", primary = true } },
-                    active = true,
-                    meta = new
-                    {
-                        resourceType = "User",
-                        created = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                        lastModified = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                        version = "1"
-                    }
-                }
-            };
-
-            var response = new
-            {
-                schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" },
-                totalResults = 2,
-                itemsPerPage = count,
-                startIndex = startIndex,
-                Resources = mockUsers
-            };
-
-            return await Task.FromResult(response);
-        }
-        catch (ArgumentException)
-        {
-            throw;
+            var response = await _scimv2Service.ModifyAsync(collection, id, patches, cancellationToken);
+            return response;
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to query users: {ex.Message}", ex);
+            _logger.LogError(ex, "Error in ModifyAsync for collection {Collection}, id {Id}", collection, id);
+            throw;
         }
     }
 
-    public async Task<object> CreateGroupAsync(object group)
+    public async Task<object> DeleteAsync(string collection, string id, CancellationToken cancellationToken = default)
     {
         try
         {
-            if (group == null)
-                throw new ArgumentNullException(nameof(group));
+            _logger.LogDebug("Deleting resource {Id} from collection {Collection}", id, collection);
 
-            // Validate group object has required properties
-            var groupType = group.GetType();
-            var displayNameProperty = groupType.GetProperty("displayName");
-
-            if (displayNameProperty?.GetValue(group) == null)
-                throw new ArgumentException("Group display name is required", nameof(group));
-
-            // Create group response with proper SCIMv2 format
-            var response = new
-            {
-                schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:Group" },
-                id = Guid.NewGuid().ToString(),
-                displayName = displayNameProperty.GetValue(group),
-                members = new object[0],
-                meta = new
-                {
-                    resourceType = "Group",
-                    created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    lastModified = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    version = "1"
-                }
-            };
-
-            return await Task.FromResult(response);
-        }
-        catch (ArgumentException)
-        {
-            throw;
+            var response = await _scimv2Service.DeleteAsync(collection, id, cancellationToken);
+            return response;
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to create group: {ex.Message}", ex);
-        }
-    }
-
-    public async Task<object> GetGroupAsync(string id)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(id))
-                throw new ArgumentException("Group ID cannot be null or empty", nameof(id));
-
-            if (!Guid.TryParse(id, out var groupId))
-                throw new ArgumentException("Invalid group ID format", nameof(id));
-
-            // Create group response with proper SCIMv2 format
-            var response = new
-            {
-                schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:Group" },
-                id = id,
-                displayName = "Sample Group",
-                members = new object[0],
-                meta = new
-                {
-                    resourceType = "Group",
-                    created = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    lastModified = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    version = "1"
-                }
-            };
-
-            return await Task.FromResult(response);
-        }
-        catch (ArgumentException)
-        {
+            _logger.LogError(ex, "Error in DeleteAsync for collection {Collection}, id {Id}", collection, id);
             throw;
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to retrieve group: {ex.Message}", ex);
-        }
-    }
-
-    public async Task<object> UpdateGroupAsync(string id, object group)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(id))
-                throw new ArgumentException("Group ID cannot be null or empty", nameof(id));
-
-            if (!Guid.TryParse(id, out var groupId))
-                throw new ArgumentException("Invalid group ID format", nameof(id));
-
-            if (group == null)
-                throw new ArgumentNullException(nameof(group));
-
-            // Return updated group (simplified implementation)
-            return await GetGroupAsync(id);
-        }
-        catch (ArgumentException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to update group: {ex.Message}", ex);
-        }
-    }
-
-    public async Task DeleteGroupAsync(string id)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(id))
-                throw new ArgumentException("Group ID cannot be null or empty", nameof(id));
-
-            if (!Guid.TryParse(id, out var groupId))
-                throw new ArgumentException("Invalid group ID format", nameof(id));
-
-            // Simplified delete implementation
-            await Task.CompletedTask;
-        }
-        catch (ArgumentException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to delete group: {ex.Message}", ex);
-        }
-    }
-
-    public async Task<object> QueryGroupsAsync(string filter, int startIndex, int count)
-    {
-        try
-        {
-            if (startIndex < 1)
-                throw new ArgumentException("Start index must be greater than 0", nameof(startIndex));
-
-            if (count < 0)
-                throw new ArgumentException("Count cannot be negative", nameof(count));
-
-            // For now, return mock data that simulates real SCIMv2 response
-            // TODO: Connect to real SCIMv2 service through proper abstraction
-            var mockGroups = new[]
-            {
-                new
-                {
-                    schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:Group" },
-                    id = "group-1",
-                    displayName = "Administrators",
-                    members = new object[0],
-                    meta = new
-                    {
-                        resourceType = "Group",
-                        created = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                        lastModified = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                        version = "1"
-                    }
-                },
-                new
-                {
-                    schemas = new[] { "urn:ietf:params:scim:schemas:core:2.0:Group" },
-                    id = "group-2",
-                    displayName = "Users",
-                    members = new object[0],
-                    meta = new
-                    {
-                        resourceType = "Group",
-                        created = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                        lastModified = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                        version = "1"
-                    }
-                }
-            };
-
-            var response = new
-            {
-                schemas = new[] { "urn:ietf:params:scim:api:messages:2.0:ListResponse" },
-                totalResults = 2,
-                itemsPerPage = count,
-                startIndex = startIndex,
-                Resources = mockGroups
-            };
-
-            return await Task.FromResult(response);
-        }
-        catch (ArgumentException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to query groups: {ex.Message}", ex);
         }
     }
 }

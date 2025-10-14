@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Looplex.Protocols.HTTP.Middlewares;
 using Looplex.Protocols.HTTP.Ports;
+using Looplex.SCIMv2;
+using Looplex.SCIMv2.Entities;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -61,53 +63,33 @@ public class MockGrantTypeService : IGrantTypeService
 
 public class MockSCIMv2Service : ISCIMv2Service
 {
-    public Task<object> CreateUserAsync(object user)
+    public Task<object> QueryAsync(string collection, int startIndex, int count, string? filter, string? sortBy, string? sortOrder, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult<object>(new { id = "mock_user_id", userName = "mock_user" });
+        return Task.FromResult<object>(new { totalResults = 0, Resources = new object[0] });
     }
 
-    public Task<object> GetUserAsync(string id)
+    public Task<object> RetrieveAsync(string collection, string id, CancellationToken cancellationToken = default)
     {
         return Task.FromResult<object>(new { id = id, userName = "mock_user" });
     }
 
-    public Task<object> UpdateUserAsync(string id, object user)
+    public Task<object> CreateAsync(string collection, string json, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<object>(new { id = "mock_id", userName = "mock_user" });
+    }
+
+    public Task<object> ReplaceAsync(string collection, string id, string json, CancellationToken cancellationToken = default)
     {
         return Task.FromResult<object>(new { id = id, userName = "updated_mock_user" });
     }
 
-    public Task DeleteUserAsync(string id)
+    public Task<object> ModifyAsync(string collection, string id, PatchOperation[] patches, CancellationToken cancellationToken = default)
     {
-        return Task.CompletedTask;
+        return Task.FromResult<object>(new { id = id, userName = "patched_mock_user" });
     }
 
-    public Task<object> QueryUsersAsync(string filter, int startIndex, int count)
+    public Task<object> DeleteAsync(string collection, string id, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult<object>(new { totalResults = 0, Resources = new object[0] });
-    }
-
-    public Task<object> CreateGroupAsync(object group)
-    {
-        return Task.FromResult<object>(new { id = "mock_group_id", displayName = "mock_group" });
-    }
-
-    public Task<object> GetGroupAsync(string id)
-    {
-        return Task.FromResult<object>(new { id = id, displayName = "mock_group" });
-    }
-
-    public Task<object> UpdateGroupAsync(string id, object group)
-    {
-        return Task.FromResult<object>(new { id = id, displayName = "updated_mock_group" });
-    }
-
-    public Task DeleteGroupAsync(string id)
-    {
-        return Task.CompletedTask;
-    }
-
-    public Task<object> QueryGroupsAsync(string filter, int startIndex, int count)
-    {
-        return Task.FromResult<object>(new { totalResults = 0, Resources = new object[0] });
+        return Task.FromResult<object>(new { success = true });
     }
 }

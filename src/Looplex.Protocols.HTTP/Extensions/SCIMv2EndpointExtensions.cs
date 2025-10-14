@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Looplex.Protocols.HTTP.Ports;
+using Looplex.SCIMv2.Entities;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace Looplex.Protocols.HTTP.Extensions;
 
@@ -10,6 +13,45 @@ namespace Looplex.Protocols.HTTP.Extensions;
 /// </summary>
 public static class SCIMv2EndpointExtensions
 {
+    /// <summary>
+    /// Executes a SCIM operation with proper error handling
+    /// </summary>
+    private static async Task<IResult> ExecuteSCIMOperation<T>(
+        HttpContext context,
+        string collectionName,
+        Func<ISCIMv2Service, Task<T>> operation,
+        string operationName)
+    {
+        try
+        {
+            var scimService = context.RequestServices.GetService<ISCIMv2Service>();
+            if (scimService == null)
+            {
+                return Results.Problem("SCIMv2 service not configured", statusCode: 500);
+            }
+
+            var result = await operation(scimService);
+            return Results.Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return Results.NotFound(ex.Message);
+        }
+        catch (JsonException ex)
+        {
+            return Results.BadRequest($"Invalid JSON: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            var logger = context.RequestServices.GetService<ILogger<object>>();
+            logger?.LogError(ex, "Error in {Operation} for collection {Collection}", operationName, collectionName);
+            return Results.Problem("Internal server error", statusCode: 500);
+        }
+    }
     /// <summary>
     /// Maps SCIMv2 resource endpoints for a specific collection
     /// </summary>
@@ -33,41 +75,11 @@ public static class SCIMv2EndpointExtensions
             var attributes = context.Request.Query["attributes"].FirstOrDefault();
             var excludedAttributes = context.Request.Query["excludedAttributes"].FirstOrDefault();
 
-            // Try to get real SCIMv2 service first using reflection
-            var scimv2Type = Type.GetType("Looplex.SCIMv2.ISCIMv2, Looplex.SCIMv2");
-            if (scimv2Type != null)
-            {
-                var realScimService = context.RequestServices.GetService(scimv2Type);
-                if (realScimService != null)
-                {
-                    // Use real SCIMv2 service via reflection
-                    var queryMethod = scimv2Type.GetMethod("QueryAsync");
-                    var realResult = await (Task<object>)queryMethod.Invoke(realScimService, new object[] { collectionName, startIndex, count, filter, null, null, CancellationToken.None });
-                    return Results.Ok(realResult);
-                }
-            }
-
-            // Fallback to mock service
-            var scimService = context.RequestServices.GetService<ISCIMv2Service>();
-            if (scimService == null)
-                return Results.BadRequest("SCIMv2 service not configured");
-
-            // Use the appropriate query method based on collection name
-            object mockResult;
-            if (collectionName.Equals("notes", StringComparison.OrdinalIgnoreCase))
-            {
-                mockResult = await scimService.QueryUsersAsync(filter ?? "", startIndex, count);
-            }
-            else if (collectionName.Equals("pads", StringComparison.OrdinalIgnoreCase))
-            {
-                mockResult = await scimService.QueryGroupsAsync(filter ?? "", startIndex, count);
-            }
-            else
-            {
-                return Results.BadRequest($"Unsupported collection: {collectionName}");
-            }
-
-            return Results.Ok(mockResult);
+            return await ExecuteSCIMOperation(
+                context,
+                collectionName,
+                service => service.QueryAsync(collectionName, startIndex, count, filter, null, null, CancellationToken.None),
+                "Query");
         })
         .WithName($"SCIMv2{collectionName}List")
         .WithTags("SCIMv2")
@@ -77,40 +89,11 @@ public static class SCIMv2EndpointExtensions
         // GET /{collectionName}/{id} - Get specific resource
         endpoints.MapGet($"{path}/{{id}}", async (HttpContext context, string id) =>
         {
-            // Try to get real SCIMv2 service first using reflection
-            var scimv2Type = Type.GetType("Looplex.SCIMv2.ISCIMv2, Looplex.SCIMv2");
-            if (scimv2Type != null)
-            {
-                var realScimService = context.RequestServices.GetService(scimv2Type);
-                if (realScimService != null)
-                {
-                    // Use real SCIMv2 service via reflection
-                    var retrieveMethod = scimv2Type.GetMethod("RetrieveAsync");
-                    var realResult = await (Task<object>)retrieveMethod.Invoke(realScimService, new object[] { collectionName, id, CancellationToken.None });
-                    return Results.Ok(realResult);
-                }
-            }
-
-            // Fallback to mock service
-            var scimService = context.RequestServices.GetService<ISCIMv2Service>();
-            if (scimService == null)
-                return Results.BadRequest("SCIMv2 service not configured");
-
-            object result;
-            if (collectionName.Equals("notes", StringComparison.OrdinalIgnoreCase))
-            {
-                result = await scimService.GetUserAsync(id);
-            }
-            else if (collectionName.Equals("pads", StringComparison.OrdinalIgnoreCase))
-            {
-                result = await scimService.GetGroupAsync(id);
-            }
-            else
-            {
-                return Results.BadRequest($"Unsupported collection: {collectionName}");
-            }
-
-            return Results.Ok(result);
+            return await ExecuteSCIMOperation(
+                context,
+                collectionName,
+                service => service.RetrieveAsync(collectionName, id, CancellationToken.None),
+                "Retrieve");
         })
         .WithName($"SCIMv2{collectionName}Get")
         .WithTags("SCIMv2")
@@ -120,46 +103,19 @@ public static class SCIMv2EndpointExtensions
         // POST /{collectionName} - Create resource
         endpoints.MapPost(path, async (HttpContext context) =>
         {
-            // Try to get real SCIMv2 service first using reflection
-            var scimv2Type = Type.GetType("Looplex.SCIMv2.ISCIMv2, Looplex.SCIMv2");
-            if (scimv2Type != null)
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBody = await reader.ReadToEndAsync();
+            
+            if (string.IsNullOrEmpty(requestBody))
             {
-                var realScimService = context.RequestServices.GetService(scimv2Type);
-                if (realScimService != null)
-                {
-                    // Use real SCIMv2 service via reflection
-                    using var reader = new StreamReader(context.Request.Body);
-                    var requestBody = await reader.ReadToEndAsync();
-                    var createMethod = scimv2Type.GetMethod("CreateAsync", new Type[] { typeof(string), typeof(string), typeof(CancellationToken) });
-                    var realResult = await (Task<object>)createMethod.Invoke(realScimService, new object[] { collectionName, requestBody, CancellationToken.None });
-                    return Results.Ok(realResult);
-                }
+                return Results.BadRequest("Request body cannot be empty");
             }
 
-            // Fallback to mock service
-            var scimService = context.RequestServices.GetService<ISCIMv2Service>();
-            if (scimService == null)
-                return Results.BadRequest("SCIMv2 service not configured");
-
-            var bodyObj = await context.Request.ReadFromJsonAsync<object>();
-            if (bodyObj == null)
-                return Results.BadRequest("Invalid request body");
-
-            object result;
-            if (collectionName.Equals("notes", StringComparison.OrdinalIgnoreCase))
-            {
-                result = await scimService.CreateUserAsync(bodyObj);
-            }
-            else if (collectionName.Equals("pads", StringComparison.OrdinalIgnoreCase))
-            {
-                result = await scimService.CreateGroupAsync(bodyObj);
-            }
-            else
-            {
-                return Results.BadRequest($"Unsupported collection: {collectionName}");
-            }
-
-            return Results.Ok(result);
+            return await ExecuteSCIMOperation(
+                context,
+                collectionName,
+                service => service.CreateAsync(collectionName, requestBody, CancellationToken.None),
+                "Create");
         })
         .WithName($"SCIMv2{collectionName}Create")
         .WithTags("SCIMv2")
@@ -169,46 +125,19 @@ public static class SCIMv2EndpointExtensions
         // PUT /{collectionName}/{id} - Replace resource
         endpoints.MapPut($"{path}/{{id}}", async (HttpContext context, string id) =>
         {
-            // Try to get real SCIMv2 service first using reflection
-            var scimv2Type = Type.GetType("Looplex.SCIMv2.ISCIMv2, Looplex.SCIMv2");
-            if (scimv2Type != null)
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBody = await reader.ReadToEndAsync();
+            
+            if (string.IsNullOrEmpty(requestBody))
             {
-                var realScimService = context.RequestServices.GetService(scimv2Type);
-                if (realScimService != null)
-                {
-                    // Use real SCIMv2 service via reflection
-                    using var reader = new StreamReader(context.Request.Body);
-                    var requestBody = await reader.ReadToEndAsync();
-                    var replaceMethod = scimv2Type.GetMethod("ReplaceAsync", new Type[] { typeof(string), typeof(string), typeof(string), typeof(CancellationToken) });
-                    var realResult = await (Task<object>)replaceMethod.Invoke(realScimService, new object[] { collectionName, id, requestBody, CancellationToken.None });
-                    return Results.Ok(realResult);
-                }
+                return Results.BadRequest("Request body cannot be empty");
             }
 
-            // Fallback to mock service
-            var scimService = context.RequestServices.GetService<ISCIMv2Service>();
-            if (scimService == null)
-                return Results.BadRequest("SCIMv2 service not configured");
-
-            var body = await context.Request.ReadFromJsonAsync<object>();
-            if (body == null)
-                return Results.BadRequest("Invalid request body");
-
-            object result;
-            if (collectionName.Equals("notes", StringComparison.OrdinalIgnoreCase))
-            {
-                result = await scimService.UpdateUserAsync(id, body);
-            }
-            else if (collectionName.Equals("pads", StringComparison.OrdinalIgnoreCase))
-            {
-                result = await scimService.UpdateGroupAsync(id, body);
-            }
-            else
-            {
-                return Results.BadRequest($"Unsupported collection: {collectionName}");
-            }
-
-            return Results.Ok(result);
+            return await ExecuteSCIMOperation(
+                context,
+                collectionName,
+                service => service.ReplaceAsync(collectionName, id, requestBody, CancellationToken.None),
+                "Replace");
         })
         .WithName($"SCIMv2{collectionName}Replace")
         .WithTags("SCIMv2")
@@ -218,26 +147,32 @@ public static class SCIMv2EndpointExtensions
         // PATCH /{collectionName}/{id} - Modify resource
         endpoints.MapPatch($"{path}/{{id}}", async (HttpContext context, string id) =>
         {
-            // Try to get real SCIMv2 service first using reflection
-            var scimv2Type = Type.GetType("Looplex.SCIMv2.ISCIMv2, Looplex.SCIMv2");
-            if (scimv2Type != null)
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBody = await reader.ReadToEndAsync();
+            
+            if (string.IsNullOrEmpty(requestBody))
             {
-                var realScimService = context.RequestServices.GetService(scimv2Type);
-                if (realScimService != null)
-                {
-                    // Use real SCIMv2 service via reflection
-                    using var reader = new StreamReader(context.Request.Body);
-                    var requestBody = await reader.ReadToEndAsync();
-                    var patchOpsType = Type.GetType("Looplex.SCIMv2.Entities.PatchOperation, Looplex.SCIMv2");
-                    var patchOps = System.Text.Json.JsonSerializer.Deserialize(requestBody, patchOpsType.MakeArrayType());
-                    var modifyMethod = scimv2Type.GetMethod("ModifyAsync");
-                    var realResult = await (Task<object>)modifyMethod.Invoke(realScimService, new object[] { collectionName, id, patchOps, CancellationToken.None });
-                    return Results.Ok(realResult);
-                }
+                return Results.BadRequest("Request body cannot be empty");
             }
 
-            // Fallback to mock service (not implemented for PATCH)
-            return Results.BadRequest("PATCH operation not supported in mock mode");
+            try
+            {
+                var patchOps = JsonSerializer.Deserialize<PatchOperation[]>(requestBody);
+                if (patchOps == null || patchOps.Length == 0)
+                {
+                    return Results.BadRequest("Invalid patch operations");
+                }
+
+                return await ExecuteSCIMOperation(
+                    context,
+                    collectionName,
+                    service => service.ModifyAsync(collectionName, id, patchOps, CancellationToken.None),
+                    "Modify");
+            }
+            catch (JsonException ex)
+            {
+                return Results.BadRequest($"Invalid JSON: {ex.Message}");
+            }
         })
         .WithName($"SCIMv2{collectionName}Modify")
         .WithTags("SCIMv2")
@@ -247,39 +182,11 @@ public static class SCIMv2EndpointExtensions
         // DELETE /{collectionName}/{id} - Delete resource
         endpoints.MapDelete($"{path}/{{id}}", async (HttpContext context, string id) =>
         {
-            // Try to get real SCIMv2 service first using reflection
-            var scimv2Type = Type.GetType("Looplex.SCIMv2.ISCIMv2, Looplex.SCIMv2");
-            if (scimv2Type != null)
-            {
-                var realScimService = context.RequestServices.GetService(scimv2Type);
-                if (realScimService != null)
-                {
-                    // Use real SCIMv2 service via reflection
-                    var deleteMethod = scimv2Type.GetMethod("DeleteAsync");
-                    var realResult = await (Task<object>)deleteMethod.Invoke(realScimService, new object[] { collectionName, id, CancellationToken.None });
-                    return Results.Ok(realResult);
-                }
-            }
-
-            // Fallback to mock service
-            var scimService = context.RequestServices.GetService<ISCIMv2Service>();
-            if (scimService == null)
-                return Results.BadRequest("SCIMv2 service not configured");
-
-            if (collectionName.Equals("notes", StringComparison.OrdinalIgnoreCase))
-            {
-                await scimService.DeleteUserAsync(id);
-            }
-            else if (collectionName.Equals("pads", StringComparison.OrdinalIgnoreCase))
-            {
-                await scimService.DeleteGroupAsync(id);
-            }
-            else
-            {
-                return Results.BadRequest($"Unsupported collection: {collectionName}");
-            }
-
-            return Results.Ok();
+            return await ExecuteSCIMOperation(
+                context,
+                collectionName,
+                service => service.DeleteAsync(collectionName, id, CancellationToken.None),
+                "Delete");
         })
         .WithName($"SCIMv2{collectionName}Delete")
         .WithTags("SCIMv2")
