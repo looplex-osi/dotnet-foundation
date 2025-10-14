@@ -47,7 +47,7 @@ namespace Looplex.SCIMv2.Helpers
         {
             var serviceNameProvider = sp.GetService<IServiceNameProvider>();
             var httpContextAccessor = sp.GetService<IHttpContextAccessor>();
-            return new SCIMv2(serviceNameProvider, httpContextAccessor);
+            return new SCIMv2(sp, serviceNameProvider, httpContextAccessor);
         });
         services.AddSingleton<IJsonSchemaService>(sp => sp.GetRequiredService<SCIMv2>());
         

@@ -30,7 +30,7 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
         {
             // Arrange
             var serviceNameProvider = new ServiceNameProvider("notejam");
-            var scimService = new Looplex.SCIMv2.SCIMv2(serviceNameProvider);
+            var scimService = new Looplex.SCIMv2.SCIMv2(null, serviceNameProvider);
 
             // Assert
             Assert.AreEqual("notejam", scimService.GetServiceName(), "Service name should match provider");
@@ -43,7 +43,7 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
         {
             // Arrange
             var serviceNameProvider = new ServiceNameProvider("case-management");
-            var scimService = new Looplex.SCIMv2.SCIMv2(serviceNameProvider);
+            var scimService = new Looplex.SCIMv2.SCIMv2(null, serviceNameProvider);
 
             // Assert
             Assert.AreEqual("case-management", scimService.GetServiceName(), "Service name should match provider");
@@ -69,7 +69,7 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
         {
             // Arrange
             var serviceNameProvider = new ServiceNameProvider("notejam");
-            var scimService = new Looplex.SCIMv2.SCIMv2(serviceNameProvider);
+            var scimService = new Looplex.SCIMv2.SCIMv2(null, serviceNameProvider);
 
             // Act
             var schemasResponse = await scimService.GetSchemasAsync();
@@ -120,9 +120,9 @@ namespace Looplex.Foundation.Core.UnitTests.Features.SCIMv2.Entities
             var customProvider = new ServiceNameProvider("custom-app");
 
             // Act
-            var notejamService = new Looplex.SCIMv2.SCIMv2(notejamProvider);
-            var caseManagementService = new Looplex.SCIMv2.SCIMv2(caseManagementProvider);
-            var customService = new Looplex.SCIMv2.SCIMv2(customProvider);
+            var notejamService = new Looplex.SCIMv2.SCIMv2(null, notejamProvider);
+            var caseManagementService = new Looplex.SCIMv2.SCIMv2(null, caseManagementProvider);
+            var customService = new Looplex.SCIMv2.SCIMv2(null, customProvider);
 
             // Assert
             Assert.AreEqual("notejam", notejamService.GetServiceName(), "Notejam service should have correct name");

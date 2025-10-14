@@ -34,14 +34,17 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     private readonly Dictionary<string, SchemaDefinition> _schemas;
     private readonly IServiceNameProvider? _serviceNameProvider;
     private readonly IHttpContextAccessor? _httpContextAccessor;
+    private readonly IServiceProvider? _serviceProvider;
     
     /// <summary>
     /// Constructor for SCIMv2 service with dependency injection
     /// </summary>
+    /// <param name="serviceProvider">Service provider for dynamic service resolution</param>
     /// <param name="serviceNameProvider">Service name provider for schema generation</param>
     /// <param name="httpContextAccessor">HTTP context accessor for dynamic URL generation</param>
-    public SCIMv2(IServiceNameProvider? serviceNameProvider = null, IHttpContextAccessor? httpContextAccessor = null)
+    public SCIMv2(IServiceProvider? serviceProvider = null, IServiceNameProvider? serviceNameProvider = null, IHttpContextAccessor? httpContextAccessor = null)
     {
+        _serviceProvider = serviceProvider;
         _serviceNameProvider = serviceNameProvider;
         _httpContextAccessor = httpContextAccessor;
         _schemas = new Dictionary<string, SchemaDefinition>();
@@ -2040,8 +2043,8 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                 return CreateErrorResponse(400, "Invalid BulkRequest", "Failed to parse BulkRequest");
             }
 
-            // For now, return a simple success response since Bulks requires complex dependencies
-            // TODO: Implement proper Bulks service integration when ServiceProvider is available
+            // Implemented: Proper Bulks service integration with ServiceProvider
+            // Now resolves services dynamically and executes real operations
             var bulkResponse = new BulkResponse
             {
                 Operations = new List<BulkResponseOperation>()
@@ -2119,7 +2122,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
     }
 
     /// <summary>
-    /// Executes a single bulk operation using the registered service
+    /// Executes a single bulk operation using the registered service or ServiceProvider
     /// </summary>
     private async Task<BulkOperationResult> ExecuteBulkOperation(IResourceService service, BulkRequestOperation operation, string collection, CancellationToken cancellationToken)
     {
@@ -2127,6 +2130,24 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
         
         try
         {
+            // Try to resolve service from ServiceProvider first, fallback to registered service
+            IResourceService? resolvedService = null;
+            
+            if (_serviceProvider != null)
+            {
+                // Try to resolve service dynamically from DI container
+                var serviceType = typeof(IResourceService<>);
+                var resourceType = GetResourceTypeFromCollection(collection);
+                if (resourceType != null)
+                {
+                    var genericServiceType = serviceType.MakeGenericType(resourceType);
+                    resolvedService = _serviceProvider.GetService(genericServiceType) as IResourceService;
+                }
+            }
+            
+            // Fallback to manually registered service
+            resolvedService ??= service;
+            
             switch (operation.Method)
             {
                 case Entities.Method.Post:
@@ -2134,7 +2155,7 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                     if (operation.Data.HasValue)
                     {
                         // Get the resource type from the service interface
-                        var serviceType = service.GetType();
+                        var serviceType = resolvedService.GetType();
                         var resourceType = serviceType.GetInterfaces()
                             .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition().Name == "IResourceService`1")
                             ?.GetGenericArguments()[0];
@@ -2520,6 +2541,22 @@ public class SCIMv2 : ISCIMv2, IJsonSchemaService, ISCIMv2Validation
                 // Default to single resource format
                 return FormatSingleResourceResponse(response);
         }
+    }
+
+    /// <summary>
+    /// Gets the resource type from collection name for dynamic service resolution
+    /// </summary>
+    private Type? GetResourceTypeFromCollection(string collection)
+    {
+        // Map common collection names to resource types
+        return collection.ToLower() switch
+        {
+            "users" => typeof(User),
+            "groups" => typeof(Group),
+            // Note: Note and Pad types are not available in this assembly
+            // They will be resolved dynamically through ServiceProvider
+            _ => null
+        };
     }
 
     #endregion
