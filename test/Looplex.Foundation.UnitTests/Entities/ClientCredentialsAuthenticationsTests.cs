@@ -1,10 +1,12 @@
 using System.Text;
 
 using Looplex.OAuth2.Entities;
+using Looplex.Foundation.Entities;
 using Looplex.Foundation.Ports;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 using Newtonsoft.Json;
 
@@ -18,6 +20,7 @@ public class ClientCredentialsAuthenticationsTests
   private ClientServices _mockClientServices = null!;
   private IConfiguration _mockConfiguration = null!;
   private IJwtService _mockJwtService = null!;
+  private ILogger<Service> _mockLogger = null!;
 
   [TestInitialize]
   public void Setup()
@@ -25,6 +28,7 @@ public class ClientCredentialsAuthenticationsTests
     _mockConfiguration = Substitute.For<IConfiguration>();
     _mockClientServices = Substitute.For<ClientServices>(null, null, null, null);
     _mockJwtService = Substitute.For<IJwtService>();
+    _mockLogger = Substitute.For<ILogger<Service>>();
 
     _mockConfiguration["TokenExpirationTimeInMinutes"].Returns("20");
   }
@@ -35,7 +39,7 @@ public class ClientCredentialsAuthenticationsTests
     // Arrange
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "client_credentials" });
 
-    ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
+    ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockLogger, _mockConfiguration,
       _mockClientServices, _mockJwtService);
 
     // Act & Assert
@@ -53,7 +57,7 @@ public class ClientCredentialsAuthenticationsTests
 
     string clientCredentials = JsonConvert.SerializeObject(new { grant_type = "invalid" });
 
-    ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockConfiguration,
+    ClientCredentialsAuthentications service = new(new List<IPlugin>(), _mockLogger, _mockConfiguration,
       _mockClientServices, _mockJwtService);
 
     // Act & Assert

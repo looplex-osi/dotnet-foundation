@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Looplex.Foundation.Entities;
 using Looplex.OpenForExtension.Abstractions.Plugins;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace Looplex.SCIMv2.Entities;
 
@@ -20,7 +21,7 @@ public abstract class SCIMv2<Tmeta, Tdata> : Service where Tmeta : Resource, new
 
   #endregion
 
-  public SCIMv2(IList<IPlugin> plugins) : base(plugins)
+  public SCIMv2(IList<IPlugin> plugins, ILogger<Service> logger) : base(plugins, logger)
   {
   }
 

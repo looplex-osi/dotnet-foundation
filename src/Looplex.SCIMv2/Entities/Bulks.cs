@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Looplex.Foundation.Serialization;
+using Microsoft.Extensions.Logging;
 
 using Looplex.Foundation.Entities;
 using Looplex.OpenForExtension.Abstractions.Commands;
@@ -35,8 +36,9 @@ public class Bulks : Service
   [ActivatorUtilitiesConstructor]
   public Bulks(
     IList<IPlugin> plugins,
+    ILogger<Bulks> logger,
     IServiceProvider serviceProvider,
-    ServiceProviderConfiguration serviceProviderConfiguration) : base(plugins)
+    ServiceProviderConfiguration serviceProviderConfiguration) : base(plugins, logger)
   {
     _serviceProvider = serviceProvider;
     _serviceProviderConfiguration = serviceProviderConfiguration;
@@ -129,7 +131,7 @@ public class Bulks : Service
             break;
           response.Operations.Add(new()
           {
-            Method = operation.Method, Path = operation.Path, Status = error.Status, Response = JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(error, FoundationJsonSerializer.DefaultOptions)).RootElement
+            Method = operation.Method, Path = operation.Path, Status = error.Status, Response = JsonSerializer.SerializeToElement(error, FoundationJsonSerializer.DefaultOptions)
           });
         }
       }
