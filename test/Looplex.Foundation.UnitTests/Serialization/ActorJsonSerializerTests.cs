@@ -1,10 +1,10 @@
 using Looplex.Foundation.Entities;
-using Looplex.Foundation.Serialization.Json;
+using Looplex.Foundation.Serialization;
 
-namespace Looplex.Foundation.UnitTests.Serialization;
+namespace Looplex.Foundation.Core.UnitTests.Serialization;
 
 [TestClass]
-public class ActorJsonSerializerTests
+public class ActorFoundationJsonSerializerTests
 {
   private TestActor _actor = null!;
 
@@ -19,21 +19,21 @@ public class ActorJsonSerializerTests
   public void JsonSerialize_ShouldConvertActorToJsonString()
   {
     // Act
-    string json = _actor.Serialize();
+    string json = FoundationJsonSerializer.Serialize(_actor, FoundationJsonSerializer.DefaultOptions);
 
     // Assert
     Assert.IsNotNull(json);
-    Assert.IsTrue(json.Contains("\"name\": \"Test Name\""));
+    Assert.IsTrue(json.Contains("\"name\":\"Test Name\""));
   }
 
   [TestMethod]
   public void JsonDeserialize_ShouldConvertJsonStringToActor()
   {
     // Arrange
-    string json = _actor.Serialize();
+    string json = FoundationJsonSerializer.Serialize(_actor, FoundationJsonSerializer.DefaultOptions);
 
     // Act
-    TestActor? deserializedActor = json.Deserialize<TestActor>();
+    TestActor? deserializedActor = FoundationJsonSerializer.Deserialize<TestActor>(json, FoundationJsonSerializer.DefaultOptions);
 
     // Assert
     Assert.IsNotNull(deserializedActor);
@@ -41,11 +41,11 @@ public class ActorJsonSerializerTests
   }
 
   [TestMethod]
-  [ExpectedException(typeof(ArgumentException))]
+  [ExpectedException(typeof(System.Text.Json.JsonException))]
   public void JsonDeserialize_ShouldThrowExceptionForEmptyJson()
   {
     // Act
-    "".Deserialize<TestActor>();
+    FoundationJsonSerializer.Deserialize<TestActor>("", FoundationJsonSerializer.DefaultOptions);
   }
 
   [TestMethod]
@@ -54,7 +54,7 @@ public class ActorJsonSerializerTests
   {
     // Act
     Actor? nullActor = null;
-    nullActor.Serialize();
+    FoundationJsonSerializer.Serialize(nullActor, FoundationJsonSerializer.DefaultOptions);
   }
 
   public class TestActor : Actor

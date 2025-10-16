@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -12,11 +12,14 @@
   <ItemGroup>
     <PackageReference Include="MediatR" Version="12.5.0"/>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.1"/>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0"/>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Application.Abstraction\Application.Abstraction.csproj"/>
     <ProjectReference Include="..\Application\Application.csproj"/>
+    <ProjectReference Include="..\Application.Abstraction\Application.Abstraction.csproj"/>
+    <ProjectReference Include="..\..\..\src\Looplex.Foundation\Looplex.Foundation.csproj"/>
+    <ProjectReference Include="..\..\..\src\Looplex.SCIMv2\Looplex.SCIMv2.csproj"/>
   </ItemGroup>
 
 </Project>

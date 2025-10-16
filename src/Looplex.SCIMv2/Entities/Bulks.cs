@@ -1,0 +1,502 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+using Looplex.Foundation.Serialization;
+using Microsoft.Extensions.Logging;
+
+using Looplex.Foundation.Entities;
+using Looplex.OpenForExtension.Abstractions.Commands;
+using Looplex.OpenForExtension.Abstractions.Contexts;
+using Looplex.OpenForExtension.Abstractions.ExtensionMethods;
+using Looplex.OpenForExtension.Abstractions.Plugins;
+
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Looplex.SCIMv2.Entities;
+
+public class Bulks : Service
+{
+  private readonly ServiceProviderConfiguration? _serviceProviderConfiguration;
+  private readonly IServiceProvider? _serviceProvider;
+
+  #region Reflectivity
+
+  // ReSharper disable once PublicConstructorInAbstractClass
+  public Bulks() : base()
+  {
+  }
+
+  #endregion
+
+  [ActivatorUtilitiesConstructor]
+  public Bulks(
+    IList<IPlugin> plugins,
+    ILogger<Bulks> logger,
+    IServiceProvider serviceProvider,
+    ServiceProviderConfiguration serviceProviderConfiguration) : base(plugins, logger)
+  {
+    _serviceProvider = serviceProvider;
+    _serviceProviderConfiguration = serviceProviderConfiguration;
+  }
+
+  public async Task<BulkResponse> Execute(BulkRequest request, CancellationToken cancellationToken)
+  {
+    cancellationToken.ThrowIfCancellationRequested();
+    IContext ctx = NewContext();
+
+    await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
+
+    ValidateBulkIdsUniqueness(request);
+    await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
+
+    ctx.Roles["BulkRequest"] = request;
+    await ctx.Plugins.ExecuteAsync<IDefineRoles>(ctx, cancellationToken);
+
+    await ctx.Plugins.ExecuteAsync<IBind>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IBeforeAction>(ctx, cancellationToken);
+
+    if (!ctx.SkipDefaultAction)
+    {
+      var response = new BulkResponse();
+
+      request = ctx.Roles["BulkRequest"];
+
+      var errorCount = 0;
+      Dictionary<string, string> bulkIdCrossReference = [];
+
+      foreach (var operation in request.Operations)
+      {
+        try
+        {
+          ValidateOperation(operation);
+
+          var (resourceMap, resourceUniqueId) = GetResourceMap(operation, _serviceProviderConfiguration!);
+
+          var service = _serviceProvider!.GetRequiredService(resourceMap.Type);
+
+          if (operation.Data.HasValue)
+          {
+            // TODO: Implement JsonElement traversal for bulk operations
+            // JsonHelper.Traverse(operation.Data.Value, BulkIdVisitor(bulkIdCrossReference));
+          }
+
+          if (operation.Method == Method.Post)
+          {
+            var id = await ExecutePostMethod(
+              operation,
+              service,
+              response,
+              resourceMap,
+              cancellationToken);
+
+            bulkIdCrossReference[operation.BulkId!] = id;
+          }
+          else if (operation.Method == Method.Patch)
+          {
+            await ExecutePatchMethod(
+              operation,
+              service,
+              response,
+              resourceMap,
+              resourceUniqueId!.Value,
+              cancellationToken);
+          }
+          else if (operation.Method == Method.Delete)
+          {
+            await ExecuteDeleteMethod(
+              operation,
+              service,
+              response,
+              resourceUniqueId!.Value,
+              cancellationToken);
+          }
+        }
+        catch (Exception e)
+        {
+          Error error;
+          if (e is SCIMv2Exception scimEx)
+            error = scimEx.Error;
+          else
+            error = new Error(
+              e.Message,
+              (int)HttpStatusCode.InternalServerError);
+
+          errorCount++;
+          if (errorCount > request.FailOnErrors)
+            break;
+          response.Operations.Add(new()
+          {
+            Method = operation.Method, Path = operation.Path, Status = error.Status, Response = JsonSerializer.SerializeToElement(error, FoundationJsonSerializer.DefaultOptions)
+          });
+        }
+      }
+
+      ctx.Result = response;
+    }
+
+    await ctx.Plugins.ExecuteAsync<IAfterAction>(ctx, cancellationToken);
+    await ctx.Plugins.ExecuteAsync<IReleaseUnmanagedResources>(ctx, cancellationToken);
+
+    return (BulkResponse)ctx.Result;
+  }
+
+  internal static Action<JsonElement> BulkIdVisitor(Dictionary<string, string> bulkIdCrossReference)
+  {
+    return (node) =>
+    {
+      if (node.ValueKind == JsonValueKind.String)
+      {
+        var nodeValue = node.GetString();
+
+        if (nodeValue != null && nodeValue.StartsWith("bulkId:"))
+        {
+          var key = nodeValue["bulkId:".Length..];
+
+          if (!bulkIdCrossReference.TryGetValue(key, out var bulkIdValue))
+            throw new SCIMv2Exception(
+              $"Bulk id {key} not defined",
+              ErrorScimType.InvalidValue,
+              (int)HttpStatusCode.BadRequest);
+
+          // TODO: Implement JsonElement replacement for bulk operations
+          // node.Replace(bulkIdValue);
+        }
+      }
+    };
+  }
+
+  internal static async Task<string> ExecutePostMethod(
+    BulkRequestOperation operation, object service, BulkResponse bulkResponse,
+    ResourceMap resourceMap, CancellationToken cancellationToken)
+  {
+    var resource = System.Text.Json.JsonSerializer.Deserialize(operation.Data!.Value, resourceMap.Type);
+
+    var createMethod = service.GetType().GetMethod("Create", [resourceMap.GetType(), typeof(CancellationToken)]);
+    if (createMethod is null)
+      throw new InvalidOperationException("Create method not found.");
+
+    object createTaskObj = createMethod.Invoke(service, [resource, cancellationToken])!;
+    var createTask = (Task<Guid>)createTaskObj;
+    Guid createdId = await createTask;
+    var id = createdId.ToString();
+
+    bulkResponse.Operations.Add(new()
+    {
+      Method = operation.Method,
+      Path = operation.Path,
+      Location = $"{resourceMap.Resource}/{id}",
+      Status = (int)HttpStatusCode.Created
+    });
+
+    return id;
+  }
+
+  internal static async Task ExecutePatchMethod(
+    BulkRequestOperation operation, object service, BulkResponse bulkResponse,
+    ResourceMap resourceMap, Guid resourceUniqueId, CancellationToken cancellationToken)
+  {
+    var resource = System.Text.Json.JsonSerializer.Deserialize(operation.Data!.Value, resourceMap.Type);
+
+    var updateMethod = service.GetType().GetMethod("Update", [
+      typeof(Guid),
+      resourceMap.Type,
+      typeof(string),
+      typeof(CancellationToken)
+    ]);
+    if (updateMethod is null)
+      throw new InvalidOperationException("Update method not found.");
+
+    object updateTaskObj = updateMethod.Invoke(service, [resourceUniqueId, resource, null, cancellationToken])!;
+    var updateTask = (Task<bool>)updateTaskObj;
+    bool updateSuccess = await updateTask;
+    var id = resourceUniqueId.ToString();
+
+    if (!updateSuccess)
+      throw new SCIMv2Exception($"Resource with id {id} was not patched.", (int)HttpStatusCode.ExpectationFailed);
+
+    bulkResponse.Operations.Add(new()
+    {
+      Method = operation.Method,
+      Path = operation.Path,
+      Location = $"{resourceMap.Resource}/{id}",
+      Status = (int)HttpStatusCode.NoContent
+    });
+  }
+
+  internal static async Task ExecuteDeleteMethod(
+    BulkRequestOperation operation, object service, BulkResponse bulkResponse,
+    Guid resourceUniqueId, CancellationToken cancellationToken)
+  {
+    var deleteMethod = service.GetType().GetMethod("Delete", new[] { typeof(Guid), typeof(CancellationToken) });
+    if (deleteMethod is null)
+      throw new InvalidOperationException("Delete method not found.");
+
+    object deleteTaskObj = deleteMethod.Invoke(service, new object[] { resourceUniqueId, cancellationToken })!;
+    var deleteTask = (Task<bool>)deleteTaskObj;
+    bool deleteSuccess = await deleteTask;
+    var id = resourceUniqueId.ToString();
+
+    if (!deleteSuccess)
+      throw new SCIMv2Exception($"Resource with id {id} was not deleted.", (int)HttpStatusCode.ExpectationFailed);
+  }
+
+  internal static void ValidateOperation(BulkRequestOperation operation)
+  {
+    if (operation.Data == null &&
+        operation.Method != Method.Delete)
+      throw new SCIMv2Exception(
+        $"Data should have value for method {operation.Method}",
+        ErrorScimType.InvalidValue,
+        (int)HttpStatusCode.BadRequest);
+
+    if (string.IsNullOrWhiteSpace(operation.BulkId) &&
+        operation.Method == Method.Post)
+      throw new SCIMv2Exception(
+        $"BulkId should have value for method {operation.Method}",
+        ErrorScimType.InvalidValue,
+        (int)HttpStatusCode.BadRequest);
+  }
+
+  internal static void ValidateBulkIdsUniqueness(BulkRequest bulkRequest)
+  {
+    var nonUniqueBulkIds = bulkRequest.Operations
+      .Where(o => !string.IsNullOrWhiteSpace(o.BulkId))
+      .GroupBy(o => o.BulkId)
+      .Where(g => g.Count() > 1)
+      .Select(g => g.Key)
+      .ToList();
+    if (nonUniqueBulkIds.Any())
+    {
+      var bulkIds = string.Join(", ", nonUniqueBulkIds);
+      throw new SCIMv2Exception(
+        $"BulkIds {bulkIds} must be unique",
+        ErrorScimType.Uniqueness,
+        (int)HttpStatusCode.BadRequest);
+    }
+  }
+
+  internal static (ResourceMap, Guid?) GetResourceMap(BulkRequestOperation operation,
+    ServiceProviderConfiguration serviceProviderConfiguration)
+  {
+    var path = operation.Path ?? throw new ArgumentNullException(nameof(operation.Path));
+    if (path.StartsWith("/"))
+      path = path[1..];
+
+    var indexOfSlash = path.IndexOf('/');
+
+    if (indexOfSlash <= 0 && operation.Method != Method.Post)
+      throw new SCIMv2Exception(
+        $"Path {operation.Path} should refer to a specific resource when method is {operation.Method}",
+        ErrorScimType.InvalidPath,
+        (int)HttpStatusCode.BadRequest);
+
+    var resource = path;
+    Guid? resourceUniqueId = null;
+
+    if (indexOfSlash > 0 && indexOfSlash < path.Length)
+    {
+      resource = path[..indexOfSlash];
+      var resourceIdentifier = path[(indexOfSlash + 1)..];
+
+      if (Guid.TryParse(resourceIdentifier, out var uuid))
+      {
+        resourceUniqueId = uuid;
+      }
+      else
+        throw new SCIMv2Exception(
+          $"Resource identifier {resourceIdentifier} is not valid",
+          ErrorScimType.InvalidValue,
+          (int)HttpStatusCode.BadRequest);
+    }
+
+    var resourceMap = serviceProviderConfiguration.Map
+      .FirstOrDefault(rm => rm.Resource == resource);
+
+    if (resourceMap == null)
+      throw new SCIMv2Exception(
+        $"Path {resource} does not exist",
+        ErrorScimType.InvalidPath,
+        (int)HttpStatusCode.BadRequest);
+
+    return (resourceMap, resourceUniqueId);
+  }
+}
+
+public sealed class BulkRequest : Actor
+{
+  /// <summary>
+  /// The number of errors that the service provider will accept before the operation is
+  /// terminated. OPTIONAL in a request.
+  /// </summary>
+  public long? FailOnErrors { get; set; }
+
+  /// <summary>
+  /// Defines operations within a bulk job. Each operation corresponds to a single HTTP request
+  /// against a resource endpoint.
+  /// </summary>
+  [JsonPropertyName("Operations")]
+  public List<BulkRequestOperation> Operations { get; set; } = [];
+}
+
+public sealed class BulkRequestOperation
+{
+  /// <summary>
+  /// The transient identifier of a newly created resource. REQUIRED when 'method' is 'POST'.
+  /// </summary>
+  [JsonPropertyName("bulkId")]
+  public string? BulkId { get; set; }
+
+  /// <summary>
+  /// The resource data as it would appear for a single SCIM POST, PUT, or PATCH operation.
+  /// REQUIRED when 'method' is 'POST', 'PUT', or 'PATCH'.
+  /// </summary>
+  [JsonPropertyName("data")]
+  public JsonElement? Data { get; set; }
+
+  /// <summary>
+  /// The HTTP method of the current operation.
+  /// </summary>
+  [JsonPropertyName("method")]
+  public Method Method { get; set; }
+
+  /// <summary>
+  /// The resource's relative path. REQUIRED in a request.
+  /// </summary>
+  [JsonPropertyName("path")]
+  public string? Path { get; set; }
+
+  /// <summary>
+  /// The current resource version. Used if the service provider supports ETags and 'method' is
+  /// 'PUT', 'PATCH', or 'DELETE'.
+  /// </summary>
+  public string? Version { get; set; }
+}
+
+/// <summary>
+/// The HTTP method of the current operation.
+/// </summary>
+[JsonConverter(typeof(MethodJsonConverter))]
+public enum Method
+{
+  Delete,
+  Patch,
+  Post,
+  Put
+}
+
+/// <summary>
+/// JSON converter for Method enum to handle string values
+/// </summary>
+public class MethodJsonConverter : JsonConverter<Method>
+{
+    public override Method Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            var stringValue = reader.GetString();
+            return stringValue?.ToUpper() switch
+            {
+                "DELETE" => Method.Delete,
+                "PATCH" => Method.Patch,
+                "POST" => Method.Post,
+                "PUT" => Method.Put,
+                _ => throw new JsonException($"Unknown method: {stringValue}")
+            };
+        }
+        else if (reader.TokenType == JsonTokenType.Number)
+        {
+            var intValue = reader.GetInt32();
+            return (Method)intValue;
+        }
+        
+        throw new JsonException($"Unexpected token type: {reader.TokenType}");
+    }
+
+    public override void Write(Utf8JsonWriter writer, Method value, JsonSerializerOptions options)
+    {
+        var stringValue = value switch
+        {
+            Method.Delete => "DELETE",
+            Method.Patch => "PATCH", 
+            Method.Post => "POST",
+            Method.Put => "PUT",
+            _ => throw new JsonException($"Unknown method: {value}")
+        };
+        writer.WriteStringValue(stringValue);
+    }
+}
+
+public sealed class BulkResponse : Actor
+{
+  /// <summary>
+  /// Defines operations within a bulk job. Each operation corresponds to a single HTTP request
+  /// against a resource endpoint.
+  /// </summary>
+  [JsonPropertyName("Operations")]
+  public List<BulkResponseOperation> Operations { get; set; } = [];
+}
+
+public partial class BulkResponseOperation
+{
+  /// <summary>
+  /// The transient identifier of a newly created resource. REQUIRED when 'method' is 'POST'.
+  /// </summary>
+  [JsonPropertyName("bulkId")]
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public string? BulkId { get; set; }
+
+  /// <summary>
+  /// The resource data as it would appear for a single SCIM POST, PUT, or PATCH operation.
+  /// REQUIRED when 'method' is 'POST', 'PUT', or 'PATCH'.
+  /// </summary>
+  [JsonPropertyName("data")]
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public JsonElement? Data { get; set; }
+
+  /// <summary>
+  /// The resource endpoint URL. REQUIRED in a response, except in the event of a POST failure.
+  /// </summary>
+  [JsonPropertyName("location")]
+  public string? Location { get; set; }
+
+  /// <summary>
+  /// The HTTP method of the current operation.
+  /// </summary>
+  [JsonPropertyName("method")]
+  public Method Method { get; set; }
+
+  /// <summary>
+  /// The resource's relative path. REQUIRED in a request.
+  /// </summary>
+  [JsonPropertyName("path")]
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public string? Path { get; set; }
+
+  /// <summary>
+  /// The HTTP response body for the specified request operation. MUST be included when
+  /// indicating an HTTP status other than 200.
+  /// </summary>
+  [JsonPropertyName("response")]
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public JsonElement? Response { get; set; }
+
+  /// <summary>
+  /// The HTTP response status code for the requested operation.
+  /// </summary>
+  [JsonPropertyName("status")]
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public int? Status { get; set; }
+
+  /// <summary>
+  /// The current resource version. Used if the service provider supports ETags and 'method' is
+  /// 'PUT', 'PATCH', or 'DELETE'.
+  /// </summary>
+  [JsonPropertyName("version")]
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public string? Version { get; set; }
+}

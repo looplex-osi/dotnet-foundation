@@ -1,0 +1,124 @@
+using System.Collections.Generic;
+
+using PropertyChanged;
+
+using ProtoBuf;
+
+namespace Looplex.SCIMv2.Entities;
+
+[ProtoContract]
+[AddINotifyPropertyChangedInterface]
+public class User : Resource
+{
+  #region Reflectivity
+
+  // ReSharper disable once EmptyConstructor
+  public User() : base() { }
+
+  #endregion
+
+  [System.Text.Json.Serialization.JsonIgnore] public int? UserId { get; set; }
+
+  [ProtoMember(1)] public string? UserName { get; set; }
+
+  [ProtoMember(2)] public ScimName Name { get; set; } = new();
+
+  [ProtoMember(3)] public string DisplayName { get; set; } = string.Empty;
+
+  [ProtoMember(4)] public string NickName { get; set; } = string.Empty;
+
+  [ProtoMember(5)] public string ProfileUrl { get; set; } = string.Empty;
+
+  [ProtoMember(6)] public string Title { get; set; } = string.Empty;
+
+  [ProtoMember(7)] public string UserType { get; set; } = string.Empty;
+
+  [ProtoMember(8)] public string PreferredLanguage { get; set; } = string.Empty;
+
+  [ProtoMember(9)] public string Locale { get; set; } = string.Empty;
+
+  [ProtoMember(10)] public string Timezone { get; set; } = string.Empty;
+
+  [ProtoMember(11)] public bool Active { get; set; }
+
+  // multi-valued attributes
+  [ProtoMember(12)] public List<ScimEmail> Emails { get; set; } = new();
+
+  [ProtoMember(13)] public List<ScimPhoneNumber> PhoneNumbers { get; set; } = new();
+
+  [ProtoMember(14)] public List<ScimAddress> Addresses { get; set; } = new();
+
+  // groups to which this user belongs
+  [ProtoMember(15)] public List<ScimGroupRef> Groups { get; set; } = new();
+}
+
+[ProtoContract]
+[AddINotifyPropertyChangedInterface]
+public class ScimName
+{
+  [ProtoMember(1)] public string Formatted { get; set; } = string.Empty;
+
+  [ProtoMember(2)] public string FamilyName { get; set; } = string.Empty;
+
+  [ProtoMember(3)] public string GivenName { get; set; } = string.Empty;
+
+  [ProtoMember(4)] public string MiddleName { get; set; } = string.Empty;
+
+  [ProtoMember(5)] public string HonorificPrefix { get; set; } = string.Empty;
+
+  [ProtoMember(6)] public string HonorificSuffix { get; set; } = string.Empty;
+}
+
+[ProtoContract]
+[AddINotifyPropertyChangedInterface]
+public class ScimEmail
+{
+  [ProtoMember(1)] public string Value { get; set; } = string.Empty;
+
+  [ProtoMember(2)] public string Type { get; set; } = string.Empty;
+
+  [ProtoMember(3)] public bool Primary { get; set; }
+}
+
+[ProtoContract]
+[AddINotifyPropertyChangedInterface]
+public class ScimPhoneNumber
+{
+  [ProtoMember(1)] public string Value { get; set; } = string.Empty;
+
+  [ProtoMember(2)] public string Type { get; set; } = string.Empty;
+}
+
+[ProtoContract]
+[AddINotifyPropertyChangedInterface]
+public class ScimAddress
+{
+  [ProtoMember(1)] public string Formatted { get; set; } = string.Empty;
+
+  [ProtoMember(2)] public string StreetAddress { get; set; } = string.Empty;
+
+  [ProtoMember(3)] public string Locality { get; set; } = string.Empty;
+
+  [ProtoMember(4)] public string Region { get; set; } = string.Empty;
+
+  [ProtoMember(5)] public string PostalCode { get; set; } = string.Empty;
+
+  [ProtoMember(6)] public string Country { get; set; } = string.Empty;
+
+  [ProtoMember(7)] public string Type { get; set; } = string.Empty;
+
+  [ProtoMember(8)] public bool Primary { get; set; }
+}
+
+[ProtoContract]
+[AddINotifyPropertyChangedInterface]
+public class ScimGroupRef
+{
+  [ProtoMember(1)] public string Value { get; set; } = string.Empty;
+
+  [ProtoMember(2)] public string Display { get; set; } = string.Empty;
+
+  [ProtoMember(3)] public string Type { get; set; } = string.Empty;
+
+  [ProtoMember(4)] public string Ref { get; set; } = string.Empty;
+}

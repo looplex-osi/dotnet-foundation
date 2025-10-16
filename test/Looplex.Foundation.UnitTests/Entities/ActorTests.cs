@@ -2,7 +2,7 @@ using Looplex.Foundation.Entities;
 
 using NSubstitute;
 
-namespace Looplex.Foundation.UnitTests.Entities;
+namespace Looplex.Foundation.Core.UnitTests.Entities;
 
 [TestClass]
 public class ActorTests

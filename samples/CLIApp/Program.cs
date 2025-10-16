@@ -1,4 +1,4 @@
-﻿namespace Looplex.Samples.CliApp;
+namespace Looplex.Samples.CliApp;
 
 internal class Program
 {

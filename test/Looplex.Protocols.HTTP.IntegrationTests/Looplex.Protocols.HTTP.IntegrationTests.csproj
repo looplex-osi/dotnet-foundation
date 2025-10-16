@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
+    <PackageReference Include="NSubstitute" Version="5.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Looplex.Protocols.HTTP\Looplex.Protocols.HTTP.csproj" />
+    <ProjectReference Include="..\..\src\Looplex.Foundation\Looplex.Foundation.csproj" />
+    <ProjectReference Include="..\..\src\Looplex.OAuth2\Looplex.OAuth2.csproj" />
+    <ProjectReference Include="..\..\src\Looplex.SCIMv2\Looplex.SCIMv2.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -8,7 +8,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Looplex.Foundation.SCIMv2.Entities;
 
 namespace Looplex.Foundation.Helpers
 {
@@ -26,7 +25,7 @@ namespace Looplex.Foundation.Helpers
     }
 
     public static void MapDataRecordToResource<T>(IDataRecord record, T resource)
-      where T : Resource, new()
+      where T : class, new()
     {
       // For each column, try to map the value to a public property with the same name.
       for (int i = 0; i < record.FieldCount; i++)

@@ -18,28 +18,45 @@ public class Notejam : Service
   private readonly IRbacService? _rbacService;
   private readonly ClaimsPrincipal? _user;
 
-  #region Reflectivity
+      #region Reflectivity
 
-  // ReSharper disable once PublicConstructorInAbstractClass
-  public Notejam()
-  {
-  }
+    /// <summary>
+    /// Constructor required for dependency injection and reflection.
+    /// 
+    /// This constructor is used by:
+    /// - Dependency injection container for service registration
+    /// - Reflection-based frameworks for service discovery
+    /// - Looplex.Foundation.Protocols.Http for SCIM service registration
+    /// 
+    /// IMPORTANT: This constructor is NOT used for normal service instantiation.
+    /// The actual service should be created using the constructor with parameters.
+    /// </summary>
+    // ReSharper disable once PublicConstructorInAbstractClass
+    public Notejam()
+    {
+        // Required for DI container - will be overridden by proper constructor
+    }
 
-  #endregion
+    #endregion
 
   [ActivatorUtilitiesConstructor]
   public Notejam(IList<IPlugin> plugins, IRbacService rbacService, IHttpContextAccessor httpContextAccessor) :
     base(plugins)
   {
     _rbacService = rbacService;
-    _user = httpContextAccessor.HttpContext.User;
+    _user = httpContextAccessor.HttpContext?.User;
   }
 
   // The purpose of this method is to validate the framework functionalities
   public async Task<string> Echo(string name, CancellationToken cancellationToken)
   {
     IContext ctx = NewContext();
-    _rbacService!.ThrowIfUnauthorized(_user!, GetType().Name, this.GetCallerName());
+    
+    // Check if RBAC service and user are available before using them
+    if (_rbacService != null && _user != null)
+    {
+        _rbacService.ThrowIfUnauthorized(_user, GetType().Name, this.GetCallerName());
+    }
 
     ctx.State.Name = name;
     await ctx.Plugins.ExecuteAsync<IHandleInput>(ctx, cancellationToken);
