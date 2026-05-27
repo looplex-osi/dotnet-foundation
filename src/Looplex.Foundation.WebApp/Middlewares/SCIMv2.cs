@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 
 using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
@@ -11,6 +11,7 @@ using MediatR;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,6 +28,7 @@ namespace Looplex.Foundation.WebApp.Middlewares;
 public static class SCIMv2
 {
   private static readonly ServiceProviderConfiguration ServiceProviderConfiguration = new();
+  private const string SCIMv2_SEARCH_URN = "urn:ietf:params:scim:api:messages:2.0:SearchRequest";
 
   /// <summary>
   /// Json.NET settings used to create per-call serializers that force camelCase on item properties,
@@ -127,12 +129,12 @@ public static class SCIMv2
       CancellationToken cancellationToken = context.RequestAborted;
       var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
-      // SCIMv2 Filtering (RFC 7644 �3.4.2.2)
+      // SCIMv2 Filtering (RFC 7644 §3.4.2.2)
       string? filter = null;
       if (context.Request.Query.TryGetValue("filter", out var filterStr))
         filter = filterStr;
 
-      // SCIMv2 Sorting (RFC 7644 �3.4.2.3)
+      // SCIMv2 Sorting (RFC 7644 §3.4.2.3)
       string? sortBy = null;
       string? sortOrder = null;
       if (context.Request.Query.TryGetValue("sortBy", out var sortByStr))
@@ -140,7 +142,7 @@ public static class SCIMv2
       if (context.Request.Query.TryGetValue("sortOrder", out var sortOrderStr))
         sortOrder = sortOrderStr;
 
-      // SCIMv2 Pagination (RFC 7644 �3.4.2.4)
+      // SCIMv2 Pagination (RFC 7644 §3.4.2.4)
       int startIndex = 1;
       int count = 12;
 
@@ -175,6 +177,56 @@ public static class SCIMv2
         Resources = objects.ProcessAttributes(context).ToList(),
         TotalResults = result.TotalResults
       };
+      string json = processedResult.Serialize();
+      context.Response.ContentType = "application/json; charset=utf-8";
+      await context.Response.WriteAsync(json, cancellationToken);
+    });
+    if (authorize)
+      map.RequireAuthorization();
+
+    #endregion
+
+    #region Query using POST (POST /)
+
+    /*
+     * SCIMv2 Filter using POST (RFC 7644 §3.4.3)
+     * https://www.rfc-editor.org/info/rfc7644/#section-3.4.3
+     *
+     * Includes:
+     * SCIMv2 Filtering (RFC 7644 §3.4.2.2)
+     * SCIMv2 Sorting (RFC 7644 §3.4.2.3)
+     * SCIMv2 Pagination (RFC 7644 §3.4.2.4)
+     */
+    map = group.MapPost("/.search", async (HttpContext context, [FromBody] SCIMv2Search payload) =>
+    {
+      CancellationToken cancellationToken = context.RequestAborted;
+      var svc = context.RequestServices.GetRequiredService<Tsvc>();
+
+      if (payload.Schemas is null || !payload.Schemas.Any(schema => schema.Equals(SCIMv2_SEARCH_URN)))
+        throw new SCIMv2Exception("Schemas MUST be defined according to RFC 7644 §3.4.3", ErrorScimType.InvalidSyntax, (int)HttpStatusCode.InternalServerError);
+
+      int startIndex = payload.StartIndex < 1 ? 1 : payload.StartIndex;
+      int count = payload.Count < 0 ? 0 : payload.Count;
+
+      ListResponse<Tmeta> result =
+        await svc.Query(startIndex, count, payload.Filter, payload.SortBy, payload.SortOrder, cancellationToken);
+
+      // Create per-call JsonSerializer and materialize items enforcing camelCase; ignore potential null entries.
+      var serializer = JsonSerializer.Create(CamelCaseItemSerializerSettings);
+
+      // Treat null Resources as empty, then filter null elements -> defensively
+      var resources = result.Resources ?? Enumerable.Empty<Tmeta>();
+
+      var objects = resources.Where(r => r != null).Select(r => JObject.FromObject(r!, serializer));
+
+      var processedResult = new ListResponse<JObject>
+      {
+        StartIndex = result.StartIndex,
+        ItemsPerPage = result.ItemsPerPage,
+        Resources = [.. objects.ProcessAttributes(context)],
+        TotalResults = result.TotalResults
+      };
+
       string json = processedResult.Serialize();
       context.Response.ContentType = "application/json; charset=utf-8";
       await context.Response.WriteAsync(json, cancellationToken);
@@ -285,7 +337,7 @@ public static class SCIMv2
       }
       else
       {
-        // JSON Patch (RFC 6902 �3)
+        // JSON Patch (RFC 6902 §3)
         using StreamReader reader = new(context.Request.Body);
         string json = await reader.ReadToEndAsync(cancellationToken);
         JArray patches = JArray.Parse(json);
