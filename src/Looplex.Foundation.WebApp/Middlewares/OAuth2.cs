@@ -146,25 +146,40 @@ public static class OAuth2
       ClockSkew = TimeSpan.Zero
     };
 
-    options.Events = new JwtBearerEvents
-    {
-      OnTokenValidated = context =>
-      {
-        var principal = context.Principal;
-        var httpContext = context.HttpContext;
-
-        string? tenant = httpContext.Request.Headers["X-looplex-tenant"];
-        if (string.IsNullOrWhiteSpace(tenant))
-        {
-          context.Fail("X-looplex-tenant header is missing");
-          return Task.CompletedTask;
-        }
-
-        var identity = principal!.Identity as ClaimsIdentity;
-        identity!.AddClaim(new Claim("tenant", tenant));
-
-        return Task.CompletedTask;
-      }
-    };
+    options.Events = new JwtBearerEvents { OnTokenValidated = ResolveTenantOnTokenValidated };
   };
+
+  /// <summary>Claim carrying the tenant of the request. Issued by the token exchange or added here.</summary>
+  public const string TenantClaim = "tenant";
+
+  /// <summary>Header used by first-party clients to select the tenant.</summary>
+  public const string TenantHeader = "X-looplex-tenant";
+
+  /// <summary>Route value (e.g. <c>/mcp/{tenant}</c>) for hosts that cannot send custom headers.</summary>
+  public const string TenantRouteValue = "tenant";
+
+  /// <summary>
+  /// Resolves the tenant of the request, in order of trust: the <c>tenant</c> claim already in the token (the caller
+  /// cannot choose it), the <c>{tenant}</c> route value, then the <c>X-looplex-tenant</c> header. The resolved value is
+  /// stored as the <c>tenant</c> claim for the rest of the request; authentication fails when none is present.
+  /// </summary>
+  public static Task ResolveTenantOnTokenValidated(TokenValidatedContext context)
+  {
+    var identity = context.Principal?.Identity as ClaimsIdentity;
+
+    string? tenant = identity?.FindFirst(TenantClaim)?.Value
+      ?? context.HttpContext.Request.RouteValues[TenantRouteValue]?.ToString()
+      ?? context.HttpContext.Request.Headers[TenantHeader].FirstOrDefault();
+
+    if (string.IsNullOrWhiteSpace(tenant))
+    {
+      context.Fail($"tenant is required: '{TenantClaim}' token claim, {{{TenantRouteValue}}} route value or {TenantHeader} header");
+      return Task.CompletedTask;
+    }
+
+    if (identity is not null && identity.FindFirst(TenantClaim) is null)
+      identity.AddClaim(new Claim(TenantClaim, tenant));
+
+    return Task.CompletedTask;
+  }
 }
