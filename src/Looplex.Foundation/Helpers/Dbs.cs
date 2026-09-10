@@ -291,6 +291,11 @@ namespace Looplex.Foundation.Helpers
           dataTable.Rows.Add(row);
         }
 
+        if (resultSetIndex >= infos.Length)
+          throw new InvalidOperationException(
+            $"The command returned more result sets than expected ({infos.Length}). " +
+            "Check that the stored procedure version deployed in the database matches the application.");
+
         ResultSetInfo resultSetInfo = infos[resultSetIndex];
         if (resultSetInfo.Name != null)
         {
