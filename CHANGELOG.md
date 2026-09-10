@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="1.4.0"></a>
+## [1.4.0](https://www.github.com/looplex-osi/dotnet-foundation/releases/tag/v1.4.0) (2026-09-10)
+
+### Features
+
+* **oauth2:** token exchange accepts the RFC 8693 `resource` parameter and issues a `tenant` claim, so a token is pinned to one tenant
+* **oauth2:** token validation resolves the tenant from the `tenant` claim, the `{tenant}` route value or the `X-looplex-tenant` header (in that order); `OAuth2.ResolveTenantOnTokenValidated` is public for reuse
+* **scimv2:** `AttributesProcessor.ProcessAttributes` overload taking `attributes` and `excludedAttributes` strings, for drivers that are not HTTP (MCP tools, workers)
+
+### Bug Fixes
+
+* **dbs:** `Dbs.QueryAsync` fails with a clear message when a procedure returns more result sets than expected, instead of `IndexOutOfRangeException`
+
 <a name="1.3.0"></a>
 ## [1.3.0](https://www.github.com/looplex-osi/dotnet-foundation/releases/tag/v1.3.0) (2025-05-19)
 
