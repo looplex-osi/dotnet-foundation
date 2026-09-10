@@ -10,19 +10,31 @@ using Newtonsoft.Json.Linq;
 
 namespace Looplex.Foundation.SCIMv2.Entities;
 
+/// <summary>
+/// SCIM v2 attribute projection (RFC 7644 §3.4.2.5): <c>attributes</c> keeps only the listed paths,
+/// <c>excludedAttributes</c> removes paths. Applied after the records are already in their response casing.
+/// </summary>
 public static class AttributesProcessor
 {
+  /// <summary>Reads <c>attributes</c> and <c>excludedAttributes</c> from the request query string.</summary>
   public static IEnumerable<JObject> ProcessAttributes(this IEnumerable<JObject> records, HttpContext context)
   {
     var query = context.Request.Query;
 
-    var attrs = query.ContainsKey("attributes")
-      ? query["attributes"].ToString().Split([','], StringSplitOptions.RemoveEmptyEntries)
-      : [];
+    string? attributes = query.ContainsKey("attributes") ? query["attributes"].ToString() : null;
+    string? excludedAttributes = query.ContainsKey("excludedAttributes") ? query["excludedAttributes"].ToString() : null;
 
-    var xattrs = query.ContainsKey("excludedAttributes")
-      ? query["excludedAttributes"].ToString().Split([','], StringSplitOptions.RemoveEmptyEntries)
-      : [];
+    return records.ProcessAttributes(attributes, excludedAttributes);
+  }
+
+  /// <summary>
+  /// Transport-agnostic overload for drivers that are not HTTP (MCP tools, workers).
+  /// Both parameters are comma-separated paths; null or empty means "no projection".
+  /// </summary>
+  public static IEnumerable<JObject> ProcessAttributes(this IEnumerable<JObject> records, string? attributes, string? excludedAttributes)
+  {
+    string[] attrs = Split(attributes);
+    string[] xattrs = Split(excludedAttributes);
 
     if (attrs.Length > 0)
     {
@@ -57,4 +69,9 @@ public static class AttributesProcessor
 
     return records;
   }
+
+  private static string[] Split(string? csv) =>
+    string.IsNullOrWhiteSpace(csv)
+      ? []
+      : csv.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
 }
