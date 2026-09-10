@@ -64,6 +64,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     ValidateGrantType(clientCredentialsDto.GrantType);
     ValidateTokenType(clientCredentialsDto.SubjectTokenType);
     ValidateAccessToken(clientCredentialsDto.SubjectToken);
+    ValidateResource(clientCredentialsDto.Resource);
     await ctx.Plugins.ExecuteAsync<IValidateInput>(ctx, cancellationToken);
 
     ctx.Roles["ClientServices"] = clientCredentialsDto;
@@ -76,7 +77,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
 
     if (!ctx.SkipDefaultAction)
     {
-      string accessToken = CreateAccessToken((UserInfo)ctx.Roles["UserInfo"]);
+      string accessToken = CreateAccessToken((UserInfo)ctx.Roles["UserInfo"], clientCredentialsDto.Resource);
       ctx.Result = new AccessTokenDto { AccessToken = accessToken }.Serialize();
     }
 
@@ -124,7 +125,19 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     return JsonConvert.DeserializeObject<UserInfo>(content)!;
   }
 
-  private string CreateAccessToken(UserInfo userInfo)
+  /// <summary>Claim that pins the issued token to one tenant (RFC 8693 <c>resource</c>).</summary>
+  public const string TenantClaim = "tenant";
+
+  private static void ValidateResource(string? resource)
+  {
+    // Optional, but when sent it must name a tenant
+    if (resource != null && string.IsNullOrWhiteSpace(resource))
+    {
+      throw new Exception("resource is invalid.");
+    }
+  }
+
+  private string CreateAccessToken(UserInfo userInfo, string? tenant)
   {
     ClaimsIdentity claims = new([
       new Claim("name", $"{userInfo.GivenName} {userInfo.FamilyName}"),
@@ -132,6 +145,11 @@ public class TokenExchangeAuthentications : Service, IAuthentications
       new Claim("photo", userInfo.Picture)
       // TODO add preferredLanguage
     ]);
+
+    // Membership of the user in the tenant is enforced downstream by the tenant RBAC (g = user, role, domain);
+    // the claim only prevents the token from being replayed against a different tenant.
+    if (!string.IsNullOrWhiteSpace(tenant))
+      claims.AddClaim(new Claim(TenantClaim, tenant.Trim()));
 
     string audience = _configuration!["Audience"]!;
     string issuer = _configuration["Issuer"]!;

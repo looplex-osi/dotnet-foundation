@@ -144,7 +144,7 @@ public class TokenExchangeAuthenticationsTests
     Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
   }
 
-  private class SuccessHttpMessageHandlerMock : HttpMessageHandler
+  internal class SuccessHttpMessageHandlerMock : HttpMessageHandler
   {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
       CancellationToken cancellationToken)
