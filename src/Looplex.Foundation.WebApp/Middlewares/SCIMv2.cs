@@ -147,7 +147,7 @@ public static class SCIMv2
       int count = 12;
 
       if (context.Request.Query.TryGetValue("count", out var countStr) &&
-          int.TryParse(countStr, out var parsedCount))  
+          int.TryParse(countStr, out var parsedCount))
       {
         count = parsedCount;
 
@@ -202,14 +202,15 @@ public static class SCIMv2
       CancellationToken cancellationToken = context.RequestAborted;
       var svc = context.RequestServices.GetRequiredService<Tsvc>();
 
-      if (payload.Schemas is null || !payload.Schemas.Any(schema => schema.Equals(SCIMv2_SEARCH_URN)))
-        throw new SCIMv2Exception("Schemas MUST be defined according to RFC 7644 §3.4.3", ErrorScimType.InvalidSyntax, (int)HttpStatusCode.InternalServerError);
+      if (payload.Schemas is null || !payload.Schemas.Any(schema => string.Equals(schema, SCIMv2_SEARCH_URN, StringComparison.Ordinal)))
+      {
+        throw new SCIMv2Exception("Schemas MUST be defined according to RFC 7644 §3.4.3", ErrorScimType.InvalidSyntax, (int)HttpStatusCode.BadRequest);
+      }
 
       int startIndex = payload.StartIndex < 1 ? 1 : payload.StartIndex;
-      int count = payload.Count < 0 ? 0 : payload.Count;
+      int count = payload.Count < 1 ? 1 : payload.Count;
 
-      ListResponse<Tmeta> result =
-        await svc.Query(startIndex, count, payload.Filter, payload.SortBy, payload.SortOrder, cancellationToken);
+      ListResponse<Tmeta> result = await svc.Query(startIndex, count, payload.Filter, payload.SortBy, payload.SortOrder, cancellationToken);
 
       // Create per-call JsonSerializer and materialize items enforcing camelCase; ignore potential null entries.
       var serializer = JsonSerializer.Create(CamelCaseItemSerializerSettings);
