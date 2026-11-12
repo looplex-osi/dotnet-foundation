@@ -93,7 +93,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
     if (grantType == null || !grantType
           .Equals("urn:ietf:params:oauth:grant-type:token-exchange", StringComparison.InvariantCultureIgnoreCase))
     {
-      throw new Exception($"grant_type is invalid.");
+      throw new OAuth2Exception(OAuth2Exception.UnsupportedGrantType, "grant_type is invalid.");
     }
   }
 
@@ -103,7 +103,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
         || !subjectTokenType
           .Equals("urn:ietf:params:oauth:token-type:access_token", StringComparison.InvariantCultureIgnoreCase))
     {
-      throw new Exception("subject_token_type is invalid.");
+      throw new OAuth2Exception(OAuth2Exception.InvalidRequest, "subject_token_type is invalid.");
     }
   }
 
@@ -111,7 +111,7 @@ public class TokenExchangeAuthentications : Service, IAuthentications
   {
     if (string.IsNullOrWhiteSpace(accessToken))
     {
-      throw new Exception("Token is invalid.");
+      throw new OAuth2Exception(OAuth2Exception.InvalidRequest, "Token is invalid.");
     }
   }
 
@@ -130,10 +130,11 @@ public class TokenExchangeAuthentications : Service, IAuthentications
 
   private static void ValidateResource(string? resource)
   {
-    // Optional, but when sent it must name a tenant
+    // Optional, but when sent it must name a tenant. The value is only trimmed, not case-folded: it becomes the Casbin
+    // domain and must match the policy domain exactly (a mismatch denies access).
     if (resource != null && string.IsNullOrWhiteSpace(resource))
     {
-      throw new Exception("resource is invalid.");
+      throw new OAuth2Exception(OAuth2Exception.InvalidTarget, "resource is invalid.");
     }
   }
 

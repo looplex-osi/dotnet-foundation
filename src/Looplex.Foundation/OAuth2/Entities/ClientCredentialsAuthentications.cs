@@ -88,7 +88,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
   {
     if (authorization == null || !authorization.StartsWith("Basic "))
     {
-      throw new Exception("Invalid authorization.");
+      throw new OAuth2Exception(OAuth2Exception.InvalidClient, "Invalid authorization.");
     }
   }
 
@@ -101,7 +101,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
       return DecodeCredentials(base64Credentials);
     }
 
-    throw new Exception("Invalid authorization.");
+    throw new OAuth2Exception(OAuth2Exception.InvalidClient, "Invalid authorization.");
   }
 
   private static bool IsBasicAuthentication(string value, out string? token)
@@ -124,10 +124,12 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
 
     if (parts.Length != 2)
     {
-      throw new Exception("Invalid credentials format.");
+      throw new OAuth2Exception(OAuth2Exception.InvalidClient, "Invalid credentials format.");
     }
 
-    return (Guid.Parse(parts[0]), parts[1]);
+    return Guid.TryParse(parts[0], out Guid clientId)
+      ? (clientId, parts[1])
+      : throw new OAuth2Exception(OAuth2Exception.InvalidClient, "Invalid credentials format.");
   }
 
   private static void ValidateGrantType(string? grantType)
@@ -135,7 +137,7 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     if (grantType != null && !grantType
           .Equals("client_credentials", StringComparison.InvariantCultureIgnoreCase))
     {
-      throw new Exception("grant_type is invalid.");
+      throw new OAuth2Exception(OAuth2Exception.UnsupportedGrantType, "grant_type is invalid.");
     }
   }
 
@@ -143,16 +145,16 @@ public class ClientCredentialsAuthentications : Service, IAuthentications
     string clientSecret, CancellationToken cancellationToken)
   {
     var clientService = await _clientServices!.Retrieve(clientId, clientSecret, cancellationToken)
-                           ?? throw new Exception("Invalid clientId or clientSecret.");
+                           ?? throw new OAuth2Exception(OAuth2Exception.InvalidClient, "Invalid clientId or clientSecret.");
 
     if (clientService.NotBefore > DateTimeOffset.UtcNow)
     {
-      throw new Exception("Client access not allowed.");
+      throw new OAuth2Exception(OAuth2Exception.InvalidClient, "Client access not allowed.");
     }
 
     if (clientService.ExpirationTime <= DateTimeOffset.UtcNow)
     {
-      throw new Exception("Client access is expired.");
+      throw new OAuth2Exception(OAuth2Exception.InvalidClient, "Client access is expired.");
     }
 
     return clientService;

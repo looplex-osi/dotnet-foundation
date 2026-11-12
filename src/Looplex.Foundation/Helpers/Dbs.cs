@@ -272,6 +272,12 @@ namespace Looplex.Foundation.Helpers
 
       do
       {
+        // Checked before reading rows so an unexpected extra result set is never materialized.
+        if (resultSetIndex >= infos.Length)
+          throw new InvalidOperationException(
+            $"The command returned more result sets than expected ({infos.Length}). " +
+            "Check that the stored procedure version deployed in the database matches the application.");
+
         var dataTable = new DataTable();
 
         // build schema
@@ -291,11 +297,6 @@ namespace Looplex.Foundation.Helpers
           dataTable.Rows.Add(row);
         }
 
-        if (resultSetIndex >= infos.Length)
-          throw new InvalidOperationException(
-            $"The command returned more result sets than expected ({infos.Length}). " +
-            "Check that the stored procedure version deployed in the database matches the application.");
-
         ResultSetInfo resultSetInfo = infos[resultSetIndex];
         if (resultSetInfo.Name != null)
         {
@@ -306,6 +307,12 @@ namespace Looplex.Foundation.Helpers
 
         resultSetIndex++;
       } while (await reader.NextResultAsync(cancellationToken));
+
+      // Exactly the declared number of result sets is expected; leaving null slots would only fail later, far from the cause.
+      if (resultSetIndex < infos.Length)
+        throw new InvalidOperationException(
+          $"The command returned fewer result sets than expected ({resultSetIndex} of {infos.Length}). " +
+          "Check that the stored procedure version deployed in the database matches the application.");
 
       return resultSets;
     }

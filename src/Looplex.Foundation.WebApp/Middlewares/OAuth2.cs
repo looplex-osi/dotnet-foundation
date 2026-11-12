@@ -101,14 +101,38 @@ public static class OAuth2
 
     string credentials = JsonConvert.SerializeObject(formDict);
 
-    GrantType grantType = form["grant_type"].ToString().ToGrantType();
-    IAuthentications service = factory.GetService(grantType);
+    try
+    {
+      GrantType grantType = form["grant_type"].ToString().ToGrantType();
+      IAuthentications service = factory.GetService(grantType);
 
-    string json = await service.CreateAccessToken(credentials, authorization, cancellationToken);
+      string json = await service.CreateAccessToken(credentials, authorization, cancellationToken);
+
+      context.Response.ContentType = "application/json; charset=utf-8";
+      await context.Response.WriteAsync(json, cancellationToken);
+    }
+    catch (OAuth2Exception ex)
+    {
+      await WriteOAuth2Error(context, ex);
+    }
+  };
+
+  /// <summary>RFC 6749 §5.2 error response: 401 for <c>invalid_client</c>, 400 otherwise. Only fixed texts are echoed.</summary>
+  private static async Task WriteOAuth2Error(HttpContext context, OAuth2Exception ex)
+  {
+    bool unauthorized = ex.Error == OAuth2Exception.InvalidClient;
+
+    context.Response.StatusCode = unauthorized ? StatusCodes.Status401Unauthorized : StatusCodes.Status400BadRequest;
+    context.Response.Headers.CacheControl = "no-store";
+    context.Response.Headers.Pragma = "no-cache";
+    if (unauthorized)
+      context.Response.Headers.WWWAuthenticate = "Basic";
 
     context.Response.ContentType = "application/json; charset=utf-8";
-    await context.Response.WriteAsync(json, cancellationToken);
-  };
+    await context.Response.WriteAsync(
+      JsonConvert.SerializeObject(new { error = ex.Error, error_description = ex.Message }),
+      context.RequestAborted);
+  }
 
   private static GrantType ToGrantType(this string grantType)
   {
@@ -116,7 +140,7 @@ public static class OAuth2
     {
       "urn:ietf:params:oauth:grant-type:token-exchange" => GrantType.TokenExchange,
       "client_credentials" => GrantType.ClientCredentials,
-      _ => throw new ArgumentException("Invalid value", nameof(grantType))
+      _ => throw new OAuth2Exception(OAuth2Exception.UnsupportedGrantType, "grant_type is invalid.")
     };
   }
 
@@ -150,7 +174,7 @@ public static class OAuth2
   };
 
   /// <summary>Claim carrying the tenant of the request. Issued by the token exchange or added here.</summary>
-  public const string TenantClaim = "tenant";
+  public const string TenantClaim = TokenExchangeAuthentications.TenantClaim;
 
   /// <summary>Header used by first-party clients to select the tenant.</summary>
   public const string TenantHeader = "X-looplex-tenant";
@@ -162,14 +186,34 @@ public static class OAuth2
   /// Resolves the tenant of the request, in order of trust: the <c>tenant</c> claim already in the token (the caller
   /// cannot choose it), the <c>{tenant}</c> route value, then the <c>X-looplex-tenant</c> header. The resolved value is
   /// stored as the <c>tenant</c> claim for the rest of the request; authentication fails when none is present.
+  /// <para>
+  /// Security note: only tokens issued by the token exchange carry the <c>tenant</c> claim and are pinned to a tenant.
+  /// Client-credentials tokens carry none, so the caller of such a token selects the tenant via route or header;
+  /// tenant membership must be enforced by the RBAC (<c>g = user, role, domain</c>). A claim that conflicts with the
+  /// route/header value is rejected (authentication fails).
+  /// </para>
+  /// <para>
+  /// The <c>{tenant}</c> route value is read from <c>RouteValues</c>, which is only populated with endpoint routing;
+  /// without it that source is silently skipped and the header (or the claim) is used instead.
+  /// </para>
   /// </summary>
   public static Task ResolveTenantOnTokenValidated(TokenValidatedContext context)
   {
     var identity = context.Principal?.Identity as ClaimsIdentity;
 
-    string? tenant = identity?.FindFirst(TenantClaim)?.Value
-      ?? context.HttpContext.Request.RouteValues[TenantRouteValue]?.ToString()
+    string? claimTenant = identity?.FindFirst(TenantClaim)?.Value;
+    string? requested = context.HttpContext.Request.RouteValues[TenantRouteValue]?.ToString()
       ?? context.HttpContext.Request.Headers[TenantHeader].FirstOrDefault();
+
+    // A token pinned to a tenant must not be used against another one (exact match, like the RBAC domain).
+    if (!string.IsNullOrWhiteSpace(claimTenant) && !string.IsNullOrWhiteSpace(requested)
+        && !string.Equals(claimTenant.Trim(), requested.Trim(), StringComparison.Ordinal))
+    {
+      context.Fail("tenant mismatch: the requested tenant differs from the token's tenant claim");
+      return Task.CompletedTask;
+    }
+
+    string? tenant = claimTenant ?? requested;
 
     if (string.IsNullOrWhiteSpace(tenant))
     {

@@ -5,6 +5,7 @@ using System.Security.Claims;
 
 using Casbin;
 
+using Looplex.Foundation.OAuth2.Entities;
 using Looplex.Foundation.Ports;
 
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ public class RbacService : IRbacService
   public virtual void ThrowIfUnauthorized(ClaimsPrincipal user, string resource, string action)
   {
     string? email = user.Claims.FirstOrDefault(c => c.Type == "email" || c.Type == ClaimTypes.Email)?.Value;
-    string? tenant = user.Claims.FirstOrDefault(c => c.Type == "tenant")?.Value;
+    string? tenant = user.Claims.FirstOrDefault(c => c.Type == TokenExchangeAuthentications.TenantClaim)?.Value;
 
     if (string.IsNullOrEmpty(tenant))
     {
