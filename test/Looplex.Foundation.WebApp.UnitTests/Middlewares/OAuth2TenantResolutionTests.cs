@@ -17,15 +17,28 @@ namespace Looplex.Foundation.WebApp.UnitTests.Middlewares;
 public class OAuth2TenantResolutionTests
 {
   [TestMethod]
-  public async Task TokenClaim_Wins_OverRouteAndHeader()
+  public async Task TokenClaim_IsKept_WhenRouteAndHeaderAgree()
   {
-    TokenValidatedContext context = Context(claimTenant: "claim.tenant", routeTenant: "route.tenant", headerTenant: "header.tenant");
+    TokenValidatedContext context = Context(claimTenant: "claim.tenant", routeTenant: "claim.tenant", headerTenant: "claim.tenant");
 
     await OAuth2Middleware.ResolveTenantOnTokenValidated(context);
 
     Assert.IsNull(context.Result?.Failure);
     Assert.AreEqual("claim.tenant", context.Principal!.FindFirst(OAuth2Middleware.TenantClaim)!.Value);
     Assert.AreEqual(1, context.Principal.FindAll(OAuth2Middleware.TenantClaim).Count(), "claim must not be duplicated");
+  }
+
+  [DataTestMethod]
+  [DataRow("other.tenant", null)]
+  [DataRow(null, "other.tenant")]
+  [DataRow("Claim.Tenant", null)] // exact match: casing differences are a mismatch
+  public async Task Fails_WhenRouteOrHeaderDiffersFromTokenClaim(string? route, string? header)
+  {
+    TokenValidatedContext context = Context(claimTenant: "claim.tenant", routeTenant: route, headerTenant: header);
+
+    await OAuth2Middleware.ResolveTenantOnTokenValidated(context);
+
+    Assert.IsNotNull(context.Result?.Failure);
   }
 
   [TestMethod]

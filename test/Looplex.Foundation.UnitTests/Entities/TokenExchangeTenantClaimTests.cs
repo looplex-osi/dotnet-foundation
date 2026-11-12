@@ -77,19 +77,21 @@ public class TokenExchangeTenantClaimTests
       Arg.Any<TimeSpan>());
   }
 
-  [TestMethod]
-  public async Task CreateAccessToken_BlankResource_IsRejected()
+  [DataTestMethod]
+  [DataRow("   ")]
+  [DataRow("")] // present-but-empty must not be treated as absent (which would issue an unpinned token)
+  public async Task CreateAccessToken_BlankResource_IsRejected(string resource)
   {
     string credentials = JsonConvert.SerializeObject(new
     {
       grant_type = "urn:ietf:params:oauth:grant-type:token-exchange",
       subject_token = "validToken",
       subject_token_type = "urn:ietf:params:oauth:token-type:access_token",
-      resource = "   ",
+      resource,
     });
     TokenExchangeAuthentications service = new(new List<IPlugin>(), _configuration, _jwtService, _httpClient);
 
-    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(() => service.CreateAccessToken(credentials, "", CancellationToken.None));
+    Exception exception = await Assert.ThrowsExceptionAsync<OAuth2Exception>(() => service.CreateAccessToken(credentials, "", CancellationToken.None));
     Assert.AreEqual("resource is invalid.", exception.Message);
   }
 }
