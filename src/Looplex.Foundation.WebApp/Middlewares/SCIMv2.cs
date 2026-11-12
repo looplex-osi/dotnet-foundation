@@ -115,7 +115,7 @@ public static class SCIMv2
     where Tdata : Resource, new()
     where Tsvc : SCIMv2<Tmeta, Tdata>
   {
-    var resourceMap = new ResourceMap(typeof(Tmeta), prefix);
+    var resourceMap = new ResourceMap(typeof(Tsvc), prefix, typeof(Tdata));
     ServiceProviderConfiguration.Map.Add(resourceMap);
 
     RouteGroupBuilder group = app.MapGroup(prefix);
@@ -342,7 +342,7 @@ public static class SCIMv2
   public static IEndpointRouteBuilder UseBulk(this IEndpointRouteBuilder app, string prefix = "/Bulk",
     bool authorize = true)
   {
-    app.MapGet(
+    app.MapPost(
       prefix,
       async context =>
       {

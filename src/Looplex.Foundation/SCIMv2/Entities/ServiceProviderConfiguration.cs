@@ -187,12 +187,14 @@ public class Sort
 
 public class ResourceMap
 {
-  public ResourceMap(Type type, string resource)
+  public ResourceMap(Type type, string resource, Type entityType)
   {
     Type = type ?? throw new ArgumentNullException(nameof(type));
     Resource = resource ?? throw new ArgumentNullException(nameof(resource));
+    EntityType = entityType ?? throw new ArgumentNullException(nameof(entityType));
   }
 
   public Type Type { get; set; }
   public string Resource { get; set; }
+  public Type EntityType { get; set; }
 }

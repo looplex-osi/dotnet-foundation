@@ -172,16 +172,16 @@ public class Bulks : Service
     BulkRequestOperation operation, object service, BulkResponse bulkResponse,
     ResourceMap resourceMap, CancellationToken cancellationToken)
   {
-    var resource = operation.Data!.ToObject(resourceMap.Type);
+    var resource = operation.Data!.ToObject(resourceMap.EntityType);
 
-    var createMethod = service.GetType().GetMethod("Create", [resourceMap.GetType(), typeof(CancellationToken)]);
+    var createMethod = service.GetType().GetMethod("Create", [resourceMap.EntityType, typeof(CancellationToken)]);
     if (createMethod is null)
       throw new InvalidOperationException("Create method not found.");
 
-    object createTaskObj = createMethod.Invoke(service, [resource, cancellationToken])!;
+    object createTaskObj = createMethod.Invoke(service, [resource, cancellationToken]);
     var createTask = (Task<Guid>)createTaskObj;
     Guid createdId = await createTask;
-    var id = createdId.ToString();
+    string id = createdId.ToString();
 
     bulkResponse.Operations.Add(new()
     {
@@ -281,11 +281,8 @@ public class Bulks : Service
   internal static (ResourceMap, Guid?) GetResourceMap(BulkRequestOperation operation,
     ServiceProviderConfiguration serviceProviderConfiguration)
   {
-    var path = operation.Path;
-    if (path.StartsWith("/"))
-      path = path[1..];
-
-    var indexOfSlash = path.IndexOf('/');
+    string? path = operation.Path;
+    int indexOfSlash = path?.IndexOf('/') ?? 0;
 
     if (indexOfSlash <= 0 && operation.Method != Method.Post)
       throw new SCIMv2Exception(
@@ -306,20 +303,14 @@ public class Bulks : Service
         resourceUniqueId = uuid;
       }
       else
-        throw new SCIMv2Exception(
-          $"Resource identifier {resourceIdentifier} is not valid",
-          ErrorScimType.InvalidValue,
-          (int)HttpStatusCode.BadRequest);
+      {
+        throw new SCIMv2Exception($"Resource identifier {resourceIdentifier} is not valid", ErrorScimType.InvalidValue, (int)HttpStatusCode.BadRequest);
+      }
     }
 
-    var resourceMap = serviceProviderConfiguration.Map
-      .FirstOrDefault(rm => rm.Resource == resource);
-
-    if (resourceMap == null)
-      throw new SCIMv2Exception(
-        $"Path {resource} does not exist",
-        ErrorScimType.InvalidPath,
-        (int)HttpStatusCode.BadRequest);
+    var resourceMap = 
+      serviceProviderConfiguration.Map.FirstOrDefault(rm => rm.Resource == resource)
+      ?? throw new SCIMv2Exception($"Path {resource} does not exist", ErrorScimType.InvalidPath, (int)HttpStatusCode.BadRequest);
 
     return (resourceMap, resourceUniqueId);
   }
