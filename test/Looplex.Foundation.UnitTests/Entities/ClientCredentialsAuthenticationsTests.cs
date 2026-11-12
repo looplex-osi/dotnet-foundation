@@ -39,7 +39,7 @@ public class ClientCredentialsAuthenticationsTests
       _mockClientServices, _mockJwtService);
 
     // Act & Assert
-    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
+    Exception exception = await Assert.ThrowsExceptionAsync<OAuth2Exception>(
       () => service.CreateAccessToken(clientCredentials, "", CancellationToken.None));
 
     Assert.AreEqual("Invalid authorization.", exception.Message);
@@ -57,7 +57,7 @@ public class ClientCredentialsAuthenticationsTests
       _mockClientServices, _mockJwtService);
 
     // Act & Assert
-    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
+    Exception exception = await Assert.ThrowsExceptionAsync<OAuth2Exception>(
       () => service.CreateAccessToken(clientCredentials, authorization, CancellationToken.None));
 
     Assert.AreEqual("grant_type is invalid.", exception.Message);
@@ -118,7 +118,7 @@ public class ClientCredentialsAuthenticationsTests
       _mockClientServices, _mockJwtService);
 
     // Act & Assert
-    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
+    Exception exception = await Assert.ThrowsExceptionAsync<OAuth2Exception>(
       () => service.CreateAccessToken(clientCredentials, authorization, CancellationToken.None));
 
     Assert.AreEqual("Invalid clientId or clientSecret.", exception.Message);
@@ -148,7 +148,7 @@ public class ClientCredentialsAuthenticationsTests
       _mockClientServices, _mockJwtService);
 
     // Act & Assert
-    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
+    Exception exception = await Assert.ThrowsExceptionAsync<OAuth2Exception>(
       () => service.CreateAccessToken(clientCredentials, authorization, CancellationToken.None));
 
     Assert.AreEqual("Client access not allowed.", exception.Message);
@@ -178,7 +178,7 @@ public class ClientCredentialsAuthenticationsTests
       _mockClientServices, _mockJwtService);
 
     // Act & Assert
-    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
+    Exception exception = await Assert.ThrowsExceptionAsync<OAuth2Exception>(
       () => service.CreateAccessToken(clientCredentials, authorization, CancellationToken.None));
 
     Assert.AreEqual("Client access is expired.", exception.Message);

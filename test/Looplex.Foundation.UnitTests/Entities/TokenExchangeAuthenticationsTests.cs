@@ -47,7 +47,7 @@ public class TokenExchangeAuthenticationsTests
     TokenExchangeAuthentications service = new(new List<IPlugin>(), _mockConfiguration, _mockJwtService, _httpClient);
 
     // Act & Assert
-    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
+    Exception exception = await Assert.ThrowsExceptionAsync<OAuth2Exception>(
       () => service.CreateAccessToken(clientServices, "", CancellationToken.None));
 
     Assert.AreEqual("grant_type is invalid.", exception.Message);
@@ -67,7 +67,7 @@ public class TokenExchangeAuthenticationsTests
     TokenExchangeAuthentications service = new(new List<IPlugin>(), _mockConfiguration, _mockJwtService, _httpClient);
 
     // Act & Assert
-    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
+    Exception exception = await Assert.ThrowsExceptionAsync<OAuth2Exception>(
       () => service.CreateAccessToken(clientServices, "", CancellationToken.None));
 
     Assert.AreEqual("subject_token_type is invalid.", exception.Message);
@@ -114,7 +114,7 @@ public class TokenExchangeAuthenticationsTests
     TokenExchangeAuthentications service = new(new List<IPlugin>(), _mockConfiguration, _mockJwtService, _httpClient);
 
     // Act & Assert
-    Exception exception = await Assert.ThrowsExceptionAsync<Exception>(
+    Exception exception = await Assert.ThrowsExceptionAsync<OAuth2Exception>(
       () => service.CreateAccessToken(clientServices, "", CancellationToken.None));
 
     Assert.AreEqual("Token is invalid.", exception.Message);
@@ -144,7 +144,7 @@ public class TokenExchangeAuthenticationsTests
     Assert.AreEqual(HttpStatusCode.Unauthorized, exception.StatusCode);
   }
 
-  private class SuccessHttpMessageHandlerMock : HttpMessageHandler
+  internal class SuccessHttpMessageHandlerMock : HttpMessageHandler
   {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
       CancellationToken cancellationToken)

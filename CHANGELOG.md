@@ -2,12 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="1.4.0"></a>
+## [1.4.0](https://www.github.com/looplex-osi/dotnet-foundation/releases/tag/v1.4.0) (2026-09-10)
+
+### Features
+
+* **oauth2:** token exchange accepts the RFC 8693 `resource` parameter and issues a `tenant` claim, so a token is pinned to one tenant
+* **oauth2:** token validation resolves the tenant from the `tenant` claim, the `{tenant}` route value or the `X-looplex-tenant` header (in that order); `OAuth2.ResolveTenantOnTokenValidated` is public for reuse
+* **oauth2:** token validation rejects a request whose `{tenant}` route value or `X-looplex-tenant` header differs from the token's `tenant` claim
+* **scimv2:** `AttributesProcessor.ProcessAttributes` overload taking `attributes` and `excludedAttributes` strings, for drivers that are not HTTP (MCP tools, workers)
+* **scimv2:** `attributes`/`excludedAttributes` paths are now trimmed of surrounding whitespace (e.g. `attributes=userName, emails` now matches `emails`)
+
+### Breaking Changes
+
+* **oauth2:** `POST /token` answers expected failures with RFC 6749 §5.2 JSON errors (400 `invalid_request`/`invalid_target`/`unsupported_grant_type`, 401 `invalid_client`) instead of an unhandled exception (500); these failures are now `OAuth2Exception`. See README, "Token endpoint error responses"
+
+### Bug Fixes
+
+* **dbs:** `Dbs.QueryAsync` fails with a clear message when a procedure returns more result sets than expected, instead of `IndexOutOfRangeException`
+* **dbs:** `Dbs.QueryAsync` also fails when a procedure returns fewer result sets than declared, instead of returning null entries
+
 <a name="1.3.0"></a>
 ## [1.3.0](https://www.github.com/looplex-osi/dotnet-foundation/releases/tag/v1.3.0) (2025-05-19)
 
 ### Features
 
 * **scimv2:** forward `patches` to service ([3ff121b](https://www.github.com/looplex-osi/dotnet-foundation/commit/3ff121bab8b20f52f366a7cc3745c0437158b759))
+
+### Breaking Changes
+
+* **oauth2:** `POST /token` answers expected failures with RFC 6749 §5.2 JSON errors (400 `invalid_request`/`invalid_target`/`unsupported_grant_type`, 401 `invalid_client`) instead of an unhandled exception (500); these failures are now `OAuth2Exception`. See README, "Token endpoint error responses"
 
 ### Bug Fixes
 
@@ -20,6 +44,10 @@ All notable changes to this project will be documented in this file. See [versio
 
 * **scimv2:** allow different types for collections (metadata) and item (data) ([ee24011](https://www.github.com/looplex-osi/dotnet-foundation/commit/ee24011362f773777ebbcabb2949117efeec3f75))
 
+### Breaking Changes
+
+* **oauth2:** `POST /token` answers expected failures with RFC 6749 §5.2 JSON errors (400 `invalid_request`/`invalid_target`/`unsupported_grant_type`, 401 `invalid_client`) instead of an unhandled exception (500); these failures are now `OAuth2Exception`. See README, "Token endpoint error responses"
+
 ### Bug Fixes
 
 * fixing project references ([ed909e9](https://www.github.com/looplex-osi/dotnet-foundation/commit/ed909e90d857ea619912fd9a7ce23990bd4db9d8))
@@ -29,6 +57,10 @@ All notable changes to this project will be documented in this file. See [versio
 <a name="1.1.6"></a>
 ## 1.1.6 (2025-05-02)
 
+### Breaking Changes
+
+* **oauth2:** `POST /token` answers expected failures with RFC 6749 §5.2 JSON errors (400 `invalid_request`/`invalid_target`/`unsupported_grant_type`, 401 `invalid_client`) instead of an unhandled exception (500); these failures are now `OAuth2Exception`. See README, "Token endpoint error responses"
+
 ### Bug Fixes
 
 * **cqrs:** retrieve resource may return null
@@ -36,6 +68,10 @@ All notable changes to this project will be documented in this file. See [versio
 
 <a name="1.1.5"></a>
 ## 1.1.5 (2025-05-02)
+
+### Breaking Changes
+
+* **oauth2:** `POST /token` answers expected failures with RFC 6749 §5.2 JSON errors (400 `invalid_request`/`invalid_target`/`unsupported_grant_type`, 401 `invalid_client`) instead of an unhandled exception (500); these failures are now `OAuth2Exception`. See README, "Token endpoint error responses"
 
 ### Bug Fixes
 
@@ -47,12 +83,20 @@ All notable changes to this project will be documented in this file. See [versio
 <a name="1.1.3"></a>
 ## 1.1.3 (2025-05-02)
 
+### Breaking Changes
+
+* **oauth2:** `POST /token` answers expected failures with RFC 6749 §5.2 JSON errors (400 `invalid_request`/`invalid_target`/`unsupported_grant_type`, 401 `invalid_client`) instead of an unhandled exception (500); these failures are now `OAuth2Exception`. See README, "Token endpoint error responses"
+
 ### Bug Fixes
 
 * **oauth2:** removed authorization rules from method that is used to authenticate the client
 
 <a name="1.1.2"></a>
 ## 1.1.2 (2025-05-02)
+
+### Breaking Changes
+
+* **oauth2:** `POST /token` answers expected failures with RFC 6749 §5.2 JSON errors (400 `invalid_request`/`invalid_target`/`unsupported_grant_type`, 401 `invalid_client`) instead of an unhandled exception (500); these failures are now `OAuth2Exception`. See README, "Token endpoint error responses"
 
 ### Bug Fixes
 
@@ -67,6 +111,10 @@ All notable changes to this project will be documented in this file. See [versio
 ### Features
 
 * **clientcredential:** added clientcredential entitty
+
+### Breaking Changes
+
+* **oauth2:** `POST /token` answers expected failures with RFC 6749 §5.2 JSON errors (400 `invalid_request`/`invalid_target`/`unsupported_grant_type`, 401 `invalid_client`) instead of an unhandled exception (500); these failures are now `OAuth2Exception`. See README, "Token endpoint error responses"
 
 ### Bug Fixes
 
@@ -97,6 +145,10 @@ All notable changes to this project will be documented in this file. See [versio
 * **scimv2:** added filter parsing to sql
 * **scimv2:** added groups service WIP
 * **scimv2:** added scimv2 entities
+
+### Breaking Changes
+
+* **oauth2:** `POST /token` answers expected failures with RFC 6749 §5.2 JSON errors (400 `invalid_request`/`invalid_target`/`unsupported_grant_type`, 401 `invalid_client`) instead of an unhandled exception (500); these failures are now `OAuth2Exception`. See README, "Token endpoint error responses"
 
 ### Bug Fixes
 

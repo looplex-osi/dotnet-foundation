@@ -354,6 +354,40 @@ sequenceDiagram
   deactivate Svc
 ```
 
+## Token endpoint error responses
+
+> **Breaking change for clients of `POST /token`.** Before this decision, any validation failure at the token endpoint
+> surfaced as an unhandled exception (HTTP 500, and in Development the exception page with stack trace). Clients that
+> treated that 500 as "authentication failed" must handle the responses below before upgrading the package.
+
+Expected failures are now answered as [RFC 6749 §5.2](https://www.rfc-editor.org/rfc/rfc6749#section-5.2) /
+[RFC 8693 §2.2.2](https://www.rfc-editor.org/rfc/rfc8693#section-2.2.2) errors:
+`Content-Type: application/json`, `Cache-Control: no-store`, `Pragma: no-cache` and a body such as
+
+```json
+{ "error": "invalid_request", "error_description": "Token is invalid." }
+```
+
+| `error`                  | HTTP | When                                                                                             |
+| ------------------------ | ---- | ------------------------------------------------------------------------------------------------ |
+| `unsupported_grant_type` | 400  | `grant_type` missing, unknown, or not accepted by the selected grant                             |
+| `invalid_request`        | 400  | token exchange: `subject_token` empty, or `subject_token_type` is not `...:token-type:access_token` |
+| `invalid_target`         | 400  | token exchange: `resource` is sent but blank                                                     |
+| `invalid_client`         | 401  | client credentials: missing/malformed `Authorization: Basic`, unknown client or wrong secret, client not yet valid or expired. Also sends `WWW-Authenticate: Basic` |
+
+- `error_description` is always a fixed text; it never echoes request input or internal details.
+- Anything not listed (IdP/userinfo failures, database errors, plugin exceptions) is still an unexpected fault and
+  keeps answering 500. Do not treat the absence of an OAuth2 `error` body as "invalid credentials".
+- Host applications can throw `OAuth2Exception` (in `Looplex.Foundation.OAuth2.Entities`) from plugins to produce
+  the same response; keep its message a fixed text.
+
+## Tenant resolution on token validation
+
+A token issued by token exchange carries a `tenant` claim (from the RFC 8693 `resource` parameter). When the request
+also sends the `{tenant}` route value or the `X-looplex-tenant` header, it must match the claim exactly (ordinal,
+case-sensitive); otherwise authentication fails. Client-credentials tokens carry no `tenant` claim, so the caller
+selects the tenant through the route or header and membership must be enforced by the RBAC.
+
 ## `access_token` payload schema
 
 ```json
